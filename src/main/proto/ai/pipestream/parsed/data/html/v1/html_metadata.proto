@@ -10,11 +10,9 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.html.v1";
 option java_outer_classname = "HtmlMetadataProto";
 
-/**
- * Comprehensive HTML metadata as extracted by Tika from HTML and web documents.
- * Based on Tika's HTML interface, TikaCoreProperties, and actual HTML parser implementations.
- * This is a 1:1 mapping to all fields that Tika can extract from HTML documents.
- */
+// Comprehensive HTML metadata as extracted by Tika from HTML and web documents.
+// Based on Tika's HTML interface, TikaCoreProperties, and actual HTML parser implementations.
+// This is a 1:1 mapping to all fields that Tika can extract from HTML documents.
 message HtmlMetadata {
   // === TikaCoreProperties (Core Tika metadata) ===
   optional string title = 1;                   // TikaCoreProperties.TITLE (from <title> tag)
@@ -126,8 +124,6 @@ message HtmlMetadata {
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

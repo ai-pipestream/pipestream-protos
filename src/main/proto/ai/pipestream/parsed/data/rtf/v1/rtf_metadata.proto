@@ -10,14 +10,11 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.rtf.v1";
 option java_outer_classname = "RtfMetadataProto";
 
-/**
- * Comprehensive RTF (Rich Text Format) metadata as extracted by Tika.
- * Based on Tika's RTFMetadata interface, TextExtractor, and RTFEmbObjHandler implementations.
- * This is a 1:1 mapping to all fields that Tika can extract from RTF documents.
- * 
- * RTF documents can contain rich formatting, embedded objects, and document properties
- * similar to Microsoft Office documents but in a text-based format.
- */
+// Comprehensive RTF (Rich Text Format) metadata as extracted by Tika.
+// Based on Tika's RTFMetadata interface, TextExtractor, and RTFEmbObjHandler implementations.
+// This is a 1:1 mapping to all fields that Tika can extract from RTF documents.
+// RTF documents can contain rich formatting, embedded objects, and document properties
+// similar to Microsoft Office documents but in a text-based format.
 message RtfMetadata {
   // Dublin/Core fields are normalized at TikaResponse.dublin_core.
   // Reserve these names and field numbers to prevent reuse here.
@@ -97,8 +94,6 @@ message RtfMetadata {
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

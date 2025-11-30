@@ -10,11 +10,9 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.email.v1";
 option java_outer_classname = "EmailMetadataProto";
 
-/**
- * Comprehensive email metadata as extracted by Tika from email files.
- * Based on Tika's Message interface, MAPI interface, TikaCoreProperties, and actual parser implementations.
- * This is a 1:1 mapping to all fields that Tika can extract from email files.
- */
+// Comprehensive email metadata as extracted by Tika from email files.
+// Based on Tika's Message interface, MAPI interface, TikaCoreProperties, and actual parser implementations.
+// This is a 1:1 mapping to all fields that Tika can extract from email files.
 message EmailMetadata {
   // === TikaCoreProperties (Core Tika metadata) ===
   optional string title = 1;                   // TikaCoreProperties.TITLE (email subject)
@@ -154,8 +152,6 @@ message EmailMetadata {
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

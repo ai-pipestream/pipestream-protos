@@ -23,10 +23,8 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.tika.v1";
 option java_outer_classname = "TikaResponseProto";
 
-/**
- * Flexible TikaResponse that mirrors how Tika actually stores metadata.
- * Only populated fields are included, making it much more efficient.
- */
+// Flexible TikaResponse that mirrors how Tika actually stores metadata.
+// Only populated fields are included, making it much more efficient.
 message TikaResponse {
   // Document identifier
   string doc_id = 1;
@@ -71,9 +69,7 @@ message TikaResponse {
   google.protobuf.Timestamp parsed_at = 16;
 }
 
-/**
- * Core content - the actual text extracted
- */
+// Core content - the actual text extracted
 message TikaContent {
   string body = 1;
   optional string title = 2;
@@ -82,10 +78,8 @@ message TikaContent {
   int64 content_length = 5;
 }
 
-/**
- * Generic metadata entry for properties not covered by the strongly-typed fields.
- * Most metadata should be in the specific typed fields above.
- */
+// Generic metadata entry for properties not covered by the strongly-typed fields.
+// Most metadata should be in the specific typed fields above.
 message TikaMetadataEntry {
   string key = 1;
   oneof value {
@@ -99,16 +93,12 @@ message TikaMetadataEntry {
 }
 
 
-/**
- * String list helper
- */
+// String list helper
 message StringList {
   repeated string values = 1;
 }
 
-/**
- * Parse status
- */
+// Parse status
 message TikaParseStatus {
   enum Status {
     STATUS_UNSPECIFIED = 0;
@@ -126,9 +116,7 @@ message TikaParseStatus {
   repeated string errors = 6;
 }
 
-/**
- * Embedded document
- */
+// Embedded document
 message TikaEmbeddedDoc {
   string id = 1;
   string path = 2;

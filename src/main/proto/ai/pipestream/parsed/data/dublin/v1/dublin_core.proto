@@ -8,10 +8,8 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.dublin.v1";
 option java_outer_classname = "DublinCoreProto";
 
-/**
- * Dublin Core metadata - the standardized metadata that most documents have.
- * These are the actual fields that Tika's DublinCore interface provides.
- */
+// Dublin Core metadata - the standardized metadata that most documents have.
+// These are the actual fields that Tika's DublinCore interface provides.
 message DublinCoreMetadata {
   // dc:format - Media type or format of the resource
   optional string format = 1;

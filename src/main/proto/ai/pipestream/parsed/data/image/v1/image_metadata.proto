@@ -10,10 +10,8 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.image.v1";
 option java_outer_classname = "ImageMetadataProto";
 
-/**
- * Comprehensive image metadata as extracted by Tika from TIFF, EXIF, IPTC, XMP, and GPS.
- * Based on Tika's TIFF, IPTC, and XMPDM interfaces with complete field coverage.
- */
+// Comprehensive image metadata as extracted by Tika from TIFF, EXIF, IPTC, XMP, and GPS.
+// Based on Tika's TIFF, IPTC, and XMPDM interfaces with complete field coverage.
 message ImageMetadata {
   // Image width in pixels (tiff:ImageWidth).
   optional int32 width = 1;
@@ -87,9 +85,7 @@ message ImageMetadata {
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }
 
-/**
- * EXIF metadata from camera settings and technical information.
- */
+// EXIF metadata from camera settings and technical information.
 message ExifMetadata {
   // Exposure time in seconds (exif:ExposureTime).
   optional double exposure_time = 1;
@@ -205,9 +201,7 @@ message ExifMetadata {
   optional string lens_serial_number_exif = 49;
 }
 
-/**
- * GPS metadata from EXIF GPS information.
- */
+// GPS metadata from EXIF GPS information.
 message GpsMetadata {
   // Latitude in decimal degrees (GPS:GPSLatitude).
   optional double latitude = 1;
@@ -273,10 +267,8 @@ message GpsMetadata {
   optional string differential = 30;
 }
 
-/**
- * IPTC (International Press Telecommunications Council) metadata.
- * Comprehensive coverage of IPTC Core and Extension fields.
- */
+// IPTC (International Press Telecommunications Council) metadata.
+// Comprehensive coverage of IPTC Core and Extension fields.
 message IptcMetadata {
   // Brief headline for the image (IPTC:Headline).
   optional string headline = 1;
@@ -386,9 +378,7 @@ message IptcMetadata {
   optional google.protobuf.Timestamp iptc_last_edited = 53;
 }
 
-/**
- * Contact information structure for IPTC.
- */
+// Contact information structure for IPTC.
 message ContactInfo {
   // Multi-line street address.
   repeated string address = 1;
@@ -408,9 +398,7 @@ message ContactInfo {
   repeated string web_url = 8;
 }
 
-/**
- * Location information with precise semantics.
- */
+// Location information with precise semantics.
 message LocationInfo {
   // World region at top level of hierarchy.
   optional string world_region = 1;
@@ -430,9 +418,7 @@ message LocationInfo {
   optional double longitude = 8;
 }
 
-/**
- * Artwork or object information.
- */
+// Artwork or object information.
 message ArtworkInfo {
   // Title of the artwork or object.
   optional string title = 1;
@@ -448,9 +434,7 @@ message ArtworkInfo {
   optional string source_inventory_number = 6;
 }
 
-/**
- * Registry information.
- */
+// Registry information.
 message RegistryInfo {
   // Registry item identifier.
   optional string item_id = 1;
@@ -458,9 +442,7 @@ message RegistryInfo {
   optional string organisation_id = 2;
 }
 
-/**
- * PLUS licensing information.
- */
+// PLUS licensing information.
 message PlusLicensingInfo {
   // PLUS version number.
   optional string version = 1;
@@ -498,9 +480,7 @@ message PlusLicensingInfo {
   optional string minor_model_age_disclosure = 17;
 }
 
-/**
- * Licensor contact information.
- */
+// Licensor contact information.
 message LicensorInfo {
   // Licensor identifier.
   optional string licensor = 1;

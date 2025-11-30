@@ -10,15 +10,12 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.database.v1";
 option java_outer_classname = "DatabaseMetadataProto";
 
-/**
- * Comprehensive Database metadata as extracted by Tika from database files.
- * Based on Tika's Database interface and actual database parser implementations
- * (JackcessParser, SAS7BDATParser, SQLite3Parser, AbstractDBParser).
- * This is a 1:1 mapping to all fields that Tika can extract from database files.
- * 
- * Supports various database formats: Microsoft Access (.mdb/.accdb), SAS (.sas7bdat),
- * SQLite (.sqlite/.db), and other JDBC-accessible databases.
- */
+// Comprehensive Database metadata as extracted by Tika from database files.
+// Based on Tika's Database interface and actual database parser implementations
+// (JackcessParser, SAS7BDATParser, SQLite3Parser, AbstractDBParser).
+// This is a 1:1 mapping to all fields that Tika can extract from database files.
+// Supports various database formats: Microsoft Access (.mdb/.accdb), SAS (.sas7bdat),
+// SQLite (.sqlite/.db), and other JDBC-accessible databases.
 message DatabaseMetadata {
   // === Core Database Properties (from Database interface) ===
   repeated string table_names = 1;                    // Database.TABLE_NAME (all table names)
@@ -101,15 +98,11 @@ message DatabaseMetadata {
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }
 
-/**
- * Detailed information about a database table
- */
+// Detailed information about a database table
 message TableInfo {
   optional string name = 1;                           // Table name
   optional string label = 2;                          // Table label/description
@@ -122,18 +115,14 @@ message TableInfo {
   repeated string column_names = 9;                   // Names of columns in this table
 }
 
-/**
- * Database property key-value pair (for Access MDB properties)
- */
+// Database property key-value pair (for Access MDB properties)
 message DatabaseProperty {
   optional string name = 1;                           // Property name
   optional string value = 2;                          // Property value
   optional string type = 3;                           // Property data type
 }
 
-/**
- * Detailed information about a database column
- */
+// Detailed information about a database column
 message ColumnInfo {
   optional string name = 1;                           // Column name
   optional string label = 2;                          // Column label/description
@@ -147,9 +136,7 @@ message ColumnInfo {
   optional string format = 10;                        // Display format for column
 }
 
-/**
- * Database index information
- */
+// Database index information
 message IndexInfo {
   optional string name = 1;                           // Index name
   optional string table_name = 2;                     // Table this index belongs to
@@ -159,9 +146,7 @@ message IndexInfo {
   optional string index_type = 6;                     // Type of index (BTREE, HASH, etc.)
 }
 
-/**
- * Database relationship/foreign key information
- */
+// Database relationship/foreign key information
 message RelationshipInfo {
   optional string name = 1;                           // Relationship name
   optional string from_table = 2;                     // Source table

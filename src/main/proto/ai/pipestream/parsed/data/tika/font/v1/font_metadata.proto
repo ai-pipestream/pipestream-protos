@@ -223,9 +223,7 @@ message FontMetadata {
   // Catch-all for unknown or future font metadata fields
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }
 

@@ -10,11 +10,9 @@ option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.media.v1";
 option java_outer_classname = "MediaMetadataProto";
 
-/**
- * Comprehensive media metadata as extracted by Tika from audio and video files.
- * Based on Tika's XMPDM interface, TikaCoreProperties, and actual parser implementations.
- * This is a 1:1 mapping to all fields that Tika can extract from media files.
- */
+// Comprehensive media metadata as extracted by Tika from audio and video files.
+// Based on Tika's XMPDM interface, TikaCoreProperties, and actual parser implementations.
+// This is a 1:1 mapping to all fields that Tika can extract from media files.
 message MediaMetadata {
   // === TikaCoreProperties (Core Tika metadata) ===
   optional string title = 1;                   // TikaCoreProperties.TITLE / DublinCore.TITLE
@@ -138,8 +136,6 @@ message MediaMetadata {
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
   
-  /**
-   * Base Tika fields common to all document types
-   */
+  // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }
