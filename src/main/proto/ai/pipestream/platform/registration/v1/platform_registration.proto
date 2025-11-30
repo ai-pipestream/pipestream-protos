@@ -19,57 +19,57 @@ service PlatformRegistrationService {
   //
   // Returns a stream of RegistrationEvent messages tracking progress through
   // validation, Consul registration, health check configuration, and completion.
-  rpc RegisterService(RegisterServiceRequest) returns (stream RegistrationEvent);
+  rpc RegisterService(RegisterServiceRequest) returns (stream RegisterServiceResponse);
 
   // Register a module (document processor) with streaming status updates.
   //
   // Extends service registration by adding schema validation, Apicurio registration,
   // and module-specific metadata handling.
-  rpc RegisterModule(RegisterModuleRequest) returns (stream RegistrationEvent);
+  rpc RegisterModule(RegisterModuleRequest) returns (stream RegisterModuleResponse);
 
   // Unregister a service from Consul and the platform registry.
-  rpc UnregisterService(UnregisterServiceRequest) returns (UnregisterResponse);
+  rpc UnregisterService(UnregisterServiceRequest) returns (UnregisterServiceResponse);
 
   // Unregister a module from Consul and the platform registry.
-  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterResponse);
+  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterModuleResponse);
 
   // List all registered services with health status and metadata.
-  rpc ListServices(ListServicesRequest) returns (ServiceListResponse);
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
 
   // List all registered modules with schema and capability information.
-  rpc ListModules(ListModulesRequest) returns (ModuleListResponse);
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
 
   // Get specific service details by name or Consul service ID.
-  rpc GetService(GetServiceRequest) returns (ServiceDetails);
+  rpc GetService(GetServiceRequest) returns (GetServiceResponse);
 
   // Get specific module details by name or Consul service ID.
-  rpc GetModule(GetModuleRequest) returns (ModuleDetails);
+  rpc GetModule(GetModuleRequest) returns (GetModuleResponse);
 
   // Resolve service endpoint for dynamic routing.
   //
   // Returns the best available instance of a service based on health and load.
   // Supports preference criteria like local instances or required capabilities.
-  rpc ResolveService(ResolveServiceRequest) returns (ServiceResolveResponse);
+  rpc ResolveService(ResolveServiceRequest) returns (ResolveServiceResponse);
 
   // Watch for real-time updates to the list of all healthy services.
   //
   // The server will send an initial list, and then send a new full
   // list whenever any service is registered, unregistered, or changes
   // its health status.
-  rpc WatchServices(WatchServicesRequest) returns (stream ServiceListResponse);
+  rpc WatchServices(WatchServicesRequest) returns (stream WatchServicesResponse);
 
   // Watch for real-time updates to the list of all registered modules.
   //
   // The server will send an initial list, and then send a new full
   // list whenever any module is registered, unregistered, or changes
   // its health status.
-  rpc WatchModules(WatchModulesRequest) returns (stream ModuleListResponse);
+  rpc WatchModules(WatchModulesRequest) returns (stream WatchModulesResponse);
 
   // Get module schema from Apicurio Registry.
   //
   // Retrieves either a specific version or the latest schema for a module.
   // Returns JSON Schema used for validating module configuration.
-  rpc GetModuleSchema(GetModuleSchemaRequest) returns (ModuleSchemaResponse);
+  rpc GetModuleSchema(GetModuleSchemaRequest) returns (GetModuleSchemaResponse);
 
   // List all available schema versions for a module.
   //
@@ -119,6 +119,23 @@ message RegisterModuleRequest {
   //
   // Contains input/output formats, document types supported, and schema definition.
   ai.pipestream.data.module.v1.ServiceRegistrationMetadata service_registration_metadata = 6;
+}
+
+// Response for RegisterService RPC (streaming).
+//
+// Tracks registration progress through lifecycle stages including validation,
+// Consul registration, health check configuration, and completion.
+message RegisterServiceResponse {
+  // Registration event data.
+  RegistrationEvent event = 1;
+}
+
+// Response for RegisterModule RPC (streaming).
+//
+// Tracks registration progress including schema validation and Apicurio registration.
+message RegisterModuleResponse {
+  // Registration event data.
+  RegistrationEvent event = 1;
 }
 
 // Streaming registration event tracking registration progress.
@@ -210,8 +227,18 @@ message UnregisterModuleRequest {
   int32 port = 3;
 }
 
-// Response from unregistration operation.
-message UnregisterResponse {
+// Response from service unregistration operation.
+message UnregisterServiceResponse {
+  // Whether unregistration succeeded.
+  bool success = 1;
+  // Status or error message.
+  string message = 2;
+  // Timestamp when unregistration completed.
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Response from module unregistration operation.
+message UnregisterModuleResponse {
   // Whether unregistration succeeded.
   bool success = 1;
   // Status or error message.
@@ -267,7 +294,7 @@ message ResolveServiceRequest {
 //
 // Provides complete connection details for the selected instance along with
 // metadata explaining the selection decision.
-message ServiceResolveResponse {
+message ResolveServiceResponse {
   // Whether a healthy instance was found.
   bool found = 1;
   // Service name that was resolved.
@@ -299,7 +326,7 @@ message ServiceResolveResponse {
 // Complete details for a registered service instance.
 //
 // Includes connection information, metadata, health status, and registration timestamps.
-message ServiceDetails {
+message GetServiceResponse {
   // Logical service name.
   string service_name = 1;
   // Consul service ID for this specific instance.
@@ -328,7 +355,7 @@ message ServiceDetails {
 //
 // Extends service details with module-specific information including
 // input/output formats and document type support.
-message ModuleDetails {
+message GetModuleResponse {
   // Module name.
   string module_name = 1;
   // Consul service ID for this specific instance.
@@ -368,11 +395,19 @@ message WatchServicesRequest {}
 message WatchModulesRequest {}
 
 // Response containing list of all registered services.
-//
-// Used by ListServices RPC and streamed by WatchServices for real-time updates.
-message ServiceListResponse {
+message ListServicesResponse {
   // List of all registered service instances with their details.
-  repeated ServiceDetails services = 1;
+  repeated GetServiceResponse services = 1;
+  // Timestamp when this snapshot was captured.
+  google.protobuf.Timestamp as_of = 2;
+  // Total count of service instances.
+  int32 total_count = 3;
+}
+
+// Response for WatchServices RPC (streaming).
+message WatchServicesResponse {
+  // List of all registered service instances with their details.
+  repeated GetServiceResponse services = 1;
   // Timestamp when this snapshot was captured.
   google.protobuf.Timestamp as_of = 2;
   // Total count of service instances.
@@ -380,11 +415,19 @@ message ServiceListResponse {
 }
 
 // Response containing list of all registered modules.
-//
-// Used by ListModules RPC and streamed by WatchModules for real-time updates.
-message ModuleListResponse {
+message ListModulesResponse {
   // List of all registered module instances with their details.
-  repeated ModuleDetails modules = 1;
+  repeated GetModuleResponse modules = 1;
+  // Timestamp when this snapshot was captured.
+  google.protobuf.Timestamp as_of = 2;
+  // Total count of module instances.
+  int32 total_count = 3;
+}
+
+// Response for WatchModules RPC (streaming).
+message WatchModulesResponse {
+  // List of all registered module instances with their details.
+  repeated GetModuleResponse modules = 1;
   // Timestamp when this snapshot was captured.
   google.protobuf.Timestamp as_of = 2;
   // Total count of module instances.
@@ -471,7 +514,7 @@ message GetModuleSchemaRequest {
 //
 // Provides JSON Schema definition used to validate module configuration
 // along with version information and available versions.
-message ModuleSchemaResponse {
+message GetModuleSchemaResponse {
   // Module name.
   string module_name = 1;
   // JSON Schema definition as string.
