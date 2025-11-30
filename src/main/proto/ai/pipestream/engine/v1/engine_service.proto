@@ -20,6 +20,7 @@ service EngineV1Service {
   
   // Kafka topic subscription management
   rpc UpdateTopicSubscriptions(UpdateTopicSubscriptionsRequest) returns (UpdateTopicSubscriptionsResponse);
+  // Retrieves topic subscriptions for the engine.
   rpc GetTopicSubscriptions(GetTopicSubscriptionsRequest) returns (GetTopicSubscriptionsResponse);
   
   // Engine health

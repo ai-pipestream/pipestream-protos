@@ -9,8 +9,11 @@ option java_multiple_files = true;
 
 // Validation service for pipeline components
 service ValidationService {
+  // Validates a graph node configuration.
   rpc ValidateNode(ValidateNodeRequest) returns (ValidationResponse);
+  // Validates a complete pipeline graph for correctness.
   rpc ValidateGraph(ValidateGraphRequest) returns (ValidationResponse);
+  // Validates a module configuration and connectivity.
   rpc ValidateModule(ValidateModuleRequest) returns (ValidationResponse);
 }
 

@@ -7,7 +7,12 @@ import "ai/pipestream/data/v1/pipeline_core_types.proto";
 option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;
 
+// Document repository service for persistent storage.
+//
+// Core service for saving and managing documents with metadata.
+// Integrates with connector layer for document lifecycle management.
 service RepositoryService {
+  // Saves a document to the repository with metadata.
   rpc SaveDocument(SaveDocumentRequest) returns (SaveDocumentResponse);
   // Add other repository gRPC methods as needed
 }

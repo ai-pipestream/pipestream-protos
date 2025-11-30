@@ -104,22 +104,30 @@ enum LinearProcessingStatus {
 service LinearPipelineConfigService {
   // CRUD operations
   rpc CreatePipelineConfig(CreatePipelineConfigRequest) returns (CreatePipelineConfigResponse);
+  // Retrieves a pipeline configuration by ID.
   rpc GetPipelineConfig(GetPipelineConfigRequest) returns (GetPipelineConfigResponse);
+  // Updates an existing pipeline configuration.
   rpc UpdatePipelineConfig(UpdatePipelineConfigRequest) returns (UpdatePipelineConfigResponse);
+  // Deletes a pipeline configuration.
   rpc DeletePipelineConfig(DeletePipelineConfigRequest) returns (DeletePipelineConfigResponse);
+  // Lists all pipeline configurations with pagination.
   rpc ListPipelineConfigs(ListPipelineConfigsRequest) returns (ListPipelineConfigsResponse);
-  
+
   // Search and filtering
   rpc SearchPipelineConfigs(SearchPipelineConfigsRequest) returns (SearchPipelineConfigsResponse);
+  // Retrieves pipeline configurations filtered by status.
   rpc GetPipelineConfigsByStatus(GetPipelineConfigsByStatusRequest) returns (GetPipelineConfigsByStatusResponse);
+  // Retrieves pipeline configurations filtered by tag.
   rpc GetPipelineConfigsByTag(GetPipelineConfigsByTagRequest) returns (GetPipelineConfigsByTagResponse);
-  
+
   // Execution operations
   rpc ExecuteLinearPipeline(LinearPipelineExecutionRequest) returns (stream LinearPipelineExecutionResponse);
+  // Validates a pipeline configuration without executing it.
   rpc ValidatePipelineConfig(ValidatePipelineConfigRequest) returns (ValidatePipelineConfigResponse);
-  
+
   // Document operations
   rpc GetDocumentsByConnector(GetDocumentsByConnectorRequest) returns (GetDocumentsByConnectorResponse);
+  // Stores the results of a pipeline execution.
   rpc StorePipelineExecutionResult(StorePipelineExecutionResultRequest) returns (StorePipelineExecutionResultResponse);
 }
 

@@ -4,6 +4,7 @@ package ai.pipestream.config.v1;
 
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_package = "ai.pipestream.config.v1";
 option java_multiple_files = true;
@@ -13,41 +14,62 @@ option java_multiple_files = true;
 service PipelineConfigService {
   // Cluster Management
   rpc CreateCluster(CreateClusterRequest) returns (CreateClusterResponse);
+  // Retrieves a single cluster by ID.
   rpc GetCluster(GetClusterRequest) returns (Cluster);
+  // Lists all clusters with optional filtering.
   rpc ListClusters(ListClustersRequest) returns (ListClustersResponse);
+  // Updates an existing cluster configuration.
   rpc UpdateCluster(UpdateClusterRequest) returns (UpdateClusterResponse);
+  // Deletes a cluster and all associated resources.
   rpc DeleteCluster(DeleteClusterRequest) returns (DeleteClusterResponse);
   
   // Pipeline Configuration Management
   rpc CreatePipelineGraph(CreatePipelineGraphRequest) returns (CreatePipelineGraphResponse);
+  // Retrieves a pipeline configuration by ID.
   rpc GetPipelineConfig(GetPipelineConfigRequest) returns (PipelineGraph);
+  // Lists all pipeline graphs with optional filtering.
   rpc ListPipelineGraphs(ListPipelineGraphsRequest) returns (ListPipelineGraphsResponse);
+  // Updates an existing pipeline graph.
   rpc UpdatePipelineGraph(UpdatePipelineGraphRequest) returns (UpdatePipelineGraphResponse);
+  // Deletes a pipeline graph.
   rpc DeletePipelineGraph(DeletePipelineGraphRequest) returns (DeletePipelineGraphResponse);
   
   // Pipeline Instance Management
   rpc CreatePipelineInstance(CreatePipelineInstanceRequest) returns (CreatePipelineInstanceResponse);
+  // Retrieves a pipeline instance by ID.
   rpc GetPipelineInstance(GetPipelineInstanceRequest) returns (PipelineInstance);
+  // Lists all pipeline instances with optional filtering.
   rpc ListPipelineInstances(ListPipelineInstancesRequest) returns (ListPipelineInstancesResponse);
+  // Updates an existing pipeline instance configuration.
   rpc UpdatePipelineInstance(UpdatePipelineInstanceRequest) returns (UpdatePipelineInstanceResponse);
+  // Deletes a pipeline instance.
   rpc DeletePipelineInstance(DeletePipelineInstanceRequest) returns (DeletePipelineInstanceResponse);
+  // Starts a stopped pipeline instance.
   rpc StartPipelineInstance(StartPipelineInstanceRequest) returns (StartPipelineInstanceResponse);
+  // Stops a running pipeline instance.
   rpc StopPipelineInstance(StopPipelineInstanceRequest) returns (StopPipelineInstanceResponse);
   
   // Module Registration & Discovery
   rpc RegisterModule(RegisterModuleRequest) returns (RegisterModuleResponse);
+  // Unregisters a module from the registry.
   rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterModuleResponse);
+  // Lists all registered modules.
   rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+  // Checks health status of a specific module.
   rpc GetModuleHealth(GetModuleHealthRequest) returns (GetModuleHealthResponse);
   
   // Real-time Configuration Streaming (replaces Consul watches)
   rpc WatchClusterConfig(WatchClusterConfigRequest) returns (stream ClusterConfigEvent);
+  // Streams real-time pipeline graph configuration changes.
   rpc WatchPipelineGraph(WatchPipelineGraphRequest) returns (stream PipelineGraphEvent);
+  // Streams real-time module registry changes.
   rpc WatchModuleRegistry(WatchModuleRegistryRequest) returns (stream ModuleRegistryEvent);
   
   // Module Whitelisting
   rpc WhitelistModule(WhitelistModuleRequest) returns (WhitelistModuleResponse);
+  // Removes a module from the whitelist.
   rpc RemoveModuleFromWhitelist(RemoveModuleFromWhitelistRequest) returns (RemoveModuleFromWhitelistResponse);
+  // Lists all whitelisted modules.
   rpc ListWhitelistedModules(ListWhitelistedModulesRequest) returns (ListWhitelistedModulesResponse);
 }
 

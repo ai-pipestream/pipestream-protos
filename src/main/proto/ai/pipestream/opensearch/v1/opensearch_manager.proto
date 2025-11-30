@@ -18,17 +18,23 @@ service OpenSearchManagerService {
   
   // Index Lifecycle Operations
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse);
+  // Deletes an OpenSearch index.
   rpc DeleteIndex(DeleteIndexRequest) returns (DeleteIndexResponse);
+  // Checks if an OpenSearch index exists.
   rpc IndexExists(IndexExistsRequest) returns (IndexExistsResponse);
   
   // Document Operations (single documents)
   rpc IndexDocument(IndexDocumentRequest) returns (IndexDocumentResponse);
+  // Indexes a document with dynamic schema.
   rpc IndexAnyDocument(IndexAnyDocumentRequest) returns (IndexDocumentResponse);
+  // Deletes a document from an index.
   rpc DeleteDocument(DeleteDocumentRequest) returns (DeleteDocumentResponse);
+  // Retrieves a document by ID from an index.
   rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
   
   // Admin Operations
   rpc GetIndexStats(GetIndexStatsRequest) returns (GetIndexStatsResponse);
+  // Lists all OpenSearch indices.
   rpc ListIndices(ListIndicesRequest) returns (ListIndicesResponse);
   
   // Domain-Specific Search Operations

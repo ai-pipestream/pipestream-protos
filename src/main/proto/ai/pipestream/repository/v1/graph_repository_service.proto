@@ -16,25 +16,36 @@ option java_multiple_files = true;
 service GraphRepositoryService {
   // ========== NODE OPERATIONS ==========
   rpc CreateNode(CreateNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  // Retrieves a graph node by ID.
   rpc GetNode(GetNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  // Updates a graph node configuration.
   rpc UpdateNode(UpdateNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  // Deletes a graph node.
   rpc DeleteNode(DeleteNodeRequest) returns (DeleteResponse);
+  // Lists all graph nodes with filtering.
   rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
-  
+
   // ========== GRAPH OPERATIONS ==========
   rpc CreateGraph(CreateGraphRequest) returns (ai.pipestream.config.v1.PipelineGraph);
+  // Retrieves a pipeline graph by ID.
   rpc GetGraph(GetGraphRequest) returns (ai.pipestream.config.v1.NetworkTopology);
+  // Updates a pipeline graph.
   rpc UpdateGraph(UpdateGraphRequest) returns (ai.pipestream.config.v1.PipelineGraph);
+  // Deletes a pipeline graph.
   rpc DeleteGraph(DeleteGraphRequest) returns (DeleteResponse);
+  // Lists all pipeline graphs.
   rpc ListGraphs(ListGraphsRequest) returns (ListGraphsResponse);
-  
+
   // ========== DNS-LIKE NODE RESOLUTION ==========
   rpc ResolveNode(ResolveNodeRequest) returns (ai.pipestream.config.v1.NodeLookupResponse);
+  // Resolves downstream nodes following graph edges.
   rpc ResolveNextNodes(ResolveNextNodesRequest) returns (ResolveNextNodesResponse);
+  // Resolves a node reference across cluster boundaries.
   rpc ResolveCrossClusterNode(ai.pipestream.config.v1.CrossClusterNodeLookup) returns (ai.pipestream.config.v1.NodeLookupResponse);
-  
+
   // ========== KAFKA TOPIC DISCOVERY ==========
   rpc FindNodesByInputTopic(FindNodesByTopicRequest) returns (FindNodesByTopicResponse);
+  // Finds all nodes that produce to a specific Kafka topic.
   rpc FindNodesByOutputTopic(FindNodesByTopicRequest) returns (FindNodesByTopicResponse);
   
   // ========== LOOP DETECTION ==========

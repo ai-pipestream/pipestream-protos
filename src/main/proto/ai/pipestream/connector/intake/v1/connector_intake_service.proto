@@ -14,6 +14,11 @@ option java_multiple_files = true;
 // Agnostic to connector type (filesystem, database, API, etc.)
 // ============================================
 
+// High-throughput document ingestion service for all connector types.
+//
+// This service provides the main entry point for document ingestion into the AI Pipestream platform.
+// It handles authentication, account verification, metadata enrichment, and routing to the repository layer.
+// Supports both structured PipeDoc uploads and raw blob uploads with automatic wrapping.
 service ConnectorIntakeService {
   // 1. The "Power User" path: Client sends a full PipeDoc
   // Best for internal services, advanced connectors, or "Box.com" style integrations
@@ -39,6 +44,9 @@ service ConnectorIntakeService {
 // Separate service for connector administration
 // ============================================
 
+// Administrative operations for connector lifecycle management.
+//
+// Handles registration, configuration updates, and metadata queries for connectors.
 service ConnectorAdminService {
   // Register a new connector
   rpc RegisterConnector(RegisterConnectorRequest) returns (RegisterConnectorResponse);

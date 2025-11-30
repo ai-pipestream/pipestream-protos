@@ -10,76 +10,124 @@ option java_package = "ai.pipestream.repository.v1.filesystem";
 option java_multiple_files = true;
 option java_outer_classname = "FilesystemServiceProto";
 
-// Drive information for isolated filesystem namespaces
+// Drive representing an isolated filesystem namespace.
+//
+// Each drive maps to an S3 bucket and provides multi-tenant isolation.
+// Drives are the top-level container for organizing nodes (files and folders).
 message Drive {
-  int64 id = 1;                    // Database primary key
-  string name = 2;                 // Drive name (no colons allowed)
-  string bucket_name = 3;          // Actual S3 bucket name
-  string account_id = 4;           // Account identifier for multi-tenancy and billing
-  string region = 5;               // S3 region (optional)
-  string credentials_ref = 6;      // String reference to external secret management
-  int64 status_id = 7;             // Foreign key to drive_status lookup table
-  string description = 8;          // Human-readable description
+  // Database primary key for internal use.
+  int64 id = 1;
+  // Drive name (no colons allowed). Used as a user-friendly identifier.
+  string name = 2;
+  // Actual S3 bucket name where drive data is stored.
+  string bucket_name = 3;
+  // Account identifier for multi-tenancy and billing purposes.
+  string account_id = 4;
+  // S3 region (optional). If not specified, uses default region.
+  string region = 5;
+  // Reference to external secret management for S3 credentials.
+  string credentials_ref = 6;
+  // Foreign key to drive_status lookup table indicating drive state.
+  int64 status_id = 7;
+  // Human-readable description of this drive's purpose.
+  string description = 8;
+  // Timestamp when the drive was created.
   google.protobuf.Timestamp created_at = 9;
-  string metadata = 10;            // JSON metadata for unstructured data
+  // JSON metadata for unstructured additional data.
+  string metadata = 10;
 }
 
-// The central Node message, representing a file or a folder in the virtual filesystem.
+// Node representing a file or folder in the virtual filesystem.
+//
+// Nodes are organized hierarchically within drives, forming a tree structure.
+// Includes both persistent metadata (stored in database) and transient fields (runtime only).
 message Node {
+  // Type of filesystem node.
   enum NodeType {
+    // Unspecified node type.
     NODE_TYPE_UNSPECIFIED = 0;
+    // Folder/directory node.
     NODE_TYPE_FOLDER = 1;
+    // File node.
     NODE_TYPE_FILE = 2;
   }
 
-  int64 id = 1;                    // Database primary key
-  string document_id = 2;          // UUID for external API
-  int64 drive_id = 3;             // Foreign key to Drive
-  string name = 4;                 // Document name
-  int64 node_type_id = 5;          // Foreign key to node_type lookup table
-  int64 parent_id = 6;             // Self-reference for hierarchy
-  string path = 7;                 // Computed path for efficient queries
-  string content_type = 8;         // MIME type
-  int64 size_bytes = 9;           // Size in bytes
-  string s3_key = 10;              // S3 object key within drive's bucket
+  // Database primary key for internal use.
+  int64 id = 1;
+  // UUID for external API access and stable referencing.
+  string document_id = 2;
+  // Foreign key to the Drive containing this node.
+  int64 drive_id = 3;
+  // Document name (file or folder name).
+  string name = 4;
+  // Foreign key to node_type lookup table.
+  int64 node_type_id = 5;
+  // Parent folder ID for hierarchical organization (self-reference).
+  int64 parent_id = 6;
+  // Computed full path from root for efficient path-based queries.
+  string path = 7;
+  // MIME type of the file content.
+  string content_type = 8;
+  // Size of the content in bytes.
+  int64 size_bytes = 9;
+  // S3 object key within the drive's bucket.
+  string s3_key = 10;
+  // Timestamp when the node was created.
   google.protobuf.Timestamp created_at = 11;
+  // Timestamp of last update.
   google.protobuf.Timestamp updated_at = 12;
-  string metadata = 13;            // JSON metadata for unstructured data
-  
-  // Transient fields (not persisted to database)
-  google.protobuf.Any payload = 14; // Actual payload data (NOT persisted)
-  NodeType type = 15;              // S3-level classification (FOLDER or FILE)
-  string icon_svg = 16;            // SVG icon for visual representation
-  string service_type = 17;        // Service interface type (e.g., "PipeStepProcessor", "Parser")
-  string payload_type = 18;        // Actual payload type (e.g., "ModuleProcessRequest", "ModuleProcessResponse")
+  // JSON metadata for unstructured additional data.
+  string metadata = 13;
+
+  // Actual payload data (NOT persisted to database, transient field).
+  google.protobuf.Any payload = 14;
+  // S3-level classification as FOLDER or FILE (transient field).
+  NodeType type = 15;
+  // SVG icon for visual representation in UI (transient field).
+  string icon_svg = 16;
+  // Service interface type (e.g., "PipeStepProcessor", "Parser") (transient field).
+  string service_type = 17;
+  // Actual payload type (e.g., "ModuleProcessRequest", "ModuleProcessResponse") (transient field).
+  string payload_type = 18;
 }
 
 // Service definition for filesystem operations
 service FilesystemService {
   // Drive management operations
   rpc CreateDrive(CreateDriveRequest) returns (Drive);
+  // Retrieves a drive by ID.
   rpc GetDrive(GetDriveRequest) returns (Drive);
+  // Lists all drives for an account.
   rpc ListDrives(ListDrivesRequest) returns (ListDrivesResponse);
+  // Deletes a drive and all associated nodes.
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
-  
+
   // Node CRUD operations
   rpc CreateNode(CreateNodeRequest) returns (Node);
+  // Retrieves a node by ID.
   rpc GetNode(GetNodeRequest) returns (Node);
+  // Retrieves a node by its filesystem path.
   rpc GetNodeByPath(GetNodeByPathRequest) returns (Node);
+  // Updates node metadata.
   rpc UpdateNode(UpdateNodeRequest) returns (Node);
+  // Deletes a node and optionally its children.
   rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
-  
+
   // Navigation operations
   rpc GetChildren(GetChildrenRequest) returns (GetChildrenResponse);
+  // Retrieves the full path from root to a node.
   rpc GetPath(GetPathRequest) returns (GetPathResponse);
+  // Retrieves a subtree starting from a node.
   rpc GetTree(GetTreeRequest) returns (GetTreeResponse);
-  
+
   // Move and copy operations
   rpc MoveNode(MoveNodeRequest) returns (Node);
+  // Copies a node to a new location.
   rpc CopyNode(CopyNodeRequest) returns (Node);
-  
+
   // Search operations
   rpc SearchNodes(SearchNodesRequest) returns (SearchNodesResponse);
+  // Searches drives by name or metadata.
   rpc SearchDrives(SearchDrivesRequest) returns (SearchDrivesResponse);
   
   // Bulk export operations for indexing
@@ -97,320 +145,546 @@ service FilesystemService {
 
 
 
+// Request to list drive bucket access status.
+//
+// Used for administrative monitoring of S3 bucket connectivity.
 message ListDriveBucketStatusRequest {}
 
+// Drive bucket access status information.
+//
+// Reports connectivity and access state for each drive's S3 bucket.
 message DriveBucketStatus {
-  string alias = 1;        // Drive alias (frontend-facing)
-  string bucket_name = 2;  // Resolved bucket name
+  // Drive alias used in frontend.
+  string alias = 1;
+  // Resolved S3 bucket name.
+  string bucket_name = 2;
+  // S3 bucket access state.
   enum BucketAccess {
+    // Unspecified access state.
     BUCKET_ACCESS_UNSPECIFIED = 0;
+    // Bucket is accessible.
     BUCKET_ACCESS_OK = 1;
+    // Bucket access failed.
     BUCKET_ACCESS_ERROR = 2;
   }
+  // Current access status for this bucket.
   BucketAccess access = 3;
-  string error_message = 4; // When access=ERROR
+  // Error message when access is BUCKET_ACCESS_ERROR.
+  string error_message = 4;
 }
 
+// Response containing drive bucket status list.
 message ListDriveBucketStatusResponse {
+  // List of drive bucket statuses.
   repeated DriveBucketStatus items = 1;
+  // Total number of drives checked.
   int32 total = 2;
 }
 
-// Request and Response messages
-
+// Request to create a new node (file or folder).
 message CreateNodeRequest {
-  string drive = 1;         // Drive name (required - no default drive)
-  string document_id = 2;   // Client-provided stable ID (required)
-  string connector_id = 3;  // Connector identifier for S3 key structure
-  int64 parent_id = 4;      // Parent folder ID (0 for root)
-  string name = 5;          // Node name
-  int64 node_type_id = 6;   // Foreign key to node_type lookup table
-  string content_type = 7;   // MIME type
-  google.protobuf.Any payload = 8;  // File content (for FILE type)
-  string metadata = 9;       // JSON metadata for unstructured data
-  Node.NodeType type = 10;   // S3-level classification (FOLDER or FILE)
-  string icon_svg = 11;      // SVG icon for visual representation
-  string service_type = 12;  // Service interface type
-  string payload_type = 13;  // Actual payload type
-  bool include_payload = 14; // Whether to include payload in response (default: false)
-  string path = 15;         // Relative path from connector root (e.g., "docs/2024/")
+  // Drive name (required, no default drive).
+  string drive = 1;
+  // Client-provided stable document ID (required, UUID format).
+  string document_id = 2;
+  // Connector identifier for S3 key structure organization.
+  string connector_id = 3;
+  // Parent folder ID (0 for root level).
+  int64 parent_id = 4;
+  // Node name (file or folder name).
+  string name = 5;
+  // Foreign key to node_type lookup table.
+  int64 node_type_id = 6;
+  // MIME type for file content.
+  string content_type = 7;
+  // File content payload (for FILE type nodes).
+  google.protobuf.Any payload = 8;
+  // JSON metadata for unstructured additional data.
+  string metadata = 9;
+  // S3-level classification (FOLDER or FILE).
+  Node.NodeType type = 10;
+  // SVG icon for visual representation in UI.
+  string icon_svg = 11;
+  // Service interface type for processing modules.
+  string service_type = 12;
+  // Actual payload type identifier.
+  string payload_type = 13;
+  // Whether to include payload in the response (default: false).
+  bool include_payload = 14;
+  // Relative path from connector root (e.g., "docs/2024/").
+  string path = 15;
 }
 
+// Request to retrieve a node by its document ID.
 message GetNodeRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID (UUID)
-  bool include_payload = 3; // Whether to include file payload (default: false, Engine handles hydration)
+  // Drive name (required).
+  string drive = 1;
+  // Document ID (UUID) to retrieve.
+  string document_id = 2;
+  // Whether to include file payload (default: false, Engine handles hydration).
+  bool include_payload = 3;
 }
 
+// Request to retrieve a node by its filesystem path.
 message GetNodeByPathRequest {
-  string drive = 1;         // Drive name (required)
-  string connector_id = 2;  // Connector identifier
-  string path = 3;          // Full path (e.g., "sample_doc_types/database/README.md")
-  bool include_payload = 4; // Whether to include file payload
+  // Drive name (required).
+  string drive = 1;
+  // Connector identifier for path resolution.
+  string connector_id = 2;
+  // Full path to the node (e.g., "sample_doc_types/database/README.md").
+  string path = 3;
+  // Whether to include file payload in response.
+  bool include_payload = 4;
 }
 
+// Request to update node metadata.
 message UpdateNodeRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID (UUID)
-  string name = 3;          // New name (optional)
-  string content_type = 4;   // New MIME type (optional)
-  google.protobuf.Any payload = 5;  // New content (optional, for files)
-  string metadata = 6;       // Updated JSON metadata (optional)
-  string icon_svg = 7;       // SVG icon for visual representation
-  string service_type = 8;   // Service interface type
-  string payload_type = 9;   // Actual payload type
+  // Drive name (required).
+  string drive = 1;
+  // Document ID (UUID) of node to update.
+  string document_id = 2;
+  // New name (optional).
+  string name = 3;
+  // New MIME type (optional).
+  string content_type = 4;
+  // New content payload (optional, for files).
+  google.protobuf.Any payload = 5;
+  // Updated JSON metadata (optional).
+  string metadata = 6;
+  // SVG icon for visual representation.
+  string icon_svg = 7;
+  // Service interface type.
+  string service_type = 8;
+  // Actual payload type.
+  string payload_type = 9;
 }
 
+// Request to delete a node.
 message DeleteNodeRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID (UUID)
-  bool recursive = 3;       // Delete children for folders
+  // Drive name (required).
+  string drive = 1;
+  // Document ID (UUID) of node to delete.
+  string document_id = 2;
+  // Whether to recursively delete children for folders.
+  bool recursive = 3;
 }
 
+// Response from node deletion operation.
 message DeleteNodeResponse {
+  // Whether the deletion was successful.
   bool success = 1;
-  int32 deleted_count = 2;  // Number of nodes deleted (including children)
+  // Number of nodes deleted (including children if recursive).
+  int32 deleted_count = 2;
 }
 
+// Request to list children of a folder.
 message GetChildrenRequest {
-  string drive = 1;         // Drive name (required)
-  int64 parent_id = 2;      // Parent folder ID (0 for root)
-  int32 page_size = 3;      // Pagination
-  string page_token = 4;    // Pagination token
-  string order_by = 5;      // Sort field (name, created_at, etc.)
-  bool ascending = 6;       // Sort order
-}
-
-message GetChildrenResponse {
-  repeated Node nodes = 1;
-  string next_page_token = 2;
-  int32 total_count = 3;
-}
-
-message GetPathRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID to get path for
-}
-
-message GetPathResponse {
-  repeated Node ancestors = 1;  // Path from root to node (inclusive)
-}
-
-message GetTreeRequest {
-  string drive = 1;         // Drive name (required)
-  string root_document_id = 2; // Starting node document ID (empty for absolute root)
-  int32 max_depth = 3;      // Maximum depth to traverse
-}
-
-message GetTreeResponse {
-  Node root = 1;
-  repeated TreeNode children = 2;
-}
-
-message TreeNode {
-  Node node = 1;
-  repeated TreeNode children = 2;
-}
-
-message MoveNodeRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID to move
-  int64 new_parent_id = 3;  // New parent folder ID (0 for root)
-  string new_name = 4;      // Optional rename during move
-}
-
-message CopyNodeRequest {
-  string drive = 1;         // Drive name (required)
-  string document_id = 2;   // Document ID to copy
-  int64 target_parent_id = 3; // Target parent folder ID (0 for root)
-  string new_name = 4;      // Optional rename during copy
-  bool deep = 5;            // Deep copy for folders
-}
-
-message SearchNodesRequest {
-  string drive = 1;         // Drive name (required)
-  string query = 2;         // Search query (supports OpenSearch query syntax)
-  repeated string paths = 3;  // Limit search to these paths
-  repeated Node.NodeType types = 4;  // Filter by node types
-  map<string, string> metadata_filters = 5;  // Filter by metadata
-  int32 page_size = 6;
-  string page_token = 7;
-  
-  // Advanced search options
-  repeated string fields = 8;     // Fields to search in (name, metadata.*, etc.)
-  repeated SortField sort_by = 9; // Sort criteria
-  bool highlight = 10;             // Enable highlighting of matched terms
-  repeated string facet_fields = 11; // Fields to generate facets for
-}
-
-message SearchNodesResponse {
-  repeated SearchResult nodes = 1;        // This will generate getNodesList(), getNodesCount() (for list size), getNodes(int)
-  int32 total_count = 2;                  // This will generate getTotalCount() - avoiding conflict
-  string next_page_token = 3;             // Moved down due to field reordering
-  map<string, FacetResult> facets = 4;    // Facet results by field
-  int64 took_millis = 5;                  // Search execution time
-}
-
-message SearchResult {
-  Node node = 1;
-  double score = 2;                           // Relevance score
-  map<string, string> highlights = 3;         // Field -> highlighted text
-  map<string, string> matched_metadata = 4;   // Metadata fields that matched
-}
-
-message SortField {
-  string field = 1;     // Field to sort by
-  bool ascending = 2;   // Sort order
-}
-
-message FacetResult {
-  repeated FacetBucket buckets = 1;
-  int64 other_count = 2;  // Count of documents not in top buckets
-}
-
-message FacetBucket {
-  string key = 1;     // Bucket key (field value)
-  int64 count = 2;    // Document count in this bucket
-}
-
-// Format filesystem messages
-message FormatFilesystemRequest {
-  string drive = 1;         // Drive name (required)
-  string confirmation = 2;  // Must be "DELETE_FILESYSTEM_DATA" to proceed
-  repeated string type_urls = 3; // Optional: only delete nodes with these payload types
-  bool dry_run = 4;         // If true, return what would be deleted without deleting
-}
-
-message FormatFilesystemResponse {
-  bool success = 1;
-  string message = 2;
-  int32 nodes_deleted = 3;
-  int32 folders_deleted = 4;
-  map<string, int32> deleted_by_type = 5; // Count by payload type URL
-  repeated string deleted_paths = 6; // Only populated if dry_run=true
-}
-
-// Drive management messages
-message CreateDriveRequest {
-  string name = 1;          // Drive name (no colons allowed)
-  string bucket_name = 2;   // Actual S3 bucket name
-  string account_id = 3;    // Account identifier for multi-tenancy and billing
-  string region = 4;        // S3 region (optional)
-  string credentials_ref = 5; // String reference to external secret management
-  int64 status_id = 6;      // Foreign key to drive_status lookup table
-  string description = 7;   // Optional description
-  string metadata = 8;      // JSON metadata for unstructured data
-  bool create_bucket = 9;   // Whether to create S3 bucket if it doesn't exist
-}
-
-message GetDriveRequest {
-  string name = 1;          // Drive name
-}
-
-message ListDrivesRequest {
-  int32 page_size = 1;      // Pagination
-  string page_token = 2;    // Pagination token
-  string filter = 3;        // Optional filter expression
-}
-
-message ListDrivesResponse {
-  repeated Drive drives = 1;
-  string next_page_token = 2;
-  int32 total_count = 3;
-}
-
-message DeleteDriveRequest {
-  string name = 1;          // Drive name to delete
-  string confirmation = 2;  // Must be "DELETE_DRIVE_DATA" to proceed
-}
-
-message DeleteDriveResponse {
-  bool success = 1;
-  string message = 2;
-  int32 nodes_deleted = 3;  // Total nodes deleted with the drive
-}
-
-// Search drives with OpenSearch
-message SearchDrivesRequest {
-  string query = 1;         // Search query (supports OpenSearch query syntax)
-  map<string, string> metadata_filters = 2;  // Filter by metadata
+  // Drive name (required).
+  string drive = 1;
+  // Parent folder ID (0 for root level).
+  int64 parent_id = 2;
+  // Number of results per page.
   int32 page_size = 3;
+  // Pagination token from previous response.
   string page_token = 4;
-  repeated SortField sort_by = 5;
-  bool highlight = 6;
-  repeated string facet_fields = 7;
+  // Field to sort by (e.g., name, created_at).
+  string order_by = 5;
+  // Sort order (true for ascending, false for descending).
+  bool ascending = 6;
 }
 
-message SearchDrivesResponse {
-  repeated DriveSearchResult results = 1;
+// Response containing child nodes.
+message GetChildrenResponse {
+  // List of child nodes.
+  repeated Node nodes = 1;
+  // Token for retrieving the next page.
   string next_page_token = 2;
+  // Total number of children.
   int32 total_count = 3;
+}
+
+// Request to get the full path to a node.
+message GetPathRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Document ID to get path for.
+  string document_id = 2;
+}
+
+// Response containing the full path from root to node.
+message GetPathResponse {
+  // Ordered list of ancestors from root to target node (inclusive).
+  repeated Node ancestors = 1;
+}
+
+// Request to retrieve a tree structure starting from a node.
+message GetTreeRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Starting node document ID (empty for absolute root).
+  string root_document_id = 2;
+  // Maximum depth to traverse.
+  int32 max_depth = 3;
+}
+
+// Response containing a tree structure.
+message GetTreeResponse {
+  // Root node of the tree.
+  Node root = 1;
+  // Recursive children structure.
+  repeated TreeNode children = 2;
+}
+
+// Tree node with recursive children.
+//
+// Used for hierarchical tree representations.
+message TreeNode {
+  // The node at this level.
+  Node node = 1;
+  // Child nodes recursively.
+  repeated TreeNode children = 2;
+}
+
+// Request to move a node to a new location.
+message MoveNodeRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Document ID of node to move.
+  string document_id = 2;
+  // New parent folder ID (0 for root).
+  int64 new_parent_id = 3;
+  // Optional new name during move.
+  string new_name = 4;
+}
+
+// Request to copy a node to a new location.
+message CopyNodeRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Document ID of node to copy.
+  string document_id = 2;
+  // Target parent folder ID (0 for root).
+  int64 target_parent_id = 3;
+  // Optional new name for the copy.
+  string new_name = 4;
+  // Whether to perform deep copy for folders.
+  bool deep = 5;
+}
+
+// Request to search for nodes.
+//
+// Supports OpenSearch query syntax with advanced filtering, faceting, and highlighting.
+message SearchNodesRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Search query (supports OpenSearch query syntax).
+  string query = 2;
+  // Limit search to specific paths.
+  repeated string paths = 3;
+  // Filter by node types (FILE or FOLDER).
+  repeated Node.NodeType types = 4;
+  // Filter by metadata key-value pairs.
+  map<string, string> metadata_filters = 5;
+  // Number of results per page.
+  int32 page_size = 6;
+  // Pagination token from previous response.
+  string page_token = 7;
+
+  // Fields to search in (e.g., name, metadata.*).
+  repeated string fields = 8;
+  // Sort criteria for results.
+  repeated SortField sort_by = 9;
+  // Enable highlighting of matched terms in results.
+  bool highlight = 10;
+  // Fields to generate facets for aggregation.
+  repeated string facet_fields = 11;
+}
+
+// Response from node search operation.
+message SearchNodesResponse {
+  // Matched nodes with relevance scores.
+  repeated SearchResult nodes = 1;
+  // Total number of matching nodes.
+  int32 total_count = 2;
+  // Token for retrieving the next page.
+  string next_page_token = 3;
+  // Facet results by field for aggregation.
   map<string, FacetResult> facets = 4;
+  // Search execution time in milliseconds.
   int64 took_millis = 5;
 }
 
-message DriveSearchResult {
-  Drive drive = 1;
+// Individual search result with relevance scoring.
+message SearchResult {
+  // Matched node.
+  Node node = 1;
+  // Relevance score for ranking.
   double score = 2;
+  // Highlighted text snippets keyed by field name.
+  map<string, string> highlights = 3;
+  // Metadata fields that matched the query.
+  map<string, string> matched_metadata = 4;
+}
+
+// Field and direction for sorting results.
+message SortField {
+  // Field to sort by (e.g., name, created_at).
+  string field = 1;
+  // Sort order (true for ascending, false for descending).
+  bool ascending = 2;
+}
+
+// Facet aggregation result for a field.
+message FacetResult {
+  // Top facet buckets.
+  repeated FacetBucket buckets = 1;
+  // Count of documents not included in top buckets.
+  int64 other_count = 2;
+}
+
+// Individual facet bucket with count.
+message FacetBucket {
+  // Bucket key (field value).
+  string key = 1;
+  // Number of documents in this bucket.
+  int64 count = 2;
+}
+
+// Request to format (clear) a filesystem drive.
+//
+// Destructive operation requiring explicit confirmation string.
+message FormatFilesystemRequest {
+  // Drive name (required).
+  string drive = 1;
+  // Must be "DELETE_FILESYSTEM_DATA" to proceed with deletion.
+  string confirmation = 2;
+  // Optional: only delete nodes with these payload type URLs.
+  repeated string type_urls = 3;
+  // If true, return what would be deleted without actually deleting.
+  bool dry_run = 4;
+}
+
+// Response from filesystem format operation.
+message FormatFilesystemResponse {
+  // Whether the operation was successful.
+  bool success = 1;
+  // Status or error message.
+  string message = 2;
+  // Number of file nodes deleted.
+  int32 nodes_deleted = 3;
+  // Number of folder nodes deleted.
+  int32 folders_deleted = 4;
+  // Count of deletions by payload type URL.
+  map<string, int32> deleted_by_type = 5;
+  // Paths that would be deleted (only populated if dry_run=true).
+  repeated string deleted_paths = 6;
+}
+
+// Request to create a new drive.
+message CreateDriveRequest {
+  // Drive name (no colons allowed).
+  string name = 1;
+  // Actual S3 bucket name.
+  string bucket_name = 2;
+  // Account identifier for multi-tenancy and billing.
+  string account_id = 3;
+  // S3 region (optional, uses default if not specified).
+  string region = 4;
+  // Reference to external secret management for credentials.
+  string credentials_ref = 5;
+  // Foreign key to drive_status lookup table.
+  int64 status_id = 6;
+  // Optional human-readable description.
+  string description = 7;
+  // JSON metadata for unstructured data.
+  string metadata = 8;
+  // Whether to create the S3 bucket if it doesn't exist.
+  bool create_bucket = 9;
+}
+
+// Request to retrieve a drive by name.
+message GetDriveRequest {
+  // Drive name to retrieve.
+  string name = 1;
+}
+
+// Request to list all drives.
+message ListDrivesRequest {
+  // Number of results per page.
+  int32 page_size = 1;
+  // Pagination token from previous response.
+  string page_token = 2;
+  // Optional filter expression.
+  string filter = 3;
+}
+
+// Response containing list of drives.
+message ListDrivesResponse {
+  // List of drives.
+  repeated Drive drives = 1;
+  // Token for retrieving the next page.
+  string next_page_token = 2;
+  // Total number of drives.
+  int32 total_count = 3;
+}
+
+// Request to delete a drive.
+//
+// Destructive operation requiring explicit confirmation string.
+message DeleteDriveRequest {
+  // Drive name to delete.
+  string name = 1;
+  // Must be "DELETE_DRIVE_DATA" to proceed with deletion.
+  string confirmation = 2;
+}
+
+// Response from drive deletion operation.
+message DeleteDriveResponse {
+  // Whether the deletion was successful.
+  bool success = 1;
+  // Status or error message.
+  string message = 2;
+  // Total number of nodes deleted with the drive.
+  int32 nodes_deleted = 3;
+}
+
+// Request to search for drives using OpenSearch.
+message SearchDrivesRequest {
+  // Search query (supports OpenSearch query syntax).
+  string query = 1;
+  // Filter by metadata key-value pairs.
+  map<string, string> metadata_filters = 2;
+  // Number of results per page.
+  int32 page_size = 3;
+  // Pagination token from previous response.
+  string page_token = 4;
+  // Sort criteria for results.
+  repeated SortField sort_by = 5;
+  // Enable highlighting of matched terms.
+  bool highlight = 6;
+  // Fields to generate facets for aggregation.
+  repeated string facet_fields = 7;
+}
+
+// Response from drive search operation.
+message SearchDrivesResponse {
+  // Matched drives with relevance scores.
+  repeated DriveSearchResult results = 1;
+  // Token for retrieving the next page.
+  string next_page_token = 2;
+  // Total number of matching drives.
+  int32 total_count = 3;
+  // Facet results by field for aggregation.
+  map<string, FacetResult> facets = 4;
+  // Search execution time in milliseconds.
+  int64 took_millis = 5;
+}
+
+// Individual drive search result with relevance scoring.
+message DriveSearchResult {
+  // Matched drive.
+  Drive drive = 1;
+  // Relevance score for ranking.
+  double score = 2;
+  // Highlighted text snippets keyed by field name.
   map<string, string> highlights = 3;
 }
 
-// Bulk metadata export for indexing
+// Request to stream metadata for bulk export and indexing.
 message StreamMetadataRequest {
-  string drive = 1;         // Optional: specific drive to export (empty for all)
-  int64 batch_size = 2;     // Number of items per batch (default 1000)
-  bool include_nodes = 3;   // Include node metadata
-  bool include_drives = 4;  // Include drive metadata
-  google.protobuf.Timestamp since = 5; // Only export items modified after this time
+  // Optional: specific drive to export (empty for all drives).
+  string drive = 1;
+  // Number of items per batch (default 1000).
+  int64 batch_size = 2;
+  // Whether to include node metadata in export.
+  bool include_nodes = 3;
+  // Whether to include drive metadata in export.
+  bool include_drives = 4;
+  // Only export items modified after this timestamp.
+  google.protobuf.Timestamp since = 5;
 }
 
+// Streamed metadata export item.
+//
+// Each message contains either drive or node metadata.
 message MetadataExport {
+  // Exported metadata item.
   oneof item {
+    // Drive metadata export.
     DriveMetadata drive = 1;
+    // Node metadata export.
     NodeMetadata node = 2;
   }
-  int64 sequence_number = 3;  // Sequence number for ordering
-  bool is_last = 4;           // True for the last item in the stream
+  // Sequence number for maintaining order.
+  int64 sequence_number = 3;
+  // True for the last item in the stream.
+  bool is_last = 4;
 }
 
+// Drive metadata for export and indexing.
 message DriveMetadata {
+  // Drive information.
   Drive drive = 1;
-  string s3_key = 2;          // S3 key where metadata is stored
+  // S3 key where drive metadata is stored.
+  string s3_key = 2;
 }
 
+// Node metadata for export and indexing.
 message NodeMetadata {
+  // Node information.
   Node node = 1;
-  string drive = 2;           // Drive this node belongs to
-  string s3_key = 3;          // S3 key where metadata is stored
-  string full_path = 4;       // Full path for easier indexing
+  // Drive this node belongs to.
+  string drive = 2;
+  // S3 key where node metadata is stored.
+  string s3_key = 3;
+  // Full path for easier indexing and display.
+  string full_path = 4;
 }
 
-// Update notifications for Kafka
+// Kafka notification for drive updates.
+//
+// Published when drives are created, updated, or deleted.
 message DriveUpdateNotification {
-  string update_type = 1;     // "CREATED", "UPDATED", "DELETED"
+  // Type of update: "CREATED", "UPDATED", or "DELETED".
+  string update_type = 1;
+  // Updated drive.
   Drive drive = 2;
+  // Timestamp when the update occurred.
   google.protobuf.Timestamp timestamp = 3;
 }
 
+// Kafka notification for node updates.
+//
+// Published when nodes are created, updated, or deleted.
 message NodeUpdateNotification {
-  string update_type = 1;     // "CREATED", "UPDATED", "DELETED"
+  // Type of update: "CREATED", "UPDATED", or "DELETED".
+  string update_type = 1;
+  // Updated node.
   Node node = 2;
-  string drive = 3;           // Drive this node belongs to
+  // Drive this node belongs to.
+  string drive = 3;
+  // Timestamp when the update occurred.
   google.protobuf.Timestamp timestamp = 4;
 }
 
-// Reindex operations
+// Request to reindex PipeDoc metadata.
+//
+// Triggers re-emission of Kafka events for PipeDocs to rebuild search indices.
 message ReindexPipeDocsRequest {
-  // Drive containing PipeDocs (defaults to configured pipedocs drive)
+  // Drive containing PipeDocs (defaults to configured pipedocs drive).
   string drive = 1;
-  // Optional limit to number of documents to reindex (0 = no limit)
+  // Optional limit to number of documents to reindex (0 = no limit).
   int32 limit = 2;
-  // If true, do not emit Kafka events; only count candidates
+  // If true, do not emit Kafka events; only count candidates for dry-run testing.
   bool dry_run = 3;
 }
 
+// Response from PipeDoc reindexing operation.
 message ReindexPipeDocsResponse {
-  int32 scanned = 1;     // Number of files examined
-  int32 reindexed = 2;   // Number of events emitted
-  int32 errors = 3;      // Number of failures encountered
+  // Number of files examined during reindexing.
+  int32 scanned = 1;
+  // Number of Kafka events emitted.
+  int32 reindexed = 2;
+  // Number of failures encountered.
+  int32 errors = 3;
 }

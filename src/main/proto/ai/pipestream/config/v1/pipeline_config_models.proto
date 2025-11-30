@@ -3,295 +3,512 @@ syntax = "proto3";
 package ai.pipestream.config.v1;
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 option java_package = "ai.pipestream.config.v1";
 option java_multiple_files = true;
 
 // V1 Graph-first pipeline configuration models
 
-// Cluster - just metadata, no default pipeline needed
+// Cluster configuration and metadata container.
+//
+// Represents a logical grouping of pipeline nodes with access control for Kafka topics and gRPC services.
+// Clusters provide namespace isolation and enable cross-cluster routing.
 message Cluster {
+  // Unique identifier for this cluster.
   string cluster_id = 1;
+  // Human-readable cluster name.
   string name = 2;
+  // Additional cluster metadata and configuration.
   ClusterMetadata metadata = 3;
+  // Kafka topics this cluster is allowed to access.
   repeated string allowed_kafka_topics = 4;
+  // gRPC services this cluster is allowed to invoke.
   repeated string allowed_grpc_services = 5;
 }
 
+// Cluster metadata and creation information.
 message ClusterMetadata {
+  // Display name for the cluster.
   string name = 1;
-  int64 created_at = 2;
+  // Timestamp when the cluster was created.
+  google.protobuf.Timestamp created_at = 2;
+  // Flexible key-value metadata storage.
   google.protobuf.Struct metadata = 3;
 }
 
-// Graph - references nodes by ID
+// Pipeline graph defining node topology and data flow.
+//
+// Represents a complete pipeline as a directed acyclic graph (DAG) of processing nodes.
+// Nodes are referenced by ID and connected via edges to define data flow paths.
 message PipelineGraph {
+  // Unique identifier for this graph.
   string graph_id = 1;
+  // Cluster this graph belongs to.
   string cluster_id = 2;
+  // Human-readable graph name.
   string name = 3;
+  // Optional description of the graph's purpose.
   string description = 4;
-  repeated string node_ids = 5; // References to GraphNode IDs
+  // References to GraphNode IDs that comprise this graph.
+  repeated string node_ids = 5;
+  // Edges defining connections between nodes.
   repeated GraphEdge edges = 6;
-  GraphMode mode = 7; // Design vs Production mode
-  int64 created_at = 8;
-  int64 modified_at = 9;
+  // Operating mode (design or production).
+  GraphMode mode = 7;
+  // Timestamp when the graph was created.
+  google.protobuf.Timestamp created_at = 8;
+  // Timestamp of last modification.
+  google.protobuf.Timestamp modified_at = 9;
 }
 
 
 
-// Graph Node - individual processing step (DNS-like, exists independently)
+// Graph node representing an individual processing step.
+//
+// Nodes exist independently and can be referenced DNS-style by globally unique IDs.
+// Supports both production deployment and frontend design/simulation modes.
 message GraphNode {
-  string node_id = 1; // Globally unique: cluster_id.node_name (e.g., "prod.chunker-v1")
+  // Globally unique identifier in format cluster_id.node_name (e.g., "prod.chunker-v1").
+  string node_id = 1;
+  // Cluster this node belongs to.
   string cluster_id = 2;
-  string name = 3; // Human-readable name
+  // Human-readable node name.
+  string name = 3;
+  // Type of node (connector, processor, or sink).
   NodeType node_type = 4;
-  string module_id = 5; // References ModuleDefinition
+  // Reference to the ModuleDefinition that implements this node.
+  string module_id = 5;
+  // Custom configuration for this node instance.
   JsonConfigOptions custom_config = 6;
+  // Transport configuration for node communication.
   TransportConfig transport = 7;
+  // Visibility scope across clusters.
   ClusterVisibility visibility = 8;
-  NodeMode mode = 9; // Design vs Production mode
-  
-  // Production mode fields (only used when deployed)
-  string kafka_input_topic = 10; // Same as node_id: "prod.chunker-v1"
-  string kafka_output_topic = 11; // Next node's input topic or custom
-  string repository_path = 12; // Auto-generated: /clusters/{cluster_id}/nodes/{node_id}
-  
-  // Design mode fields (frontend simulation)
+  // Operating mode (design or production).
+  NodeMode mode = 9;
+
+  // Kafka input topic (production mode only). Typically matches node_id (e.g., "prod.chunker-v1").
+  string kafka_input_topic = 10;
+  // Kafka output topic (production mode only). Routes to next node's input topic or custom destination.
+  string kafka_output_topic = 11;
+  // Auto-generated repository path (production mode only) in format /clusters/{cluster_id}/nodes/{node_id}.
+  string repository_path = 12;
+
+  // Design mode configuration for frontend simulation.
   DesignModeConfig design_config = 13;
-  
-  int64 created_at = 14;
-  int64 modified_at = 15;
+
+  // Timestamp when the node was created.
+  google.protobuf.Timestamp created_at = 14;
+  // Timestamp of last modification.
+  google.protobuf.Timestamp modified_at = 15;
 }
 
-// Graph Edge - connection between nodes (can span clusters)
+// Graph edge defining a connection between two nodes.
+//
+// Edges can span clusters to enable cross-cluster routing.
+// Supports conditional routing and priority-based selection when multiple edges exist from a single node.
 message GraphEdge {
+  // Unique identifier for this edge.
   string edge_id = 1;
+  // Source node ID.
   string from_node_id = 2;
+  // Destination node ID.
   string to_node_id = 3;
-  string to_cluster_id = 4; // Optional: for cross-cluster edges
-  string condition = 5; // Optional routing condition
-  int32 priority = 6; // For multiple edges from same node
+  // Target cluster ID (optional, for cross-cluster edges).
+  string to_cluster_id = 4;
+  // Optional routing condition expression.
+  string condition = 5;
+  // Priority for edge selection when multiple edges exist from the same node.
+  int32 priority = 6;
+  // Flag indicating whether this edge crosses cluster boundaries.
   bool is_cross_cluster = 7;
 }
 
-// Module Definition - normalized module metadata
+// Module definition containing metadata and configuration schema.
+//
+// Defines a reusable processing module that can be instantiated as graph nodes.
+// Includes schema references and default configuration.
 message ModuleDefinition {
+  // Unique identifier for this module.
   string module_id = 1;
+  // Implementation class or service name.
   string implementation_name = 2;
+  // gRPC service name for this module.
   string grpc_service_name = 3;
+  // Reference to the configuration schema for this module.
   SchemaReference config_schema = 4;
+  // Default configuration values.
   google.protobuf.Struct default_config = 5;
+  // Visibility scope for this module.
   ModuleVisibility visibility = 6;
-  int64 created_at = 7;
-  int64 modified_at = 8;
+  // Timestamp when the module was created.
+  google.protobuf.Timestamp created_at = 7;
+  // Timestamp of last modification.
+  google.protobuf.Timestamp modified_at = 8;
 }
 
-// Simplified transport - just topics and subscriptions
+// Transport configuration for node communication.
+//
+// Defines how a node communicates using either messaging (Kafka/Pulsar) or gRPC.
+// Includes retry and timeout settings.
 message TransportConfig {
+  // Transport mechanism type.
   TransportType type = 1;
+  // gRPC-specific configuration (when type is GRPC).
   GrpcConfig grpc = 2;
+  // Messaging-specific configuration (when type is MESSAGING).
   MessagingConfig messaging = 3;
+  // Maximum number of retry attempts for failed operations.
   int32 max_retries = 4;
-  int64 retry_backoff_ms = 5;
-  int64 step_timeout_ms = 6;
+  // Backoff duration between retries.
+  google.protobuf.Duration retry_backoff = 5;
+  // Timeout duration for each processing step.
+  google.protobuf.Duration step_timeout = 6;
 }
 
+// JSON configuration options for flexible module configuration.
 message JsonConfigOptions {
+  // Structured JSON configuration.
   google.protobuf.Struct json_config = 1;
+  // Simple key-value configuration parameters.
   map<string, string> config_params = 2;
 }
 
+// gRPC transport configuration.
 message GrpcConfig {
+  // gRPC service name to invoke.
   string service_name = 1;
+  // Additional gRPC client properties.
   map<string, string> properties = 2;
 }
 
-// Messaging abstraction (Kafka, Pulsar, etc.)
+// Messaging transport configuration.
+//
+// Abstraction layer supporting Kafka, Pulsar, and other messaging platforms.
 message MessagingConfig {
-  repeated string topics = 1; // Topics to publish to
-  repeated string subscriptions = 2; // Topics to subscribe to
+  // Topics to publish messages to.
+  repeated string topics = 1;
+  // Topics to subscribe to for incoming messages.
+  repeated string subscriptions = 2;
+  // Field name to use for message partitioning.
   string partition_key_field = 3;
-  map<string, string> properties = 4; // Platform-specific properties
+  // Platform-specific messaging properties.
+  map<string, string> properties = 4;
 }
 
-// Real-time update notifications
+// Real-time notification of graph topology changes.
+//
+// Streamed to subscribers when nodes, edges, graphs, or modules are created, updated, or deleted.
 message GraphUpdateNotification {
+  // Cluster where the update occurred.
   string cluster_id = 1;
+  // Type of update operation.
   UpdateType update_type = 2;
+  // The updated entity (node, edge, graph, or module).
   oneof target {
+    // Updated graph node.
     GraphNode node = 3;
+    // Updated graph edge.
     GraphEdge edge = 4;
+    // Updated pipeline graph.
     PipelineGraph graph = 5;
+    // Updated module definition.
     ModuleDefinition module = 6;
   }
-  int64 timestamp = 7;
+  // Timestamp when the update occurred.
+  google.protobuf.Timestamp timestamp = 7;
 }
 
+// Type of configuration update operation.
 enum UpdateType {
+  // Unspecified update type.
   UPDATE_TYPE_UNSPECIFIED = 0;
+  // Entity was created.
   UPDATE_TYPE_CREATED = 1;
+  // Entity was updated.
   UPDATE_TYPE_UPDATED = 2;
+  // Entity was deleted.
   UPDATE_TYPE_DELETED = 3;
 }
 
+// Reference to a versioned schema in a schema registry.
 message SchemaReference {
+  // Schema subject name.
   string subject = 1;
+  // Schema version number.
   int32 version = 2;
 }
 
-// Enums
+// Type of graph node in the pipeline.
 enum NodeType {
+  // Unspecified node type.
   NODE_TYPE_UNSPECIFIED = 0;
-  NODE_TYPE_CONNECTOR = 1; // Entry point
-  NODE_TYPE_PROCESSOR = 2; // Processing step
-  NODE_TYPE_SINK = 3; // Exit point
+  // Entry point node that receives data from external sources.
+  NODE_TYPE_CONNECTOR = 1;
+  // Processing node that transforms data.
+  NODE_TYPE_PROCESSOR = 2;
+  // Exit point node that outputs data to external systems.
+  NODE_TYPE_SINK = 3;
 }
 
+// Transport mechanism for node communication.
 enum TransportType {
+  // Unspecified transport type.
   TRANSPORT_TYPE_UNSPECIFIED = 0;
-  TRANSPORT_TYPE_MESSAGING = 1; // Topics/Subscriptions
+  // Messaging-based transport using topics and subscriptions.
+  TRANSPORT_TYPE_MESSAGING = 1;
+  // gRPC-based transport for synchronous communication.
   TRANSPORT_TYPE_GRPC = 2;
 }
 
+// Visibility scope for nodes across clusters.
 enum ClusterVisibility {
+  // Unspecified visibility.
   CLUSTER_VISIBILITY_UNSPECIFIED = 0;
-  CLUSTER_VISIBILITY_PRIVATE = 1; // Only this cluster
-  CLUSTER_VISIBILITY_PUBLIC = 2; // All subscribed clusters
-  CLUSTER_VISIBILITY_RESTRICTED = 3; // Specific clusters only
+  // Visible only within this cluster.
+  CLUSTER_VISIBILITY_PRIVATE = 1;
+  // Visible to all subscribed clusters.
+  CLUSTER_VISIBILITY_PUBLIC = 2;
+  // Visible only to specific clusters.
+  CLUSTER_VISIBILITY_RESTRICTED = 3;
 }
 
+// Operating mode for pipeline graphs.
 enum GraphMode {
+  // Unspecified mode.
   GRAPH_MODE_UNSPECIFIED = 0;
-  GRAPH_MODE_DESIGN = 1; // Frontend design/simulation mode
-  GRAPH_MODE_PRODUCTION = 2; // Deployed and running
+  // Design/simulation mode for frontend testing.
+  GRAPH_MODE_DESIGN = 1;
+  // Production mode for deployed and running pipelines.
+  GRAPH_MODE_PRODUCTION = 2;
 }
 
+// Operating mode for individual nodes.
 enum NodeMode {
+  // Unspecified mode.
   NODE_MODE_UNSPECIFIED = 0;
-  NODE_MODE_DESIGN = 1; // Design-time node (not deployed)
-  NODE_MODE_PRODUCTION = 2; // Production node (deployed)
+  // Design-time node not yet deployed.
+  NODE_MODE_DESIGN = 1;
+  // Production node that is deployed and running.
+  NODE_MODE_PRODUCTION = 2;
 }
 
-// Design mode configuration for frontend simulation
+// Design mode configuration for frontend simulation and testing.
+//
+// Provides UI positioning, simulation behavior, sample data, and visual metadata
+// for nodes in design mode before production deployment.
 message DesignModeConfig {
-  // UI positioning
+  // X coordinate for node positioning on the canvas.
   int32 canvas_x = 1;
+  // Y coordinate for node positioning on the canvas.
   int32 canvas_y = 2;
-  
-  // Simulation settings
-  bool simulate_processing = 3; // Whether to simulate processing in frontend
-  int64 simulated_processing_time_ms = 4; // Fake processing time for UI
-  double simulated_success_rate = 5; // 0.0-1.0 for error simulation
-  
-  // Sample data for testing
-  repeated string sample_input_data = 6; // JSON strings for testing
-  repeated string expected_output_data = 7; // Expected results
-  
-  // UI metadata
-  string ui_color = 8; // Hex color for node visualization
-  string ui_icon = 9; // Icon name/path for node
-  bool ui_collapsed = 10; // Whether node is collapsed in UI
+
+  // Whether to simulate processing in the frontend.
+  bool simulate_processing = 3;
+  // Simulated processing duration for UI feedback.
+  google.protobuf.Duration simulated_processing_time = 4;
+  // Simulated success rate (0.0-1.0) for error simulation and testing.
+  double simulated_success_rate = 5;
+
+  // Sample input data as JSON strings for testing.
+  repeated string sample_input_data = 6;
+  // Expected output data for validation.
+  repeated string expected_output_data = 7;
+
+  // Hex color code for node visualization (e.g., "#FF5733").
+  string ui_color = 8;
+  // Icon name or path for node representation.
+  string ui_icon = 9;
+  // Whether the node is collapsed in the UI.
+  bool ui_collapsed = 10;
 }
 
-// Pipeline Instance Management
+// Running instance of a pipeline with runtime configuration.
+//
+// Represents a deployed pipeline instance with status tracking, configuration overrides,
+// and lifecycle timestamps.
 message PipelineInstance {
+  // Unique identifier for this pipeline instance.
   string instance_id = 1;
+  // Reference to the pipeline definition this instance is based on.
   string pipeline_definition_id = 2;
+  // Name of the cluster where this instance is running.
   string cluster_name = 3;
+  // Human-readable instance name.
   string name = 4;
+  // Optional description of this instance.
   string description = 5;
+  // Current runtime status.
   PipelineInstanceStatus status = 6;
+  // Per-step configuration overrides keyed by step ID.
   map<string, StepConfigOverride> config_overrides = 7;
+  // Kafka topic prefix for this instance's messaging.
   string kafka_topic_prefix = 8;
+  // Processing priority for this instance.
   int32 priority = 9;
+  // Maximum parallelism allowed for this instance.
   int32 max_parallelism = 10;
+  // Additional instance metadata.
   map<string, string> metadata = 11;
-  int64 created_at = 12;
-  int64 modified_at = 13;
-  int64 started_at = 14;
-  int64 stopped_at = 15;
+  // Timestamp when the instance was created.
+  google.protobuf.Timestamp created_at = 12;
+  // Timestamp of last modification.
+  google.protobuf.Timestamp modified_at = 13;
+  // Timestamp when the instance was started.
+  google.protobuf.Timestamp started_at = 14;
+  // Timestamp when the instance was stopped.
+  google.protobuf.Timestamp stopped_at = 15;
 }
 
+// Configuration override for a specific pipeline step.
 message StepConfigOverride {
+  // Whether this step is enabled.
   bool enabled = 1;
+  // Custom configuration for this step.
   JsonConfigOptions custom_config = 2;
+  // Maximum retry attempts for this step.
   int32 max_retries = 3;
-  int64 step_timeout_ms = 4;
+  // Timeout duration for this step.
+  google.protobuf.Duration step_timeout = 4;
+  // Priority of this step.
   int32 priority = 5;
 }
 
+// Runtime status of a pipeline instance.
 enum PipelineInstanceStatus {
+  // Unspecified status.
   PIPELINE_INSTANCE_STATUS_UNSPECIFIED = 0;
+  // Instance is stopped.
   PIPELINE_INSTANCE_STATUS_STOPPED = 1;
+  // Instance is starting up.
   PIPELINE_INSTANCE_STATUS_STARTING = 2;
+  // Instance is running.
   PIPELINE_INSTANCE_STATUS_RUNNING = 3;
+  // Instance is stopping.
   PIPELINE_INSTANCE_STATUS_STOPPING = 4;
+  // Instance encountered an error.
   PIPELINE_INSTANCE_STATUS_ERROR = 5;
+  // Instance is suspended.
   PIPELINE_INSTANCE_STATUS_SUSPENDED = 6;
 }
 
-// Module Registration - uses standard gRPC health checks
+// Module registration information for service discovery.
+//
+// Tracks registered modules with network location and health check status.
+// Health status is obtained via the standard grpc.health.v1.Health service.
 message ModuleRegistration {
+  // Unique module identifier.
   string module_id = 1;
+  // Hostname or IP address where the module is running.
   string host = 2;
+  // Port number for the module's gRPC service.
   int32 port = 3;
-  int64 registered_at = 4;
-  int64 last_health_check = 5;
+  // Timestamp when the module was registered.
+  google.protobuf.Timestamp registered_at = 4;
+  // Timestamp of the last successful health check.
+  google.protobuf.Timestamp last_health_check = 5;
+  // Additional module metadata.
   map<string, string> metadata = 6;
-  // Health status obtained via grpc.health.v1.Health service
 }
 
+// Visibility scope for module definitions.
 enum ModuleVisibility {
+  // Unspecified visibility.
   MODULE_VISIBILITY_UNSPECIFIED = 0;
+  // Module is publicly available to all clusters.
   MODULE_VISIBILITY_PUBLIC = 1;
+  // Module is private to a specific cluster.
   MODULE_VISIBILITY_PRIVATE = 2;
+  // Module is restricted to specific clusters.
   MODULE_VISIBILITY_RESTRICTED = 3;
 }
 
-// DNS-like node resolution (no full graph needed)
+// Response from DNS-like node resolution.
+//
+// Returns node details, outgoing edges, and module definition without requiring the full graph.
+// Includes cache hit status for performance monitoring.
 message NodeLookupResponse {
+  // Resolved graph node.
   GraphNode node = 1;
+  // Outgoing edges from this node.
   repeated GraphEdge outgoing_edges = 2;
+  // Module definition for this node.
   ModuleDefinition module = 3;
+  // Whether this response was served from cache.
   bool cache_hit = 4;
 }
 
-// Cross-cluster node discovery
+// Cross-cluster node lookup request.
+//
+// Enables discovery of nodes across cluster boundaries for cross-cluster routing.
 message CrossClusterNodeLookup {
+  // Source cluster initiating the lookup.
   string source_cluster_id = 1;
+  // Target cluster containing the desired node.
   string target_cluster_id = 2;
+  // Node ID to look up in the target cluster.
   string node_id = 3;
-  string routing_hint = 4; // Optional hint for faster resolution
+  // Optional routing hint for faster resolution.
+  string routing_hint = 4;
 }
 
-// Network topology for visualization (cluster-aware)
+// Complete network topology for visualization.
+//
+// Cluster-aware topology snapshot including nodes, edges, and cross-cluster connections.
+// Can optionally include nodes from subscribed clusters.
 message NetworkTopology {
+  // Primary cluster ID for this topology.
   string cluster_id = 1;
+  // All nodes in this topology.
   repeated GraphNode nodes = 2;
+  // All edges within the primary cluster.
   repeated GraphEdge edges = 3;
+  // Cross-cluster edges connecting to other clusters.
   repeated CrossClusterEdge cross_cluster_edges = 4;
+  // Cluster subscription relationships.
   repeated ClusterSubscription subscriptions = 5;
-  int64 snapshot_time = 6;
+  // Timestamp when this snapshot was taken.
+  google.protobuf.Timestamp snapshot_time = 6;
+  // Whether this topology includes nodes from subscribed clusters.
   bool includes_subscribed_clusters = 7;
 }
 
-// Cross-cluster edge with loop prevention
+// Edge connecting nodes across cluster boundaries.
+//
+// Includes loop prevention via max_hops to prevent infinite routing cycles.
 message CrossClusterEdge {
+  // Unique identifier for this cross-cluster edge.
   string edge_id = 1;
+  // Source cluster ID.
   string from_cluster_id = 2;
+  // Source node ID.
   string from_node_id = 3;
+  // Target cluster ID.
   string to_cluster_id = 4;
+  // Target node ID.
   string to_node_id = 5;
+  // Transport mechanism for cross-cluster communication.
   TransportType transport_type = 6;
-  string bridge_topic = 7; // For cross-cluster messaging routing
-  int32 max_hops = 8; // Prevent infinite loops
+  // Kafka topic for cross-cluster messaging routing.
+  string bridge_topic = 7;
+  // Maximum hop count to prevent infinite loops.
+  int32 max_hops = 8;
 }
 
-// Cluster subscription for node visibility
+// Cluster subscription defining node visibility relationships.
+//
+// Enables one cluster to discover and use nodes from another cluster.
 message ClusterSubscription {
+  // Cluster that is subscribing to another cluster's nodes.
   string subscriber_cluster_id = 1;
+  // Cluster providing nodes to the subscriber.
   string provider_cluster_id = 2;
-  repeated string allowed_node_types = 3; // Optional filter
-  bool bidirectional = 4; // Allow provider to see subscriber's nodes
-  int64 subscribed_at = 5;
+  // Optional filter limiting subscription to specific node types.
+  repeated string allowed_node_types = 3;
+  // Whether the provider can also see the subscriber's nodes.
+  bool bidirectional = 4;
+  // Timestamp when the subscription was created.
+  google.protobuf.Timestamp subscribed_at = 5;
 }

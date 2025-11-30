@@ -10,6 +10,10 @@ option java_multiple_files = true;
 // Simple, fast chunk upload - no streaming complexity
 // ============================================
 
+// Chunked document upload service for large files.
+//
+// Provides simple parallel chunk uploads without streaming complexity.
+// Supports progress tracking via unary and streaming RPCs.
 service DocumentUploadService {
   // Upload a single chunk - can be called in parallel for same file
   rpc UploadChunk(UploadChunkRequest) returns (UploadChunkResponse);
