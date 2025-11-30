@@ -25,126 +25,206 @@ service LinearPipelineProcessorService {
   rpc ValidateLinearPipeline(ValidateLinearPipelineRequest) returns (ValidateLinearPipelineResponse);
 }
 
-// Pipeline execution request
+// Request to execute a linear pipeline on documents
 message ExecuteLinearPipelineRequest {
+  // Pipeline identifier to execute
   string pipeline_id = 1;
+  // List of document IDs to process through the pipeline
   repeated string document_ids = 2;
+  // Runtime parameters to override pipeline defaults
   map<string, string> parameters = 3;
-  bool stream_results = 4; // Stream intermediate results
+  // Whether to stream intermediate results from each stage
+  bool stream_results = 4;
 }
 
+// Streaming response from pipeline execution
 message ExecuteLinearPipelineResponse {
+  // Document ID being processed
   string document_id = 1;
+  // Current stage number (0-indexed)
   int32 current_stage = 2;
+  // Total number of stages in the pipeline
   int32 total_stages = 3;
+  // Name of the current stage
   string stage_name = 4;
+  // Result from this stage's processing
   LinearProcessingResult stage_result = 5;
+  // Whether this is the final result (last stage complete)
   bool is_final = 6;
 }
 
-// Batch processing
+// Request for batch processing multiple documents (streaming)
 message BatchProcessLinearDocumentsRequest {
+  // Document ID to process
   string document_id = 1;
+  // Pipeline ID to execute
   string pipeline_id = 2;
-  map<string, string> parameters = 3; // Runtime parameters
+  // Runtime parameters for this document's processing
+  map<string, string> parameters = 3;
 }
 
+// Streaming response from batch processing
 message BatchProcessLinearDocumentsResponse {
+  // Document ID that was processed
   string document_id = 1;
+  // Pipeline ID that was executed
   string pipeline_id = 2;
+  // Final processing result for this document
   LinearProcessingResult result = 3;
+  // Last stage that was completed
   int32 stage_completed = 4;
+  // Total number of stages in the pipeline
   int32 total_stages = 5;
 }
 
-// Single document processing (for quick testing)
+// Request to process a single document through a single module (for quick testing)
 message ProcessLinearDocumentRequest {
+  // Document source (either from repository or provided inline)
   oneof source {
-    string storage_id = 1; // Use existing document from repository by storage_id
-    ai.pipestream.data.v1.PipeDoc inline_document = 2; // Provide document inline
+    // Use existing document from repository by storage ID
+    string storage_id = 1;
+    // Provide document inline
+    ai.pipestream.data.v1.PipeDoc inline_document = 2;
   }
+  // gRPC address of the module to test
   string module_address = 3;
-  bytes module_config = 4; // Module configuration as JSON
-  bool save_result = 5; // Whether to save result to repository
+  // Module configuration as JSON bytes
+  bytes module_config = 4;
+  // Whether to save the result back to the repository
+  bool save_result = 5;
 }
 
+// Response from single document processing
 message ProcessLinearDocumentResponse {
-  ai.pipestream.data.module.v1.ProcessDataResponse module_response = 1; // Full response from module
+  // Full response from the module
+  ai.pipestream.data.module.v1.ProcessDataResponse module_response = 1;
+  // Processing status
   LinearProcessingStatus status = 2;
+  // Error message if processing failed
   string error_message = 3;
+  // Total processing time in milliseconds
   int64 processing_time_ms = 4;
-  string result_storage_id = 5; // If saved to repository
+  // Storage ID if result was saved to repository
+  string result_storage_id = 5;
 }
 
-// Pipeline validation
+// Request to validate a pipeline configuration
 message ValidateLinearPipelineRequest {
+  // Pipeline source (either from repository or inline definition)
   oneof pipeline_source {
-    string pipeline_id = 1; // Validate existing pipeline from repository
-    LinearPipeline inline_pipeline = 2; // Validate pipeline definition
+    // Validate existing pipeline from repository
+    string pipeline_id = 1;
+    // Validate inline pipeline definition
+    LinearPipeline inline_pipeline = 2;
   }
+  // Whether to check module connectivity (gRPC reachability)
   bool check_module_connectivity = 3;
+  // Whether to validate module configurations
   bool validate_configurations = 4;
 }
 
+// Response from pipeline validation
 message ValidateLinearPipelineResponse {
+  // Whether the pipeline is valid
   bool valid = 1;
+  // List of validation errors
   repeated LinearValidationError errors = 2;
+  // List of validation warnings
   repeated LinearValidationWarning warnings = 3;
 }
 
+// Validation error in a pipeline
 message LinearValidationError {
+  // Stage ID where error occurred
   string stage_id = 1;
+  // Field name that has the error
   string field = 2;
+  // Human-readable error message
   string message = 3;
+  // Type of error
   LinearErrorType error_type = 4;
 }
 
+// Types of validation errors
 enum LinearErrorType {
+  // Unspecified error type
   LINEAR_ERROR_TYPE_ERROR_TYPE_UNSPECIFIED = 0;
+  // Module connectivity issue (unreachable gRPC service)
   LINEAR_ERROR_TYPE_ERROR_TYPE_CONNECTIVITY = 1;
+  // Invalid configuration
   LINEAR_ERROR_TYPE_ERROR_TYPE_CONFIGURATION = 2;
+  // Field mapping issue
   LINEAR_ERROR_TYPE_ERROR_TYPE_FIELD_MAPPING = 3;
+  // Missing dependency
   LINEAR_ERROR_TYPE_ERROR_TYPE_MISSING_DEPENDENCY = 4;
 }
 
+// Validation warning in a pipeline
 message LinearValidationWarning {
+  // Stage ID where warning occurred
   string stage_id = 1;
+  // Human-readable warning message
   string message = 2;
 }
 
-// Pipeline definitions for linear processor
+// Linear pipeline definition
 message LinearPipeline {
+  // Unique pipeline identifier
   string pipeline_id = 1;
+  // Display name of the pipeline
   string name = 2;
+  // Description of what this pipeline does
   string description = 3;
+  // Ordered list of processing stages
   repeated LinearPipelineStage stages = 4;
-  map<string, string> parameters = 5; // Default parameters
+  // Default parameters for this pipeline
+  map<string, string> parameters = 5;
+  // When this pipeline was created
   google.protobuf.Timestamp created_at = 6;
+  // When this pipeline was last updated
   google.protobuf.Timestamp updated_at = 7;
 }
 
+// Single stage in a linear pipeline
 message LinearPipelineStage {
+  // Unique stage identifier
   string stage_id = 1;
+  // Display name of this stage
   string stage_name = 2;
-  string module_address = 3; // gRPC service address
-  bytes module_config = 4; // Module configuration as JSON
-  int32 order = 5; // Stage execution order
-  repeated string dependencies = 6; // Other stages this depends on
+  // gRPC service address of the module to execute
+  string module_address = 3;
+  // Module configuration as JSON bytes
+  bytes module_config = 4;
+  // Stage execution order (0-indexed)
+  int32 order = 5;
+  // IDs of other stages this stage depends on
+  repeated string dependencies = 6;
 }
 
+// Status of document processing
 enum LinearProcessingStatus {
+  // Unspecified status
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_UNSPECIFIED = 0;
+  // Processing completed successfully
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SUCCESS = 1;
+  // Processing failed with an error
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_FAILED = 2;
+  // Processing was skipped (conditional execution)
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SKIPPED = 3;
+  // Processing is currently in progress
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_IN_PROGRESS = 4;
 }
 
-// Processing results for pipeline execution
+// Result from processing a document through a pipeline stage
 message LinearProcessingResult {
+  // Output document after processing
   ai.pipestream.data.v1.PipeDoc output_document = 1;
+  // Processing status
   LinearProcessingStatus status = 2;
+  // Error message if processing failed
   string error_message = 3;
+  // Processing time in milliseconds
   int64 processing_time_ms = 4;
+  // Log messages from processing
   repeated string logs = 5;
 }

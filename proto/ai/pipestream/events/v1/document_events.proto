@@ -7,16 +7,26 @@ import "google/protobuf/timestamp.proto";
 option java_multiple_files = true;
 option java_package = "ai.pipestream.events.v1";
 
+// Event published when a document is successfully uploaded to the repository
 message DocumentUploadedEvent {
+  // Unique document identifier
   string doc_id = 1;
+  // S3 object key where document is stored
   string s3_key = 2;
+  // Connector ID that uploaded this document
   string connector_id = 3;
+  // Account ID that owns this document
   string account_id = 4;
+  // Additional metadata key-value pairs
   map<string, string> metadata = 5;
-  // From PipeDoc, if needed
+  // Original filename of the document
   string filename = 6;
+  // MIME type of the document
   string mime_type = 7;
+  // Virtual path in the connector's namespace
   string path = 8;
+  // When the document was originally created (from source system)
   google.protobuf.Timestamp creation_date = 9;
+  // When the document was last modified (from source system)
   google.protobuf.Timestamp last_modified_date = 10;
 }
