@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.intake.v1;
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.connector.intake.v1";
+
+// ============================================
+// DOCUMENT UPLOAD SERVICE
+// Simple, fast chunk upload - no streaming complexity
+// ============================================
+
+// Chunked document upload service for large files.
+//
+// Provides simple parallel chunk uploads without streaming complexity.
+// Supports progress tracking via unary and streaming RPCs.
+service DocumentUploadService {
+  // Upload a single chunk - can be called in parallel for same file
+  rpc UploadChunk(UploadChunkRequest) returns (UploadChunkResponse);
+
+  // Get upload progress - single snapshot
+  rpc GetUploadProgress(GetUploadProgressRequest) returns (GetUploadProgressResponse);
+
+  // Stream upload progress - real-time updates
+  rpc StreamUploadProgress(StreamUploadProgressRequest) returns (stream StreamUploadProgressResponse);
+}
+
+// Upload a single chunk of a file
+// Auth: connector-id and api-key sent in gRPC metadata headers
+message UploadChunkRequest {
+  // Identity (connector-id from gRPC metadata)
+  string crawl_id = 1; // Which crawl this belongs to
+  string file_id = 2; // Unique identifier for this file
+
+  // Chunk info
+  int32 chunk_number = 3; // 0-based chunk number
+  int32 total_chunks = 4; // Total chunks (0 if unknown, e.g. streaming from unknown source)
+  bytes data = 5; // The actual chunk data
+  bool is_last = 6; // Is this the final chunk? (required when total_chunks=0)
+
+  // File metadata (only needed on first chunk, but can be on all for simplicity)
+  string filename = 7;
+  string path = 8; // File path/location
+  string mime_type = 9;
+  int64 file_size = 10;
+  map<string, string> metadata = 11;
+}
+
+// Response from uploading a single chunk
+message UploadChunkResponse {
+  // File identifier this chunk belongs to
+  string file_id = 1;
+  // Chunk number that was uploaded
+  int32 chunk_number = 2;
+  // Whether the chunk upload succeeded
+  bool success = 3;
+  // Status or error message
+  string message = 4;
+
+  // If is_last=true and all chunks received, this is populated with final result
+  UploadResult result = 5;
+}
+
+// Final result of a completed upload
+message UploadResult {
+  // File identifier
+  string file_id = 1;
+  // S3 object key where file was stored
+  string s3_key = 2;
+  // S3 ETag for verification
+  string s3_etag = 3;
+  // Total size of the uploaded file in bytes
+  int64 size = 4;
+  // SHA256 checksum of the complete file
+  string checksum = 5;
+}
+
+// Request to get current upload progress snapshot
+message GetUploadProgressRequest {
+  // File identifier to check progress for
+  string file_id = 1;
+}
+
+// Response with current upload progress
+message GetUploadProgressResponse {
+  // File identifier
+  string file_id = 1;
+  // Number of chunks received so far
+  int32 chunks_received = 2;
+  // Total number of chunks expected (0 if unknown)
+  int32 total_chunks = 3;
+  // Number of chunks successfully uploaded to S3
+  int32 chunks_uploaded_to_s3 = 4;
+  // Whether the upload is complete
+  bool complete = 5;
+  // Final result (only populated when complete=true)
+  UploadResult result = 6;
+}
+
+// Request to stream real-time upload progress updates
+message StreamUploadProgressRequest {
+  // File identifier to stream progress for
+  string file_id = 1;
+}
+
+// Streaming response with real-time upload progress updates
+message StreamUploadProgressResponse {
+  // File identifier
+  string file_id = 1;
+  // Number of chunks received so far
+  int32 chunks_received = 2;
+  // Total number of chunks expected (0 if unknown)
+  int32 total_chunks = 3;
+  // Number of chunks successfully uploaded to S3
+  int32 chunks_uploaded_to_s3 = 4;
+  // Whether the upload is complete (final message in stream)
+  bool complete = 5;
+  // Final result (only populated when complete=true)
+  UploadResult result = 6;
+}

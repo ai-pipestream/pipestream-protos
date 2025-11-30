@@ -1,0 +1,309 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.v1;
+
+import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "ai/pipestream/data/module/v1/module_service.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.v1";
+
+// ============================================================================
+// SHARED REPOSITORY DATA TYPES
+// ============================================================================
+
+// Wrapper for a PipeDoc with repository-managed metadata and lifecycle timestamps.
+// Used for persisting documents in the repository with searchable tags and descriptions.
+message StoredPipeDoc {
+  // Unique repository-assigned storage identifier
+  string storage_id = 1;
+  // The actual document being stored
+  ai.pipestream.data.v1.PipeDoc document = 2;
+  // Tags for categorization and search filtering
+  ai.pipestream.data.v1.Tags tags = 3;
+  // Human-readable description of this document
+  string description = 4;
+  // Timestamp when this document was first stored
+  google.protobuf.Timestamp created_at = 5;
+  // Timestamp when this document was last modified
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// Wrapper for a ProcessDataRequest with repository metadata for test case management.
+// Used for storing and versioning module processing test cases.
+message StoredProcessRequest {
+  // Unique repository-assigned storage identifier
+  string storage_id = 1;
+  // The processing request being stored (contains input document and config)
+  ai.pipestream.data.module.v1.ProcessDataRequest request = 2;
+  // Human-readable name for this test case
+  string name = 3;
+  // Description of what this test case validates or demonstrates
+  string description = 4;
+  // Tags for categorization (e.g., "regression", "performance", "module-parser")
+  ai.pipestream.data.v1.Tags tags = 5;
+  // Timestamp when this test case was created
+  google.protobuf.Timestamp created_at = 6;
+  // Timestamp when this test case was last updated
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// Wrapper for a ProcessDataResponse with repository metadata for test result management.
+// Used for storing expected outputs and regression test baselines.
+message StoredProcessResponse {
+  // Unique repository-assigned storage identifier
+  string storage_id = 1;
+  // The processing response being stored (contains output document and metrics)
+  ai.pipestream.data.module.v1.ProcessDataResponse response = 2;
+  // Human-readable name for this test result
+  string name = 3;
+  // Description of what this result represents or validates
+  string description = 4;
+  // Tags for categorization and filtering
+  ai.pipestream.data.v1.Tags tags = 5;
+  // Timestamp when this result was stored
+  google.protobuf.Timestamp created_at = 6;
+  // Timestamp when this result was last updated
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// ============================================================================
+// SHARED REQUEST/RESPONSE PATTERNS
+// ============================================================================
+
+// Standard response for delete operations across all repository services.
+message DeleteResponse {
+  // Whether the deletion was successful
+  bool success = 1;
+  // Status message or error details
+  string message = 2;
+}
+
+// Standard pagination parameters for list operations.
+// Follows common pagination patterns for consistent API behavior.
+message PaginationRequest {
+  // Maximum number of results to return per page
+  int32 page_size = 1;
+  // Token from previous response for fetching next page
+  string page_token = 2;
+  // Simple filter expression (syntax varies by service)
+  string filter = 3;
+  // Field name to order results by (e.g., "created_at", "name")
+  string order_by = 4;
+}
+
+// ============================================================================
+// EXPORT/IMPORT SHARED TYPES
+// ============================================================================
+
+// Export format options for repository data.
+enum ExportFormat {
+  // Binary protobuf files (.pb) - primary format for efficiency
+  EXPORT_FORMAT_UNSPECIFIED = 0;
+  // ZIP archive containing multiple items with metadata
+  EXPORT_FORMAT_ZIP = 1;
+}
+
+// Single chunk of streaming export data.
+// Exports are streamed in chunks to handle large datasets efficiently.
+message ExportChunk {
+  // Binary data for this chunk
+  bytes data = 1;
+  // Sequential chunk number (0-indexed)
+  int32 sequence_number = 2;
+  // True if this is the final chunk in the export
+  bool is_last = 3;
+  // MIME type of the data (e.g., "application/protobuf", "application/zip")
+  string content_type = 4;
+}
+
+// Single chunk of streaming import data.
+// Imports are streamed in chunks to handle large datasets efficiently.
+message ImportChunk {
+  // Binary data for this chunk
+  bytes data = 1;
+  // Sequential chunk number (0-indexed)
+  int32 sequence_number = 2;
+  // True if this is the final chunk in the import
+  bool is_last = 3;
+  // Import options (only needed in first chunk, ignored in subsequent chunks)
+  ImportOptions options = 4;
+}
+
+// Configuration options for import operations.
+message ImportOptions {
+  // Whether to overwrite existing items with matching IDs
+  bool overwrite_existing = 1;
+  // Default tags to apply to all imported items (merged with item-specific tags)
+  optional ai.pipestream.data.v1.Tags default_tags = 2;
+}
+
+// Summary of import operation results.
+message ImportResponse {
+  // Number of items successfully imported as new
+  int32 total_imported = 1;
+  // Number of existing items successfully updated
+  int32 total_updated = 2;
+  // Number of items that failed to import
+  int32 total_failed = 3;
+  // Detailed error information for failed imports
+  repeated ImportError errors = 4;
+}
+
+// Details about a single import failure.
+message ImportError {
+  // Name or identifier of the item that failed to import
+  string item_name = 1;
+  // Error message describing why the import failed
+  string error_message = 2;
+  // Line number in the import file where error occurred (if applicable)
+  int32 line_number = 3;
+}
+
+// ============================================================================
+// BATCH OPERATIONS
+// ============================================================================
+
+// Result of a single operation within a batch request.
+// Used for reporting individual successes/failures in bulk operations.
+message BatchOperationResult {
+  // Unique identifier for this operation within the batch
+  string operation_id = 1;
+  // Whether this operation succeeded
+  bool success = 2;
+  // Error message if the operation failed
+  string error_message = 3;
+  // ID of the resource that was created or updated (if applicable)
+  string resource_id = 4;
+}
+
+// ============================================================================
+// FORMAT/CLEANUP OPERATIONS
+// ============================================================================
+
+// Request to delete repository data (dangerous operation requiring confirmation).
+// Supports selective deletion and dry-run mode for safety.
+message FormatRepositoryRequest {
+  // Confirmation string - must be "DELETE_REPOSITORY_DATA" to proceed
+  string confirmation = 1;
+  // Whether to delete all stored PipeDocs
+  bool include_documents = 2;
+  // Whether to delete all stored ProcessRequests
+  bool include_requests = 3;
+  // Whether to delete all stored ProcessResponses
+  bool include_responses = 4;
+  // If true, report what would be deleted without actually deleting
+  bool dry_run = 5;
+}
+
+// Response from repository format/cleanup operation.
+message FormatRepositoryResponse {
+  // Whether the operation completed successfully
+  bool success = 1;
+  // Status message or error details
+  string message = 2;
+  // Number of documents deleted
+  int32 documents_deleted = 3;
+  // Number of process requests deleted
+  int32 requests_deleted = 4;
+  // Number of process responses deleted
+  int32 responses_deleted = 5;
+  // List of storage IDs that were (or would be) deleted
+  repeated string deleted_ids = 6;
+}
+
+// ============================================================================
+// MODULE UPDATE NOTIFICATIONS
+// ============================================================================
+
+// Event notification for module configuration changes.
+// Published to Kafka for real-time synchronization across services.
+message ModuleUpdateNotification {
+  // Type of update: "CREATED", "UPDATED", or "DELETED"
+  string update_type = 1;
+  // The module definition that was created, updated, or deleted
+  ai.pipestream.config.v1.ModuleDefinition module = 2;
+  // Unix timestamp (milliseconds since epoch) when the update occurred
+  int64 timestamp = 3;
+}
+
+// Event notification for PipeDoc changes in the repository.
+// Published to Kafka for indexing in OpenSearch and other downstream services.
+message PipeDocUpdateNotification {
+  // Type of update: "CREATED", "UPDATED", or "DELETED"
+  string update_type = 1;
+  // Unique repository storage identifier
+  string storage_id = 2;
+  // Original document identifier from the PipeDoc
+  string doc_id = 3;
+  // Tags associated with this document
+  ai.pipestream.data.v1.Tags tags = 4;
+  // Human-readable description
+  string description = 5;
+  // Timestamp when document was created
+  google.protobuf.Timestamp created_at = 6;
+  // Timestamp when document was last updated
+  google.protobuf.Timestamp updated_at = 7;
+  // Unix timestamp (milliseconds since epoch) when notification was generated
+  int64 timestamp = 8;
+  // Document title extracted from search metadata (if available)
+  string title = 9;
+  // Document author from metadata (if available)
+  string author = 10;
+}
+
+// Event notification for ProcessRequest changes in the repository.
+// Published to Kafka for test case indexing and discovery.
+message ProcessRequestUpdateNotification {
+  // Type of update: "CREATED", "UPDATED", or "DELETED"
+  string update_type = 1;
+  // Unique repository storage identifier
+  string storage_id = 2;
+  // Request identifier from the ProcessDataRequest
+  string request_id = 3;
+  // Human-readable name for this test case
+  string name = 4;
+  // Description of what this test case validates
+  string description = 5;
+  // Tags for categorization
+  ai.pipestream.data.v1.Tags tags = 6;
+  // Timestamp when test case was created
+  google.protobuf.Timestamp created_at = 7;
+  // Timestamp when test case was last updated
+  google.protobuf.Timestamp updated_at = 8;
+  // Unix timestamp (milliseconds since epoch) when notification was generated
+  int64 timestamp = 9;
+  // Module ID this request is for (extracted from request metadata)
+  string module_id = 10;
+  // Processor ID within the module (if applicable)
+  string processor_id = 11;
+}
+
+// Event notification for ProcessResponse changes in the repository.
+// Published to Kafka for test result indexing and regression tracking.
+message ProcessResponseUpdateNotification {
+  // Type of update: "CREATED", "UPDATED", or "DELETED"
+  string update_type = 1;
+  // Unique repository storage identifier
+  string storage_id = 2;
+  // Response identifier from the ProcessDataResponse
+  string response_id = 3;
+  // Human-readable name for this test result
+  string name = 4;
+  // Description of what this result represents
+  string description = 5;
+  // Tags for categorization
+  ai.pipestream.data.v1.Tags tags = 6;
+  // Timestamp when result was stored
+  google.protobuf.Timestamp created_at = 7;
+  // Timestamp when result was last updated
+  google.protobuf.Timestamp updated_at = 8;
+  // Unix timestamp (milliseconds since epoch) when notification was generated
+  int64 timestamp = 9;
+  // Link to the original request that produced this response
+  string request_id = 10;
+  // Processing status: "SUCCESS", "FAILURE", etc.
+  string status = 11;
+}

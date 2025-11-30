@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package ai.pipestream.mapping.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MappingServiceProto";
+option java_package = "ai.pipestream.mapping.v1";
+
+// Field mapping service for document transformation.
+//
+// Applies declarative mapping rules to transform document fields and metadata
+// using fallback strategies for flexible data integration.
+service MappingService {
+  // Applies a series of mapping rules to a document.
+  rpc ApplyMapping(ApplyMappingRequest) returns (ApplyMappingResponse);
+}
+
+// A MappingRule represents a single logical transformation that can have
+// multiple fallback strategies. The service will attempt each 'candidate_mapping'
+// in order until one succeeds.
+message MappingRule {
+  repeated ai.pipestream.data.v1.ProcessingMapping candidate_mappings = 1;
+}
+
+// Request to apply mapping rules to a document
+message ApplyMappingRequest {
+  // The document to transform
+  ai.pipestream.data.v1.PipeDoc document = 1;
+  // The list of rules to apply sequentially to the document
+  repeated MappingRule rules = 2;
+}
+
+// Response containing the transformed document
+message ApplyMappingResponse {
+  // The document after all mapping rules have been applied
+  ai.pipestream.data.v1.PipeDoc document = 1;
+}

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ai.pipestream.ingestion.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OpenSearchIngestionProto";
+option java_package = "ai.pipestream.ingestion.v1.proto";
+
+// The new, dedicated service for high-throughput document ingestion.
+service OpenSearchIngestionService {
+  // Bidirectional stream for ingesting documents and receiving real-time acknowledgements.
+  rpc StreamDocuments(stream StreamDocumentsRequest) returns (stream StreamDocumentsResponse);
+}
+
+// A request to ingest a single document.
+message StreamDocumentsRequest {
+  // The document to be indexed, updated, or deleted.
+  ai.pipestream.data.v1.PipeDoc document = 1;
+
+  // A unique ID for this specific request, sent by the client.
+  // This ID will be returned in the corresponding StreamDocumentsResponse for correlation.
+  string request_id = 2;
+}
+
+// A response acknowledging the result of a single StreamDocumentsRequest.
+message StreamDocumentsResponse {
+  // The correlation ID from the StreamDocumentsRequest.
+  string request_id = 1;
+
+  // The ID of the document that was processed.
+  string document_id = 2;
+
+  // Whether the operation for this document was successful.
+  bool success = 3;
+
+  // A message providing details on the outcome (e.g., "Successfully indexed 5 chunks" or an error message).
+  string message = 4;
+}

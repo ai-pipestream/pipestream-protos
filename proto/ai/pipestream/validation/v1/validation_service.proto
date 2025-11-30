@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package ai.pipestream.validation.v1;
+
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.validation.v1";
+
+// Validation service for pipeline components
+service ValidationService {
+  // Validates a graph node configuration.
+  rpc ValidateNode(ValidateNodeRequest) returns (ValidateNodeResponse);
+  // Validates a complete pipeline graph for correctness.
+  rpc ValidateGraph(ValidateGraphRequest) returns (ValidateGraphResponse);
+  // Validates a module configuration and connectivity.
+  rpc ValidateModule(ValidateModuleRequest) returns (ValidateModuleResponse);
+}
+
+// Request to validate a graph node configuration
+message ValidateNodeRequest {
+  // The node configuration to validate (wrapped in Any for flexibility)
+  google.protobuf.Any node = 1;
+  // Validation mode (draft, design, or production)
+  ValidationMode mode = 2;
+  // Cluster ID context for validation
+  string cluster_id = 3;
+}
+
+// Request to validate a complete pipeline graph
+message ValidateGraphRequest {
+  // The graph configuration to validate (wrapped in Any for flexibility)
+  google.protobuf.Any graph = 1;
+  // Validation mode (draft, design, or production)
+  ValidationMode mode = 2;
+  // Cluster ID context for validation
+  string cluster_id = 3;
+}
+
+// Request to validate a module configuration
+message ValidateModuleRequest {
+  // The module configuration to validate (wrapped in Any for flexibility)
+  google.protobuf.Any module = 1;
+  // Validation mode (draft, design, or production)
+  ValidationMode mode = 2;
+}
+
+// Response from validating a graph node
+message ValidateNodeResponse {
+  // Whether the node configuration is valid
+  bool is_valid = 1;
+  // List of validation errors found
+  repeated ValidationError errors = 2;
+  // List of validation warnings
+  repeated ValidationWarning warnings = 3;
+  // List of validation suggestions for improvement
+  repeated ValidationSuggestion suggestions = 4;
+}
+
+// Response from validating a pipeline graph
+message ValidateGraphResponse {
+  // Whether the graph configuration is valid
+  bool is_valid = 1;
+  // List of validation errors found
+  repeated ValidationError errors = 2;
+  // List of validation warnings
+  repeated ValidationWarning warnings = 3;
+  // List of validation suggestions for improvement
+  repeated ValidationSuggestion suggestions = 4;
+}
+
+// Response from validating a module
+message ValidateModuleResponse {
+  // Whether the module configuration is valid
+  bool is_valid = 1;
+  // List of validation errors found
+  repeated ValidationError errors = 2;
+  // List of validation warnings
+  repeated ValidationWarning warnings = 3;
+  // List of validation suggestions for improvement
+  repeated ValidationSuggestion suggestions = 4;
+}
+
+// Validation error details
+message ValidationError {
+  // Type of validation error
+  ValidationErrorType error_type = 1;
+  // Field path where error occurred (e.g., "config.node_id")
+  string field_path = 2;
+  // Human-readable error message
+  string message = 3;
+  // Machine-readable error code
+  string error_code = 4;
+  // Additional error context (optional)
+  google.protobuf.Any context = 5;
+}
+
+// Validation warning details
+message ValidationWarning {
+  // Type of validation warning
+  ValidationWarningType warning_type = 1;
+  // Field path where warning occurred (e.g., "config.deprecated_field")
+  string field_path = 2;
+  // Human-readable warning message
+  string message = 3;
+  // Machine-readable warning code
+  string warning_code = 4;
+  // Additional warning context (optional)
+  google.protobuf.Any context = 5;
+}
+
+// Validation suggestion for improvement
+message ValidationSuggestion {
+  // Human-readable suggestion message
+  string message = 1;
+  // Suggested fix description
+  string suggested_fix = 2;
+  // Suggested value (optional)
+  google.protobuf.Any suggested_value = 3;
+}
+
+// Validation modes for different stages of development
+enum ValidationMode {
+  // Unspecified validation mode (default)
+  VALIDATION_MODE_UNSPECIFIED = 0;
+  // Draft mode - minimal validation for rapid iteration
+  VALIDATION_MODE_DRAFT = 1;
+  // Design mode - comprehensive validation for development
+  VALIDATION_MODE_DESIGN = 2;
+  // Production mode - strictest validation for deployment
+  VALIDATION_MODE_PRODUCTION = 3;
+}
+
+// Types of validation errors
+enum ValidationErrorType {
+  // Unspecified error type (default)
+  VALIDATION_ERROR_TYPE_UNSPECIFIED = 0;
+  // Required field is missing or empty
+  VALIDATION_ERROR_TYPE_REQUIRED_FIELD = 1;
+  // Field value has invalid format
+  VALIDATION_ERROR_TYPE_INVALID_FORMAT = 2;
+  // Duplicate name found (must be unique)
+  VALIDATION_ERROR_TYPE_DUPLICATE_NAME = 3;
+  // Circular dependency detected in graph
+  VALIDATION_ERROR_TYPE_CIRCULAR_DEPENDENCY = 4;
+  // Referenced module does not exist
+  VALIDATION_ERROR_TYPE_MODULE_NOT_FOUND = 5;
+  // Node ID is invalid or malformed
+  VALIDATION_ERROR_TYPE_INVALID_NODE_ID = 6;
+  // Cluster not found in registry
+  VALIDATION_ERROR_TYPE_CLUSTER_NOT_FOUND = 7;
+  // Custom error type (use error_code for specifics)
+  VALIDATION_ERROR_TYPE_CUSTOM = 999;
+}
+
+// Types of validation warnings
+enum ValidationWarningType {
+  // Unspecified warning type (default)
+  VALIDATION_WARNING_TYPE_UNSPECIFIED = 0;
+  // Using deprecated field or feature
+  VALIDATION_WARNING_TYPE_DEPRECATED = 1;
+  // Potential performance issue detected
+  VALIDATION_WARNING_TYPE_PERFORMANCE = 2;
+  // Violates best practice guidelines
+  VALIDATION_WARNING_TYPE_BEST_PRACTICE = 3;
+  // Node has no incoming or outgoing edges
+  VALIDATION_WARNING_TYPE_ORPHANED_NODE = 4;
+  // Custom warning type (use warning_code for specifics)
+  VALIDATION_WARNING_TYPE_CUSTOM = 999;
+}

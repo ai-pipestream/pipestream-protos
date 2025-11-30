@@ -1,0 +1,279 @@
+syntax = "proto3";
+
+package ai.pipestream.testing.harness.v1;
+
+import "ai/pipestream/data/module/v1/module_service.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.testing.harness.v1.grpc";
+
+// Test harness service for comprehensive integration testing of pipeline modules.
+// Supports bidirectional streaming for interactive testing and scenario simulation.
+service TestHarnessService {
+  // Execute tests with bidirectional streaming for real-time event monitoring.
+  // Allows sending multiple commands and receiving events as they occur.
+  rpc ExecuteTestStream(stream ExecuteTestStreamRequest) returns (stream ExecuteTestStreamResponse);
+
+  // Execute a single test command and get all results in one response.
+  // Simpler alternative to streaming for basic test scenarios.
+  rpc ExecuteTest(ExecuteTestRequest) returns (ExecuteTestResponse);
+
+  // Get the current operational status of the test module.
+  // Returns processing statistics, configuration, and active scenarios.
+  rpc GetModuleStatus(GetModuleStatusRequest) returns (GetModuleStatusResponse);
+}
+
+// Request to execute a test command via streaming RPC.
+message ExecuteTestStreamRequest {
+  // The test command to execute
+  TestCommand command = 1;
+}
+
+// Request to execute a test command via simple RPC.
+message ExecuteTestRequest {
+  // The test command to execute
+  TestCommand command = 1;
+}
+
+// Request to retrieve module status (no parameters required).
+message GetModuleStatusRequest {}
+
+// Test command wrapper containing one of several command types.
+// Each command tests different aspects of module behavior or integration.
+message TestCommand {
+  // Unique identifier for this command (for correlating responses)
+  string command_id = 1;
+  // Timestamp when this command was created
+  google.protobuf.Timestamp timestamp = 2;
+
+  oneof command {
+    // Send a document through the module for processing
+    ProcessDocumentCommand process_document = 10;
+
+    // Verify that the module is properly registered with service discovery
+    VerifyRegistrationCommand verify_registration = 11;
+
+    // Perform a health check on the module
+    CheckHealthCommand check_health = 12;
+
+    // Wait for specific events to occur (for sequencing tests)
+    WaitForEventCommand wait_for_event = 13;
+
+    // Dynamically configure test module behavior
+    ConfigureModuleCommand configure_module = 14;
+
+    // Simulate failure scenarios (slow processing, errors, resource issues)
+    SimulateScenarioCommand simulate_scenario = 15;
+  }
+}
+
+// Event response from the test module, containing test results or status updates.
+// Streamed back in real-time as events occur during test execution.
+message ExecuteTestStreamResponse {
+  // Unique identifier for this event
+  string event_id = 1;
+  // Links back to the command that triggered this event (for correlation)
+  string command_id = 2;
+  // Timestamp when this event occurred
+  google.protobuf.Timestamp timestamp = 3;
+
+  oneof event {
+    // Module received a document for processing
+    DocumentReceivedEvent document_received = 10;
+
+    // Module completed processing a document
+    DocumentProcessedEvent document_processed = 11;
+
+    // Module successfully registered with service discovery
+    ModuleRegisteredEvent module_registered = 12;
+
+    // Health check was performed
+    HealthCheckEvent health_check = 13;
+
+    // An error occurred during test execution
+    ErrorEvent error = 14;
+
+    // Generic event for custom test scenarios
+    GenericEvent generic = 15;
+  }
+}
+
+// Command to send a document through the module for processing.
+// Used for functional testing and regression validation.
+message ProcessDocumentCommand {
+  // The document and configuration to send to the module
+  ai.pipestream.data.module.v1.ProcessDataRequest request = 1;
+  // Whether the test expects this processing to succeed
+  bool expect_success = 2;
+  // Maximum time to wait for processing to complete (milliseconds)
+  int64 timeout_ms = 3;
+}
+
+// Command to verify that the module is properly registered.
+// Validates service discovery integration.
+message VerifyRegistrationCommand {
+  // Expected module name in the service registry
+  string expected_module_name = 1;
+  // Whether to verify registration in Consul (if false, checks internal registry only)
+  bool check_consul = 2;
+}
+
+// Command to perform a health check on the module.
+message CheckHealthCommand {
+  // Whether to include detailed health metrics in the response
+  bool include_details = 1;
+}
+
+// Command to wait for specific events before proceeding.
+// Useful for sequencing tests and synchronization.
+message WaitForEventCommand {
+  // Types of events to wait for (e.g., "document_processed", "module_registered")
+  repeated string event_types = 1;
+  // Maximum time to wait for events (milliseconds)
+  int64 timeout_ms = 2;
+}
+
+// Command to dynamically configure the test module's behavior.
+// Allows runtime modification of module settings for testing.
+message ConfigureModuleCommand {
+  // Configuration parameters as key-value pairs
+  google.protobuf.Struct config = 1;
+  // Whether to reset all settings to defaults before applying config
+  bool reset_to_defaults = 2;
+}
+
+// Command to simulate various failure and stress scenarios.
+// Used for resilience and performance testing.
+message SimulateScenarioCommand {
+  // Types of scenarios that can be simulated for testing
+  enum Scenario {
+    // No scenario (default)
+    SCENARIO_UNSPECIFIED = 0;
+    // Slow processing times (artificial delays)
+    SCENARIO_SLOW_PROCESSING = 1;
+    // Random processing failures
+    SCENARIO_RANDOM_FAILURES = 2;
+    // Memory leak simulation (gradual memory growth)
+    SCENARIO_MEMORY_LEAK = 3;
+    // High CPU usage simulation
+    SCENARIO_HIGH_CPU = 4;
+    // Network connectivity issues
+    SCENARIO_NETWORK_ISSUES = 5;
+  }
+
+  // The scenario to simulate
+  Scenario scenario = 1;
+  // Scenario-specific parameters (e.g., failure rate, delay amount)
+  google.protobuf.Struct parameters = 2;
+  // How long to run the scenario (milliseconds, 0 for indefinite)
+  int64 duration_ms = 3;
+}
+
+// Event emitted when a document is received by the module.
+message DocumentReceivedEvent {
+  // Unique document identifier
+  string document_id = 1;
+  // Name of the pipeline this document belongs to
+  string pipeline_name = 2;
+  // Current processing step name
+  string step_name = 3;
+  // Number of hops through the pipeline so far
+  int64 hop_number = 4;
+}
+
+// Event emitted when document processing completes (success or failure).
+message DocumentProcessedEvent {
+  // Unique document identifier
+  string document_id = 1;
+  // Whether processing succeeded
+  bool success = 2;
+  // Error message if processing failed
+  string error_message = 3;
+  // Additional metadata from processing (metrics, transformations, etc.)
+  google.protobuf.Struct processing_metadata = 4;
+  // Time taken to process the document (milliseconds)
+  int64 processing_time_ms = 5;
+}
+
+// Event emitted when the module attempts registration with service discovery.
+message ModuleRegisteredEvent {
+  // Name of the module that was registered
+  string module_name = 1;
+  // Consul service ID assigned to this module instance
+  string consul_service_id = 2;
+  // Whether registration succeeded
+  bool success = 3;
+  // Error message if registration failed
+  string error_message = 4;
+}
+
+// Event emitted from a health check operation.
+message HealthCheckEvent {
+  // Health status levels for the module
+  enum HealthStatus {
+    // Unspecified status
+    HEALTH_STATUS_UNSPECIFIED = 0;
+    // Module is unhealthy and not functioning properly
+    HEALTH_STATUS_UNHEALTHY = 1;
+    // Module is functioning but with degraded performance or partial failures
+    HEALTH_STATUS_DEGRADED = 2;
+  }
+
+  // Current health status of the module
+  HealthStatus status = 1;
+  // Detailed health metrics (CPU, memory, connections, etc.)
+  google.protobuf.Struct details = 2;
+}
+
+// Event emitted when an error occurs during test execution.
+message ErrorEvent {
+  // Type/category of error (e.g., "processing_error", "timeout", "validation_error")
+  string error_type = 1;
+  // Human-readable error message
+  string error_message = 2;
+  // Stack trace for debugging (if available)
+  string stack_trace = 3;
+  // Additional context about the error (state, variables, etc.)
+  google.protobuf.Struct context = 4;
+}
+
+// Generic event for custom test scenarios and extensibility.
+message GenericEvent {
+  // Custom event type identifier
+  string event_type = 1;
+  // Event payload as arbitrary JSON data
+  google.protobuf.Struct data = 2;
+}
+
+// Response from executing a test command via simple RPC.
+// Aggregates all events that occurred during test execution.
+message ExecuteTestResponse {
+  // Whether the overall test succeeded
+  bool success = 1;
+  // Log messages from test execution
+  repeated string messages = 2;
+  // Arbitrary test result data
+  google.protobuf.Struct data = 3;
+  // All events that occurred during the test
+  repeated ExecuteTestStreamResponse events = 4;
+}
+
+// Response containing the current operational status of the test module.
+message GetModuleStatusResponse {
+  // Whether the module is registered with service discovery
+  bool is_registered = 1;
+  // Name of the registered module
+  string module_name = 2;
+  // Total number of documents successfully processed
+  int64 documents_processed = 3;
+  // Total number of documents that failed processing
+  int64 documents_failed = 4;
+  // Timestamp of the last activity (processing, command, etc.)
+  google.protobuf.Timestamp last_activity = 5;
+  // Current module configuration key-value pairs
+  map<string, string> current_config = 6;
+  // List of currently active scenario simulations
+  repeated string active_scenarios = 7;
+}

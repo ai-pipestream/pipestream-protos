@@ -1,0 +1,236 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.engine.v1";
+
+// V1 Engine - DNS-like routing with clean separation
+service EngineV1Service {
+  // Process document at specific node
+  rpc ProcessNode(ProcessNodeRequest) returns (ProcessNodeResponse);
+
+  // Stream processing
+  rpc ProcessStream(stream ProcessStreamRequest) returns (stream ProcessStreamResponse);
+
+  // Cross-cluster routing
+  rpc RouteToCluster(RouteToClusterRequest) returns (RouteToClusterResponse);
+
+  // Kafka topic subscription management
+  rpc UpdateTopicSubscriptions(UpdateTopicSubscriptionsRequest) returns (UpdateTopicSubscriptionsResponse);
+  // Retrieves topic subscriptions for the engine.
+  rpc GetTopicSubscriptions(GetTopicSubscriptionsRequest) returns (GetTopicSubscriptionsResponse);
+
+  // Engine health
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+}
+
+// Request to process a document at a specific node
+message ProcessNodeRequest {
+  // The pipeline stream containing the document and execution context
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  // Optional routing condition for dynamic next-node selection
+  string routing_condition = 2;
+}
+
+// Response from processing a document at a node
+message ProcessNodeResponse {
+  // Whether the processing succeeded
+  bool success = 1;
+  // Status or error message
+  string message = 2;
+  // Updated stream with processing results
+  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+  // Processing metrics for this operation
+  ProcessingMetrics metrics = 4;
+}
+
+// Request to process a document stream (bidirectional streaming)
+message ProcessStreamRequest {
+  // The pipeline stream containing the document and execution context
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  // Optional routing condition for dynamic next-node selection
+  string routing_condition = 2;
+}
+
+// Response from processing in a stream
+message ProcessStreamResponse {
+  // Whether the processing succeeded
+  bool success = 1;
+  // Status or error message
+  string message = 2;
+  // Updated stream with processing results
+  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+  // Processing metrics for this operation
+  ProcessingMetrics metrics = 4;
+}
+
+// Request to route a document to a different cluster
+message RouteToClusterRequest {
+  // Target cluster ID to route to
+  string target_cluster_id = 1;
+  // Target node ID within the cluster
+  string target_node_id = 2;
+  // The pipeline stream to route
+  ai.pipestream.data.v1.PipeStream stream = 3;
+}
+
+// Response from cross-cluster routing
+message RouteToClusterResponse {
+  // Whether the routing succeeded
+  bool success = 1;
+  // Status or error message
+  string message = 2;
+  // Routing method used ("messaging" for Kafka, "grpc" for direct call)
+  string routing_method = 3;
+}
+
+// Metrics collected during document processing
+message ProcessingMetrics {
+  // Processing time in milliseconds
+  int64 processing_time_ms = 1;
+  // Node ID that processed this document
+  string node_id = 2;
+  // Module ID that implemented the processing
+  string module_id = 3;
+  // Whether the result was served from cache
+  bool cache_hit = 4;
+  // Number of hops/nodes traversed in this pipeline execution
+  int64 hop_count = 5;
+}
+
+message GetHealthRequest {}
+
+// Response with engine health status
+message GetHealthResponse {
+  // Overall health status of the engine
+  EngineHealth health = 1;
+  // Number of currently active processing streams
+  int64 active_streams = 2;
+  // Cache hit rate percentage (0-100)
+  int64 cache_hit_rate = 3;
+  // List of cluster IDs this engine is connected to
+  repeated string connected_clusters = 4;
+  // Engine uptime in seconds
+  int64 uptime_seconds = 5;
+  // Kafka subscription health and metrics
+  KafkaSubscriptionStatus kafka_status = 6;
+}
+
+// Request to update Kafka topic subscriptions for dynamic load balancing
+message UpdateTopicSubscriptionsRequest {
+  // Engine instance ID to update subscriptions for
+  string engine_instance_id = 1;
+  // Topics to add to this engine's subscriptions
+  repeated string topics_to_subscribe = 2;
+  // Topics to remove from this engine's subscriptions
+  repeated string topics_to_unsubscribe = 3;
+  // Strategy to use for subscription management
+  SubscriptionStrategy strategy = 4;
+}
+
+// Response from updating topic subscriptions
+message UpdateTopicSubscriptionsResponse {
+  // Whether the update succeeded
+  bool success = 1;
+  // Status or error message
+  string message = 2;
+  // List of currently active topic subscriptions
+  repeated string active_subscriptions = 3;
+  // Total number of active Kafka listeners
+  int32 total_listeners = 4;
+}
+
+// Request to get current topic subscriptions
+message GetTopicSubscriptionsRequest {
+  // Optional: specific engine instance ID (empty = all instances)
+  string engine_instance_id = 1;
+}
+
+// Response with current topic subscriptions
+message GetTopicSubscriptionsResponse {
+  // List of engine instances and their topic subscriptions
+  repeated EngineTopicSubscription subscriptions = 1;
+  // Overall topic distribution across the cluster
+  ClusterTopicDistribution distribution = 2;
+}
+
+// Kafka topic subscription information for a single engine instance
+message EngineTopicSubscription {
+  // Unique engine instance identifier
+  string engine_instance_id = 1;
+  // List of Kafka topics this engine is subscribed to
+  repeated string subscribed_topics = 2;
+  // Number of active Kafka listeners on this engine
+  int32 active_listeners = 3;
+  // Total number of messages processed by this engine
+  int64 messages_processed = 4;
+  // Current CPU usage percentage (0-100)
+  double cpu_usage_percent = 5;
+  // Current memory usage percentage (0-100)
+  double memory_usage_percent = 6;
+}
+
+// Distribution of Kafka topics across engine instances in the cluster
+message ClusterTopicDistribution {
+  // Total number of unique Kafka topics being consumed
+  int32 total_topics = 1;
+  // Total number of engine instances in the cluster
+  int32 total_engine_instances = 2;
+  // Average number of topics per engine instance
+  double average_topics_per_engine = 3;
+  // Detailed load information for each topic
+  repeated TopicLoadInfo topic_loads = 4;
+}
+
+// Load information for a specific Kafka topic
+message TopicLoadInfo {
+  // Kafka topic name
+  string topic_name = 1;
+  // Number of listeners consuming from this topic
+  int32 listener_count = 2;
+  // Incoming message rate per second
+  int64 message_rate_per_second = 3;
+  // List of engine instance IDs consuming this topic
+  repeated string assigned_engines = 4;
+}
+
+// Kafka subscription health and metrics for this engine
+message KafkaSubscriptionStatus {
+  // Number of active Kafka listeners
+  int32 active_listeners = 1;
+  // List of subscribed topic names
+  repeated string subscribed_topics = 2;
+  // Total number of Kafka messages processed
+  int64 total_messages_processed = 3;
+  // Average message processing time in milliseconds
+  double average_processing_time_ms = 4;
+}
+
+// Engine health status levels
+enum EngineHealth {
+  // Unspecified health status (default/unknown)
+  ENGINE_HEALTH_UNSPECIFIED = 0;
+  // Engine is healthy and operating normally
+  ENGINE_HEALTH_HEALTHY = 1;
+  // Engine is experiencing degraded performance but still functional
+  ENGINE_HEALTH_DEGRADED = 2;
+  // Engine is unhealthy and may not be processing correctly
+  ENGINE_HEALTH_UNHEALTHY = 3;
+}
+
+// Strategies for distributing Kafka topic subscriptions across engine instances
+enum SubscriptionStrategy {
+  // Unspecified strategy (default)
+  SUBSCRIPTION_STRATEGY_UNSPECIFIED = 0;
+  // Demo/Development mode: all engines listen to all topics (high redundancy)
+  SUBSCRIPTION_STRATEGY_ALL_TOPICS = 1;
+  // Distribute topics evenly across all engines for load balancing
+  SUBSCRIPTION_STRATEGY_BALANCED = 2;
+  // Assign topics based on each engine's current capacity and resources
+  SUBSCRIPTION_STRATEGY_CAPACITY_BASED = 3;
+  // Use sticky assignment to keep related topics on the same engine
+  SUBSCRIPTION_STRATEGY_TOPIC_AFFINITY = 4;
+}

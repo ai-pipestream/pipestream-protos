@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package ai.pipestream.events.v1;
+
+import "google/protobuf/struct.proto"; // For flexible metadata
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.events.v1";
+
+// Event emitted by the Repository Service's Metadata Indexer
+// once a document's core metadata has been successfully persisted to the database.
+// This event is primarily for OpenSearch Manager to index system-level file metadata.
+message RepoMetadataEvent {
+  // Unique identifier for this event
+  string event_id = 1;
+  // When this event was generated
+  google.protobuf.Timestamp timestamp = 2;
+
+  // Unique document identifier
+  string document_id = 3;
+  // Drive/repository identifier (UUID as string)
+  string drive_id = 4;
+  // Account ID that owns this document
+  string account_id = 5;
+  // Connector ID that ingested this document
+  string connector_id = 6;
+
+  // Original filename or node name
+  string name = 7;
+  // Full path in the repository
+  string path = 8;
+  // MIME/content type of the document
+  string content_type = 9;
+  // Size of the document in bytes
+  int64 size_bytes = 10;
+
+  // S3 object key where document is stored
+  string s3_key = 11;
+  // S3 version ID for versioned buckets
+  string s3_version_id = 12;
+
+  // Additional metadata as flexible JSON structure
+  google.protobuf.Struct metadata = 13;
+
+  // Type of metadata update (created/updated/deleted)
+  UpdateType update_type = 14;
+
+  // Optional error message if persistence partially failed
+  // (event should ideally only be emitted on success)
+  optional string error_message = 15;
+}
+
+// Type of metadata update operation
+enum UpdateType {
+  // Unspecified update type (default)
+  UPDATE_TYPE_UNSPECIFIED = 0;
+  // Document metadata was newly created
+  UPDATE_TYPE_CREATED = 1;
+  // Existing document metadata was updated
+  UPDATE_TYPE_UPDATED = 2;
+  // Document metadata was deleted
+  UPDATE_TYPE_DELETED = 3;
+}

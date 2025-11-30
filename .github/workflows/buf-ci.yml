@@ -1,0 +1,42 @@
+name: Buf CI
+
+on:
+  # 1. Trigger on Pushes to Main (The "Release" / "Snapshot")
+  push:
+    branches:
+      - main
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.lock'
+
+  # 2. Trigger on any Pull Request (The "Gatekeeper")
+  pull_request:
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.lock'
+
+jobs:
+  buf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Allows buf-action to comment on PRs
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          token: ${{ secrets.BUF_TOKEN }}
+          input: 'proto'
+
+          # Enforce formatting rules
+          format: true
+
+          # Breaking change detection (Compares current branch vs BSR main)
+          breaking: false
+
+          # CRITICAL: Only push to Registry if we are on the 'main' branch
+          push: ${{ github.ref == 'refs/heads/main' }}
