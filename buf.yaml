@@ -1,10 +1,7 @@
 version: v2
 modules:
-  - path: .
+  - path: proto
     name: buf.build/pipestreamai/platform
-    excludes:
-      - bin
-      - build
 deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
