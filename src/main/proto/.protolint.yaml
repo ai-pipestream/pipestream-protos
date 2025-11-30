@@ -1,0 +1,37 @@
+# Protolint configuration for AI Pipestream
+# Auto-fixes non-breaking formatting issues
+
+lint:
+  rules:
+    no_default: true
+
+    # Enable auto-fixable formatting rules
+    INDENT: true
+    ORDER: true
+    IMPORTS_SORTED: true
+    MAX_LINE_LENGTH:
+      max_chars: 120
+
+    # Basic naming conventions
+    PACKAGE_NAME_LOWER_CASE: true
+    FILE_NAMES_LOWER_SNAKE_CASE: true
+    ENUM_NAMES_UPPER_CAMEL_CASE: true
+    MESSAGE_NAMES_UPPER_CAMEL_CASE: true
+    RPC_NAMES_UPPER_CAMEL_CASE: true
+    SERVICE_NAMES_UPPER_CAMEL_CASE: true
+
+    # Disable rules we'll handle with buf or that are too strict
+    ENUM_FIELD_NAMES_PREFIX: false
+    ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH: false
+    FIELD_NAMES_LOWER_SNAKE_CASE: false
+    SERVICE_NAMES_END_WITH: false
+    REPEATED_FIELD_NAMES_PLURALIZED: false
+
+    # Disable comment requirements for now
+    FILE_HAS_COMMENT: false
+    MESSAGES_HAVE_COMMENT: false
+    SERVICES_HAVE_COMMENT: false
+    RPCS_HAVE_COMMENT: false
+    FIELDS_HAVE_COMMENT: false
+    ENUMS_HAVE_COMMENT: false
+    ENUM_FIELDS_HAVE_COMMENT: false
