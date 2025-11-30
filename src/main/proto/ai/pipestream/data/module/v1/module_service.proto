@@ -17,20 +17,17 @@ option java_outer_classname = "PipeStepProcessorServiceProto";
 // This interface is implemented by developer-created gRPC modules/services.
 service PipeStepProcessorService {
   // Processes a document according to the step's configuration and logic.
-  rpc ProcessData(ModuleProcessRequest) returns (ModuleProcessResponse);
-
-  // Test version of ProcessData that doesn't count as a legitimate call
-  // but follows the same processing logic
-  rpc TestProcessData(ModuleProcessRequest) returns (ModuleProcessResponse);
+  // Set is_test=true in the request for test calls that don't count as legitimate processing.
+  rpc ProcessData(ProcessDataRequest) returns (ModuleProcessResponse);
 
   // Returns static registration information about this module with optional health check
-  rpc GetServiceRegistration (RegistrationRequest) returns (ServiceRegistrationMetadata);
+  rpc GetServiceRegistration(GetServiceRegistrationRequest) returns (ServiceRegistrationMetadata);
 }
 
 // Request for module registration, optionally includes test data for health check
-message RegistrationRequest {
+message GetServiceRegistrationRequest {
   // Optional test data for validation - if provided, module will perform health check
-  optional ModuleProcessRequest test_request = 1;
+  optional ProcessDataRequest test_request = 1;
 }
 
 // Response containing module registration data and health status
@@ -145,7 +142,7 @@ message ProcessConfiguration {
 }
 
 // Request message for the ProcessData RPC.
-message ModuleProcessRequest {
+message ProcessDataRequest {
   // The primary document data to be processed.
   // The Blob is now expected to be within PipeDoc if used.
   ai.pipestream.data.v1.PipeDoc document = 1;
@@ -159,6 +156,10 @@ message ModuleProcessRequest {
   // A list of declarative mapping rules for the engine to apply to the
   // output_doc *after* this step completes successfully.
   repeated ai.pipestream.data.v1.ProcessingMapping post_mappings = 5;
+
+  // Whether this is a test call that should not count as legitimate processing.
+  // Test calls follow the same logic but may be used for validation/health checks.
+  bool is_test = 6;
 }
 
 // Response message for the ProcessData RPC.

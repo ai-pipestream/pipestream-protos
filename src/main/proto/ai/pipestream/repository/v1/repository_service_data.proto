@@ -27,7 +27,7 @@ message StoredPipeDoc {
 // Repository-specific data models for storing process requests with metadata
 message StoredProcessRequest {
   string storage_id = 1; // Repository-assigned ID
-  ai.pipestream.data.module.v1.ModuleProcessRequest request = 2;
+  ai.pipestream.data.module.v1.ProcessDataRequest request = 2;
   string name = 3; // Human-readable name for this test case
   string description = 4; // Description of what this test case validates
   ai.pipestream.data.v1.Tags tags = 5; // Tags for categorization

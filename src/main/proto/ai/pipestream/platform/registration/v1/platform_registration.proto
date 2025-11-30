@@ -3,7 +3,6 @@ syntax = "proto3";
 package ai.pipestream.platform.registration.v1;
 
 import "ai/pipestream/data/module/v1/module_service.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_package = "ai.pipestream.platform.registration.v1";
@@ -20,51 +19,51 @@ service PlatformRegistrationService {
   //
   // Returns a stream of RegistrationEvent messages tracking progress through
   // validation, Consul registration, health check configuration, and completion.
-  rpc RegisterService(ServiceRegistrationRequest) returns (stream RegistrationEvent);
+  rpc RegisterService(RegisterServiceRequest) returns (stream RegistrationEvent);
 
   // Register a module (document processor) with streaming status updates.
   //
   // Extends service registration by adding schema validation, Apicurio registration,
   // and module-specific metadata handling.
-  rpc RegisterModule(ModuleRegistrationRequest) returns (stream RegistrationEvent);
+  rpc RegisterModule(RegisterModuleRequest) returns (stream RegistrationEvent);
 
   // Unregister a service from Consul and the platform registry.
-  rpc UnregisterService(UnregisterRequest) returns (UnregisterResponse);
+  rpc UnregisterService(UnregisterServiceRequest) returns (UnregisterResponse);
 
   // Unregister a module from Consul and the platform registry.
-  rpc UnregisterModule(UnregisterRequest) returns (UnregisterResponse);
+  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterResponse);
 
   // List all registered services with health status and metadata.
-  rpc ListServices(google.protobuf.Empty) returns (ServiceListResponse);
+  rpc ListServices(ListServicesRequest) returns (ServiceListResponse);
 
   // List all registered modules with schema and capability information.
-  rpc ListModules(google.protobuf.Empty) returns (ModuleListResponse);
+  rpc ListModules(ListModulesRequest) returns (ModuleListResponse);
 
   // Get specific service details by name or Consul service ID.
-  rpc GetService(ServiceLookupRequest) returns (ServiceDetails);
+  rpc GetService(GetServiceRequest) returns (ServiceDetails);
 
   // Get specific module details by name or Consul service ID.
-  rpc GetModule(ServiceLookupRequest) returns (ModuleDetails);
+  rpc GetModule(GetModuleRequest) returns (ModuleDetails);
 
   // Resolve service endpoint for dynamic routing.
   //
   // Returns the best available instance of a service based on health and load.
   // Supports preference criteria like local instances or required capabilities.
-  rpc ResolveService(ServiceResolveRequest) returns (ServiceResolveResponse);
+  rpc ResolveService(ResolveServiceRequest) returns (ServiceResolveResponse);
 
   // Watch for real-time updates to the list of all healthy services.
   //
   // The server will send an initial list, and then send a new full
   // list whenever any service is registered, unregistered, or changes
   // its health status.
-  rpc WatchServices(google.protobuf.Empty) returns (stream ServiceListResponse);
+  rpc WatchServices(WatchServicesRequest) returns (stream ServiceListResponse);
 
   // Watch for real-time updates to the list of all registered modules.
   //
   // The server will send an initial list, and then send a new full
   // list whenever any module is registered, unregistered, or changes
   // its health status.
-  rpc WatchModules(google.protobuf.Empty) returns (stream ModuleListResponse);
+  rpc WatchModules(WatchModulesRequest) returns (stream ModuleListResponse);
 
   // Get module schema from Apicurio Registry.
   //
@@ -83,7 +82,7 @@ service PlatformRegistrationService {
 //
 // Provides the information needed to register a service instance with Consul
 // and make it discoverable to other platform components.
-message ServiceRegistrationRequest {
+message RegisterServiceRequest {
   // Logical service name (e.g., "mapping-service").
   string service_name = 1;
   // Host where service is running.
@@ -105,7 +104,7 @@ message ServiceRegistrationRequest {
 // Extends service registration by including module-specific metadata,
 // schema information, and processing capabilities. Triggers schema
 // validation and Apicurio Registry registration.
-message ModuleRegistrationRequest {
+message RegisterModuleRequest {
   // Module name (e.g., "tika-parser", "chunker").
   string module_name = 1;
   // Host where module is running.
@@ -185,13 +184,26 @@ enum EventType {
   EVENT_TYPE_APICURIO_REGISTERED = 11;
 }
 
-// Request to unregister a service or module.
+// Request to unregister a service.
 //
 // Uses natural key (service_name + host + port) to identify the specific
 // instance to unregister from Consul and the platform registry.
-message UnregisterRequest {
-  // Service or module name.
+message UnregisterServiceRequest {
+  // Service name.
   string service_name = 1;
+  // Host where instance is running.
+  string host = 2;
+  // Port where instance accepts connections.
+  int32 port = 3;
+}
+
+// Request to unregister a module.
+//
+// Uses natural key (module_name + host + port) to identify the specific
+// instance to unregister from Consul and the platform registry.
+message UnregisterModuleRequest {
+  // Module name.
+  string module_name = 1;
   // Host where instance is running.
   string host = 2;
   // Port where instance accepts connections.
@@ -208,15 +220,29 @@ message UnregisterResponse {
   google.protobuf.Timestamp timestamp = 3;
 }
 
-// Request to look up service or module details.
+// Request to look up service details.
 //
 // Supports lookup by logical name (returns all instances) or by specific
 // Consul service ID (returns single instance).
-message ServiceLookupRequest {
-  // Lookup key for finding the service or module.
+message GetServiceRequest {
+  // Lookup key for finding the service.
   oneof lookup_key {
     // Look up by logical name (returns all instances).
     string service_name = 1;
+    // Look up by specific Consul service ID (returns single instance).
+    string service_id = 2;
+  }
+}
+
+// Request to look up module details.
+//
+// Supports lookup by logical name (returns all instances) or by specific
+// Consul service ID (returns single instance).
+message GetModuleRequest {
+  // Lookup key for finding the module.
+  oneof lookup_key {
+    // Look up by logical name (returns all instances).
+    string module_name = 1;
     // Look up by specific Consul service ID (returns single instance).
     string service_id = 2;
   }
@@ -226,7 +252,7 @@ message ServiceLookupRequest {
 //
 // Finds the best available service instance based on health status, load,
 // and optional preference criteria like locality or required capabilities.
-message ServiceResolveRequest {
+message ResolveServiceRequest {
   // Service name to resolve (e.g., "mapping-service").
   string service_name = 1;
   // Prefer instance on same host as caller.
@@ -328,6 +354,18 @@ message ModuleDetails {
   // Timestamp of last health check.
   google.protobuf.Timestamp last_health_check = 12;
 }
+
+// Request to list all registered services.
+message ListServicesRequest {}
+
+// Request to list all registered modules.
+message ListModulesRequest {}
+
+// Request to watch for service registration changes.
+message WatchServicesRequest {}
+
+// Request to watch for module registration changes.
+message WatchModulesRequest {}
 
 // Response containing list of all registered services.
 //

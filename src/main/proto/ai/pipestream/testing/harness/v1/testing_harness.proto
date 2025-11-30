@@ -3,7 +3,6 @@ syntax = "proto3";
 package ai.pipestream.testing.harness.v1;
 
 import "ai/pipestream/data/module/v1/module_service.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 option java_package = "ai.pipestream.testing.harness.v1.grpc";
@@ -12,14 +11,29 @@ option java_multiple_files = true;
 // Test harness service for integration testing
 service TestHarnessService {
   // Bidirectional streaming for test execution
-  rpc ExecuteTestStream(stream TestCommand) returns (stream TestEvent);
+  rpc ExecuteTestStream(stream ExecuteTestStreamRequest) returns (stream ExecuteTestStreamResponse);
 
   // Simple request/response for basic tests
-  rpc ExecuteTest(TestCommand) returns (TestResult);
+  rpc ExecuteTest(ExecuteTestRequest) returns (ExecuteTestResponse);
 
   // Get current module status
-  rpc GetModuleStatus(google.protobuf.Empty) returns (ModuleStatus);
+  rpc GetModuleStatus(GetModuleStatusRequest) returns (GetModuleStatusResponse);
 }
+
+// Request for ExecuteTestStream RPC
+message ExecuteTestStreamRequest {
+  // The test command to execute
+  TestCommand command = 1;
+}
+
+// Request for ExecuteTest RPC
+message ExecuteTestRequest {
+  // The test command to execute
+  TestCommand command = 1;
+}
+
+// Request for GetModuleStatus RPC
+message GetModuleStatusRequest {}
 
 // Commands that can be sent to the test module
 message TestCommand {
@@ -48,7 +62,7 @@ message TestCommand {
 }
 
 // Events reported back from the test module
-message TestEvent {
+message ExecuteTestStreamResponse {
   string event_id = 1;
   string command_id = 2;  // Links back to the command that triggered this
   google.protobuf.Timestamp timestamp = 3;
@@ -76,7 +90,7 @@ message TestEvent {
 
 // Command to process a document
 message ProcessDocumentCommand {
-  ai.pipestream.data.module.v1.ModuleProcessRequest request = 1;
+  ai.pipestream.data.module.v1.ProcessDataRequest request = 1;
   bool expect_success = 2;
   int64 timeout_ms = 3;
 }
@@ -172,15 +186,15 @@ message GenericEvent {
 }
 
 // Test result for simple request/response
-message TestResult {
+message ExecuteTestResponse {
   bool success = 1;
   repeated string messages = 2;
   google.protobuf.Struct data = 3;
-  repeated TestEvent events = 4;
+  repeated ExecuteTestStreamResponse events = 4;
 }
 
 // Current module status
-message ModuleStatus {
+message GetModuleStatusResponse {
   bool is_registered = 1;
   string module_name = 2;
   int64 documents_processed = 3;
