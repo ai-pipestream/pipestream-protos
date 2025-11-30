@@ -6,25 +6,37 @@ option java_multiple_files = true;
 option java_outer_classname = "FilesystemCrawlerProto";
 option java_package = "ai.pipestream.repository.v1.crawler";
 
-// Request to crawl a filesystem directory
+// Request to crawl a filesystem directory and ingest all files into the repository.
+// The crawler will discover files, create metadata, and prepare them for processing.
 message CrawlDirectoryRequest {
-  string path = 1; // Directory path to crawl
-  bool recursive = 2; // Whether to crawl subdirectories
-  string drive = 3; // Target drive to save to
-  string connector_id = 4; // Connector ID for tracking
+  // Absolute or relative filesystem path to the directory to crawl
+  string path = 1;
+  // Whether to recursively crawl subdirectories (true) or only the top level (false)
+  bool recursive = 2;
+  // Target drive identifier where discovered documents will be stored
+  string drive = 3;
+  // Connector ID for tracking the source of these documents
+  string connector_id = 4;
 }
 
-// Response from crawling
+// Response containing statistics about the directory crawl operation.
 message CrawlDirectoryResponse {
+  // Total number of files discovered during the crawl
   int32 files_found = 1;
+  // Number of files successfully processed and ingested
   int32 files_processed = 2;
+  // Number of files that failed processing (errors, permissions, etc.)
   int32 files_failed = 3;
+  // List of paths for files that were successfully processed
   repeated string processed_files = 4;
+  // List of paths for files that failed processing with error details
   repeated string failed_files = 5;
 }
 
-// Service for filesystem crawling
+// Filesystem crawler service for discovering and ingesting local files.
+// Scans directories, extracts file metadata, and creates repository documents.
 service FilesystemCrawlerService {
-  // Crawl a directory and create PipeDocs
+  // Crawl a directory and create PipeDocs for all discovered files.
+  // Returns statistics about the crawl operation and lists of processed/failed files.
   rpc CrawlDirectory(CrawlDirectoryRequest) returns (CrawlDirectoryResponse);
 }
