@@ -7,7 +7,7 @@ import "ai/pipestream/data/module/v1/module_service.proto";
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.repository.v1.v1";
+option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;
 
 // ============================================================================
@@ -70,7 +70,7 @@ message PaginationRequest {
 
 // Export formats supported across services
 enum ExportFormat {
-  EXPORT_FORMAT_PROTOBUF = 0; // Primary: Binary .pb files
+  EXPORT_FORMAT_UNSPECIFIED = 0; // Primary: Binary .pb files
   EXPORT_FORMAT_ZIP = 1;      // Bulk export with metadata
 }
 

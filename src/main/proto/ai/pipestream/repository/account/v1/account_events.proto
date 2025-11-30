@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ai.pipestream.repository.v1.account.v1;
+package ai.pipestream.repository.account.v1;
 
 option java_package = "ai.pipestream.repository.v1.account";
 option java_outer_classname = "AccountEventsProto";

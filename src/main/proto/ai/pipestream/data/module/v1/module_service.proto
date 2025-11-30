@@ -15,7 +15,7 @@ import "google/protobuf/timestamp.proto";
 
 // Service definition for a pipeline step processor.
 // This interface is implemented by developer-created gRPC modules/services.
-service PipeStepProcessor {
+service PipeStepProcessorService {
   // Processes a document according to the step's configuration and logic.
   rpc ProcessData(ModuleProcessRequest) returns (ModuleProcessResponse);
 
@@ -90,8 +90,8 @@ enum CapabilityType {
   CAPABILITY_TYPE_UNSPECIFIED = 0;
 
   // Module converts raw input (files, URLs) to documents
-  PARSER = 1;
-  SINK = 2;
+  CAPABILITY_TYPE_PARSER = 1;
+  CAPABILITY_TYPE_SINK = 2;
 
   // Future capabilities (commented until needed):
   // TRANSFORM = 2;           // Document to document modifications

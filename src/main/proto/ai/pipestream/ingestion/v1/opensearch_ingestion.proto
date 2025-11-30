@@ -9,9 +9,9 @@ option java_package = "ai.pipestream.ingestion.v1.proto";
 option java_outer_classname = "OpenSearchIngestionProto";
 
 // The new, dedicated service for high-throughput document ingestion.
-service OpenSearchIngestion {
+service OpenSearchIngestionService {
   // Bidirectional stream for ingesting documents and receiving real-time acknowledgements.
-  rpc streamDocuments(stream IngestionRequest) returns (stream IngestionResponse);
+  rpc StreamDocuments(stream IngestionRequest) returns (stream IngestionResponse);
 }
 
 // A request to ingest a single document.

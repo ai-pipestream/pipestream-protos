@@ -11,7 +11,7 @@ import "google/protobuf/empty.proto";
 import "ai/pipestream/data/module/v1/module_service.proto";
 
 // Unified registration service for all platform services and modules
-service PlatformRegistration {
+service PlatformRegistrationService {
   // Register a service with streaming status updates
   rpc RegisterService(ServiceRegistrationRequest) returns (stream RegistrationEvent);
   
@@ -81,7 +81,7 @@ message ModuleRegistrationRequest {
   map<string, string> metadata = 5; // Additional metadata
   
   // Module-specific fields
-  ai.pipestream.data.module.v1.ServiceRegistrationMetadata serviceRegistrationMetadata = 6; //module-specific metadata
+  ai.pipestream.data.module.v1.ServiceRegistrationMetadata service_registration_metadata = 6; //module-specific metadata
 }
 
 // Streaming registration event
@@ -106,17 +106,17 @@ message EventMetadata {
 // Registration event types
 enum EventType {
   EVENT_TYPE_UNSPECIFIED = 0;
-  STARTED = 1;                    // Registration process started
-  VALIDATED = 2;                  // Input validated
-  CONSUL_REGISTERED = 3;          // Registered with Consul
-  HEALTH_CHECK_CONFIGURED = 4;    // Health check set up
-  CONSUL_HEALTHY = 5;             // Service reported healthy to Consul
-  COMPLETED = 6;                  // Registration completed successfully
-  FAILED = 7;                     // Registration failed
-  METADATA_RETRIEVED = 8;         // Module metadata fetched from module callback
-  SCHEMA_VALIDATED = 9;           // Schema validated or synthesized
-  DATABASE_SAVED = 10;            // Registration persisted to database
-  APICURIO_REGISTERED = 11;       // Schema registered in Apicurio
+  EVENT_TYPE_STARTED = 1;                    // Registration process started
+  EVENT_TYPE_VALIDATED = 2;                  // Input validated
+  EVENT_TYPE_CONSUL_REGISTERED = 3;          // Registered with Consul
+  EVENT_TYPE_HEALTH_CHECK_CONFIGURED = 4;    // Health check set up
+  EVENT_TYPE_CONSUL_HEALTHY = 5;             // Service reported healthy to Consul
+  EVENT_TYPE_COMPLETED = 6;                  // Registration completed successfully
+  EVENT_TYPE_FAILED = 7;                     // Registration failed
+  EVENT_TYPE_METADATA_RETRIEVED = 8;         // Module metadata fetched from module callback
+  EVENT_TYPE_SCHEMA_VALIDATED = 9;           // Schema validated or synthesized
+  EVENT_TYPE_DATABASE_SAVED = 10;            // Registration persisted to database
+  EVENT_TYPE_APICURIO_REGISTERED = 11;       // Schema registered in Apicurio
 }
 
 // Unregister request

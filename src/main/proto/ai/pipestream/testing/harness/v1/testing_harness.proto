@@ -10,7 +10,7 @@ option java_package = "ai.pipestream.testing.harness.v1.grpc";
 option java_multiple_files = true;
 
 // Test harness service for integration testing
-service TestHarness {
+service TestHarnessService {
     // Bidirectional streaming for test execution
     rpc ExecuteTestStream(stream TestCommand) returns (stream TestEvent);
 
@@ -107,12 +107,12 @@ message ConfigureModuleCommand {
 // Command to simulate scenarios
 message SimulateScenarioCommand {
     enum Scenario {
-        NORMAL_PROCESSING = 0;
-        SLOW_PROCESSING = 1;
-        RANDOM_FAILURES = 2;
-        MEMORY_LEAK = 3;
-        HIGH_CPU = 4;
-        NETWORK_ISSUES = 5;
+        SCENARIO_UNSPECIFIED = 0;
+        SCENARIO_SLOW_PROCESSING = 1;
+        SCENARIO_RANDOM_FAILURES = 2;
+        SCENARIO_MEMORY_LEAK = 3;
+        SCENARIO_HIGH_CPU = 4;
+        SCENARIO_NETWORK_ISSUES = 5;
     }
 
     Scenario scenario = 1;
@@ -148,9 +148,9 @@ message ModuleRegisteredEvent {
 // Event: Health check
 message HealthCheckEvent {
     enum HealthStatus {
-        HEALTHY = 0;
-        UNHEALTHY = 1;
-        DEGRADED = 2;
+        HEALTH_STATUS_UNSPECIFIED = 0;
+        HEALTH_STATUS_UNHEALTHY = 1;
+        HEALTH_STATUS_DEGRADED = 2;
     }
 
     HealthStatus status = 1;

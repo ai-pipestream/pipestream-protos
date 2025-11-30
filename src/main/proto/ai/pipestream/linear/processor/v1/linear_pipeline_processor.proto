@@ -10,7 +10,7 @@ option java_package = "ai.pipestream.linear.processor.v1";
 option java_outer_classname = "LinearPipelineProcessorProto";
 
 // Linear Pipeline Processor Service - Pipeline execution for development/testing
-service LinearPipelineProcessor {
+service LinearPipelineProcessorService {
   // Execute pipeline on documents
   rpc ExecuteLinearPipeline(ExecuteLinearPipelineRequest) returns (stream ExecuteLinearPipelineResponse);
   
@@ -99,11 +99,11 @@ message LinearValidationError {
 }
 
 enum LinearErrorType {
-  ERROR_TYPE_UNSPECIFIED = 0;
-  ERROR_TYPE_CONNECTIVITY = 1;
-  ERROR_TYPE_CONFIGURATION = 2;
-  ERROR_TYPE_FIELD_MAPPING = 3;
-  ERROR_TYPE_MISSING_DEPENDENCY = 4;
+  LINEAR_ERROR_TYPE_ERROR_TYPE_UNSPECIFIED = 0;
+  LINEAR_ERROR_TYPE_ERROR_TYPE_CONNECTIVITY = 1;
+  LINEAR_ERROR_TYPE_ERROR_TYPE_CONFIGURATION = 2;
+  LINEAR_ERROR_TYPE_ERROR_TYPE_FIELD_MAPPING = 3;
+  LINEAR_ERROR_TYPE_ERROR_TYPE_MISSING_DEPENDENCY = 4;
 }
 
 message LinearValidationWarning {
@@ -132,11 +132,11 @@ message LinearPipelineStage {
 }
 
 enum LinearProcessingStatus {
-  PROCESSING_STATUS_UNSPECIFIED = 0;
-  PROCESSING_STATUS_SUCCESS = 1;
-  PROCESSING_STATUS_FAILED = 2;
-  PROCESSING_STATUS_SKIPPED = 3;
-  PROCESSING_STATUS_IN_PROGRESS = 4;
+  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_UNSPECIFIED = 0;
+  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SUCCESS = 1;
+  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_FAILED = 2;
+  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SKIPPED = 3;
+  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_IN_PROGRESS = 4;
 }
 
 // Processing results for pipeline execution

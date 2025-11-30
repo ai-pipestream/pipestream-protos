@@ -189,11 +189,11 @@ message HeartbeatResponse {
 }
 
 enum ControlCommand {
-  COMMAND_CONTINUE = 0;
-  COMMAND_PAUSE = 1;
-  COMMAND_STOP = 2;
-  COMMAND_THROTTLE = 3;          // Slow down
-  COMMAND_SPEED_UP = 4;          // Go faster
+  CONTROL_COMMAND_UNSPECIFIED = 0;
+  CONTROL_COMMAND_COMMAND_PAUSE = 1;
+  CONTROL_COMMAND_COMMAND_STOP = 2;
+  CONTROL_COMMAND_COMMAND_THROTTLE = 3;          // Slow down
+  CONTROL_COMMAND_COMMAND_SPEED_UP = 4;          // Go faster
 }
 
 // ============================================

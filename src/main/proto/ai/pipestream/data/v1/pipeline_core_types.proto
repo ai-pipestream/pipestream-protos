@@ -20,7 +20,7 @@ message PipeDoc {
   // indexing steps will rely on for the api to query against.
   SearchMetadata search_metadata = 2;
   // This is a generic blob for parsing.  Would be useful if a payload needed to parse an image, for example.
-  BlobBag blobBag = 3;
+  BlobBag blob_bag = 3;
   // this can be any protobuf that we would ingest. if the type is unknown and cannot be deserialized, a dynamic message
   // will be used which can be slow.  But the idea is that ALL data in here will go into the search engine unless configured otherwise.
   google.protobuf.Any structured_data = 4; // customer provided mdata
@@ -99,7 +99,7 @@ message LinkReference {
   optional bool is_external = 5;  // Heuristic: different host than source_uri
 }
 message BlobBag {
-  oneof blobData {
+  oneof blob_data {
     Blob blob = 1;
     Blobs blobs = 2;
   }
@@ -176,9 +176,9 @@ message PipeStream {
 
 
 enum Intent {
-  DELETE = 0;
-  ADD = 1;
-  UPDATE = 2;
+  INTENT_UNSPECIFIED = 0;
+  INTENT_ADD = 1;
+  INTENT_UPDATE = 2;
 }
 
 
@@ -228,9 +228,9 @@ message AggregateConfig {
   enum AggregationType {
     AGGREGATION_TYPE_UNSPECIFIED = 0;
     // Concatenates string values.
-    CONCATENATE = 1;
+    AGGREGATION_TYPE_CONCATENATE = 1;
     // Sums numerical values.
-    SUM = 2;
+    AGGREGATION_TYPE_SUM = 2;
   }
 
   AggregationType aggregation_type = 1;

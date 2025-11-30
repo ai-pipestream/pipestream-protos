@@ -3,8 +3,6 @@ syntax = "proto3";
 package ai.pipestream.repository.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/struct.proto";
 
 option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ai.pipestream.repository.v1.filesystem.v1;
+package ai.pipestream.repository.filesystem.v1;
 
 // Import the 'Any' type, which allows us to embed arbitrary message types.
 import "google/protobuf/any.proto";
@@ -28,8 +28,8 @@ message Drive {
 message Node {
   enum NodeType {
     NODE_TYPE_UNSPECIFIED = 0;
-    FOLDER = 1;
-    FILE = 2;
+    NODE_TYPE_FOLDER = 1;
+    NODE_TYPE_FILE = 2;
   }
 
   int64 id = 1;                    // Database primary key

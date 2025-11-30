@@ -41,13 +41,13 @@ message VectorFieldDefinition {
 // Defines the k-NN method and its parameters, mirroring the user-facing configuration.
 message KnnMethodDefinition {
   enum KnnEngine {
-    LUCENE = 0;
+    KNN_ENGINE_UNSPECIFIED = 0;
   }
 
   enum SpaceType {
-    L2 = 0;
-    COSINESIMIL = 1;
-    INNERPRODUCT = 2;
+    SPACE_TYPE_UNSPECIFIED = 0;
+    SPACE_TYPE_COSINESIMIL = 1;
+    SPACE_TYPE_INNERPRODUCT = 2;
   }
 
   KnnEngine engine = 1;
