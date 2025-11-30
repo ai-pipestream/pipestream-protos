@@ -10,93 +10,148 @@ option java_package = "ai.pipestream.engine.linear.v1";
 option java_multiple_files = true;
 option java_outer_classname = "LinearPipelineConfigProto";
 
-// Linear Pipeline Configuration
+// Linear pipeline configuration defining processing stages.
+//
+// Represents a sequential pipeline where documents flow through ordered stages.
 message LinearPipelineConfig {
+  // Unique pipeline identifier.
   string pipeline_id = 1;
+  // Human-readable pipeline name.
   string name = 2;
+  // Description of pipeline purpose.
   string description = 3;
+  // Version identifier for the pipeline.
   string version = 4;
+  // Ordered list of processing stages.
   repeated PipelineStage stages = 5;
+  // Additional metadata as flexible key-value pairs.
   map<string, google.protobuf.Value> metadata = 6;
+  // Timestamp when pipeline was created.
   google.protobuf.Timestamp created_at = 7;
+  // Timestamp when pipeline was last updated.
   google.protobuf.Timestamp updated_at = 8;
-  
-  // Status and execution tracking
+  // Current status of the pipeline.
   PipelineStatus status = 9;
+  // Tags for categorization and search.
   repeated string tags = 10;
+  // Category classification for the pipeline.
   string category = 11;
+  // Whether the pipeline is currently active.
   bool is_active = 12;
+  // Number of times this pipeline has been executed.
   int64 execution_count = 13;
+  // Timestamp of last execution.
   google.protobuf.Timestamp last_executed_at = 14;
+  // User who created the pipeline.
   string created_by = 15;
+  // User who last updated the pipeline.
   string updated_by = 16;
 }
 
-// Pipeline execution stage
+// Single processing stage in a linear pipeline.
 message PipelineStage {
+  // Unique stage identifier.
   string stage_id = 1;
+  // Human-readable stage name.
   string stage_name = 2;
+  // Name of the module type for this stage.
   string module_name = 3;
+  // Module instances configured for this stage.
   repeated ModuleInstance instances = 4;
+  // Stage-specific metadata.
   map<string, google.protobuf.Value> stage_metadata = 5;
 }
 
-// Module instance with specific configuration
+// Configured instance of a processing module.
 message ModuleInstance {
+  // Unique instance identifier.
   string instance_id = 1;
+  // Human-readable instance name.
   string instance_name = 2;
+  // Module type this instance implements.
   string module_name = 3;
+  // Instance-specific configuration.
   google.protobuf.Struct config = 4;
+  // Whether this instance is enabled.
   bool enabled = 5;
+  // Instance-specific metadata.
   map<string, google.protobuf.Value> instance_metadata = 6;
 }
 
-// Pipeline status enum
+// Lifecycle status of a pipeline configuration.
 enum PipelineStatus {
+  // Unspecified status.
   PIPELINE_STATUS_UNSPECIFIED = 0;
+  // Draft mode, not yet active.
   PIPELINE_STATUS_DRAFT = 1;
+  // Active and available for execution.
   PIPELINE_STATUS_ACTIVE = 2;
+  // Inactive but not deleted.
   PIPELINE_STATUS_INACTIVE = 3;
+  // Archived for historical reference.
   PIPELINE_STATUS_ARCHIVED = 4;
 }
 
 
-// Linear Pipeline Execution Request
+// Request to execute a linear pipeline.
 message LinearPipelineExecutionRequest {
+  // Pipeline identifier to execute.
   string pipeline_id = 1;
+  // Specific document IDs to process.
   repeated string document_ids = 2;
-  string connector_id = 3;  // For querying documents by connector
+  // Connector ID to query documents from.
+  string connector_id = 3;
+  // Execution parameters.
   map<string, string> parameters = 4;
+  // Whether to stream results as they become available.
   bool stream_results = 5;
-  string execution_id = 6;  // Optional: client-provided execution ID
+  // Optional client-provided execution identifier.
+  string execution_id = 6;
 }
 
-// Linear Pipeline Execution Response (streaming)
+// Streaming response from pipeline execution.
 message LinearPipelineExecutionResponse {
+  // Execution identifier.
   string execution_id = 1;
+  // Document being processed.
   string document_id = 2;
+  // Current stage index (zero-based).
   int32 current_stage = 3;
+  // Total number of stages.
   int32 total_stages = 4;
+  // Name of current stage.
   string stage_name = 5;
+  // Result from current stage processing.
   LinearProcessingResult stage_result = 6;
+  // Whether this is the final response for this document.
   bool is_final = 7;
+  // Timestamp of this response.
   google.protobuf.Timestamp timestamp = 8;
 }
 
-// Processing result for a stage
+// Result from processing a single stage.
 message LinearProcessingResult {
+  // Processing status for this stage.
   LinearProcessingStatus status = 1;
+  // Error message if processing failed.
   string error_message = 2;
+  // Stage-specific result metadata.
   map<string, google.protobuf.Value> metadata = 3;
+  // Processing time in milliseconds.
   int64 processing_time_ms = 4;
 }
 
-// Processing status enum
+// Status of stage processing.
 enum LinearProcessingStatus {
+  // Unspecified status.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_UNSPECIFIED = 0;
+  // Processing completed successfully.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SUCCESS = 1;
+  // Processing failed with error.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_FAILED = 2;
+  // Processing currently in progress.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_IN_PROGRESS = 3;
+  // Processing was skipped.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SKIPPED = 4;
 }
 
@@ -132,123 +187,201 @@ service LinearPipelineConfigService {
 }
 
 // Request/Response messages
+
+// Request to create a new pipeline configuration.
 message CreatePipelineConfigRequest {
+  // Pipeline configuration to create.
   LinearPipelineConfig config = 1;
 }
 
+// Response from creating a pipeline configuration.
 message CreatePipelineConfigResponse {
+  // Generated pipeline identifier.
   string pipeline_id = 1;
+  // Whether creation succeeded.
   bool success = 2;
+  // Status or error message.
   string message = 3;
 }
 
+// Request to retrieve a pipeline configuration.
 message GetPipelineConfigRequest {
+  // Pipeline identifier to retrieve.
   string pipeline_id = 1;
 }
 
+// Response containing pipeline configuration.
 message GetPipelineConfigResponse {
+  // Pipeline configuration if found.
   LinearPipelineConfig config = 1;
+  // Whether the pipeline was found.
   bool found = 2;
 }
 
+// Request to update a pipeline configuration.
 message UpdatePipelineConfigRequest {
+  // Updated pipeline configuration.
   LinearPipelineConfig config = 1;
 }
 
+// Response from updating a pipeline configuration.
 message UpdatePipelineConfigResponse {
+  // Whether update succeeded.
   bool success = 1;
+  // Status or error message.
   string message = 2;
 }
 
+// Request to delete a pipeline configuration.
 message DeletePipelineConfigRequest {
+  // Pipeline identifier to delete.
   string pipeline_id = 1;
 }
 
+// Response from deleting a pipeline configuration.
 message DeletePipelineConfigResponse {
+  // Whether deletion succeeded.
   bool success = 1;
+  // Status or error message.
   string message = 2;
 }
 
+// Request to list pipeline configurations with pagination.
 message ListPipelineConfigsRequest {
+  // Number of results per page.
   int32 page_size = 1;
+  // Pagination token for next page.
   string page_token = 2;
+  // Field to order results by.
   string order_by = 3;
 }
 
+// Response containing list of pipeline configurations.
 message ListPipelineConfigsResponse {
+  // List of pipeline configurations.
   repeated LinearPipelineConfig configs = 1;
+  // Token for next page of results.
   string next_page_token = 2;
+  // Total count of configurations.
   int32 total_count = 3;
 }
 
+// Request to search pipeline configurations.
 message SearchPipelineConfigsRequest {
+  // Search query string.
   string query = 1;
+  // Filter by tags.
   repeated string tags = 2;
+  // Filter by status.
   PipelineStatus status = 3;
+  // Number of results per page.
   int32 page_size = 4;
+  // Pagination token.
   string page_token = 5;
 }
 
+// Response containing search results.
 message SearchPipelineConfigsResponse {
+  // Matching pipeline configurations.
   repeated LinearPipelineConfig configs = 1;
+  // Token for next page of results.
   string next_page_token = 2;
+  // Total count of matching configurations.
   int32 total_count = 3;
 }
 
+// Request to get pipelines filtered by status.
 message GetPipelineConfigsByStatusRequest {
+  // Status to filter by.
   PipelineStatus status = 1;
+  // Number of results per page.
   int32 page_size = 2;
+  // Pagination token.
   string page_token = 3;
 }
 
+// Response containing pipelines with matching status.
 message GetPipelineConfigsByStatusResponse {
+  // Matching pipeline configurations.
   repeated LinearPipelineConfig configs = 1;
+  // Token for next page of results.
   string next_page_token = 2;
+  // Total count of matching configurations.
   int32 total_count = 3;
 }
 
+// Request to get pipelines filtered by tag.
 message GetPipelineConfigsByTagRequest {
+  // Tag to filter by.
   string tag = 1;
+  // Number of results per page.
   int32 page_size = 2;
+  // Pagination token.
   string page_token = 3;
 }
 
+// Response containing pipelines with matching tag.
 message GetPipelineConfigsByTagResponse {
+  // Matching pipeline configurations.
   repeated LinearPipelineConfig configs = 1;
+  // Token for next page of results.
   string next_page_token = 2;
+  // Total count of matching configurations.
   int32 total_count = 3;
 }
 
+// Request to validate a pipeline configuration.
 message ValidatePipelineConfigRequest {
+  // Pipeline configuration to validate.
   LinearPipelineConfig config = 1;
 }
 
+// Response from pipeline validation.
 message ValidatePipelineConfigResponse {
+  // Whether the configuration is valid.
   bool valid = 1;
+  // Validation errors if any.
   repeated string errors = 2;
+  // Validation warnings if any.
   repeated string warnings = 3;
 }
 
+// Request to get documents from a connector.
 message GetDocumentsByConnectorRequest {
+  // Connector identifier.
   string connector_id = 1;
+  // Number of results per page.
   int32 page_size = 2;
+  // Pagination token.
   string page_token = 3;
 }
 
+// Response containing documents from connector.
 message GetDocumentsByConnectorResponse {
+  // List of documents.
   repeated ai.pipestream.data.v1.PipeDoc documents = 1;
+  // Token for next page of results.
   string next_page_token = 2;
+  // Total count of documents.
   int32 total_count = 3;
 }
 
+// Request to store pipeline execution results.
 message StorePipelineExecutionResultRequest {
+  // Execution identifier.
   string execution_id = 1;
+  // Pipeline identifier.
   string pipeline_id = 2;
+  // Processing result stream.
   ai.pipestream.data.v1.PipeStream result = 3;
+  // Execution metadata.
   map<string, google.protobuf.Value> execution_metadata = 4;
 }
 
+// Response from storing execution results.
 message StorePipelineExecutionResultResponse {
+  // Whether storage succeeded.
   bool success = 1;
+  // Status or error message.
   string message = 2;
 }
