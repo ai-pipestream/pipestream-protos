@@ -1,4 +1,5 @@
 version: v2
+name: buf.build/pipestreamai/platform
 deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
