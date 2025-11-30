@@ -1,0 +1,98 @@
+name: Buf CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'proto/**/*.proto'
+      - 'proto/buf.yaml'
+      - 'proto/buf.lock'
+      - '.github/workflows/buf.yml'
+  pull_request:
+    paths:
+      - 'proto/**/*.proto'
+      - 'proto/buf.yaml'
+      - 'proto/buf.lock'
+      - '.github/workflows/buf.yml'
+
+jobs:
+  lint:
+    name: Buf Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf Lint
+        working-directory: proto
+        run: buf lint
+
+  breaking:
+    name: Breaking Change Detection
+    runs-on: ubuntu-latest
+    # Only run breaking change detection on PRs against main
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf Breaking
+        working-directory: proto
+        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=proto"
+
+  format-check:
+    name: Buf Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf Format Check
+        working-directory: proto
+        run: |
+          buf format -d --exit-code
+
+  publish:
+    name: Publish to BSR
+    runs-on: ubuntu-latest
+    # Only publish from main branch
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint, format-check]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf Push to BSR
+        working-directory: proto
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        run: |
+          if [ -n "$BUF_TOKEN" ]; then
+            echo "Publishing to Buf Schema Registry..."
+            buf push
+          else
+            echo "BUF_TOKEN not configured. Skipping BSR publication."
+            echo "To enable: Add BUF_TOKEN secret to GitHub repository settings."
+          fi
