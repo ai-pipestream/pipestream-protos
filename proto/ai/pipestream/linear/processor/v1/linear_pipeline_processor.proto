@@ -15,7 +15,7 @@ service LinearPipelineProcessorService {
   rpc ExecuteLinearPipeline(ExecuteLinearPipelineRequest) returns (stream ExecuteLinearPipelineResponse);
   
   // Batch process multiple documents through pipelines
-  rpc BatchProcessLinearDocuments(stream BatchLinearProcessRequest) returns (stream BatchLinearProcessResponse);
+  rpc BatchProcessLinearDocuments(stream BatchProcessLinearDocumentsRequest) returns (stream BatchProcessLinearDocumentsResponse);
   
   // Test single document through single module (for quick testing)
   rpc ProcessLinearDocument(ProcessLinearDocumentRequest) returns (ProcessLinearDocumentResponse);
@@ -42,13 +42,13 @@ message ExecuteLinearPipelineResponse {
 }
 
 // Batch processing
-message BatchLinearProcessRequest {
+message BatchProcessLinearDocumentsRequest {
   string document_id = 1;
   string pipeline_id = 2;
   map<string, string> parameters = 3; // Runtime parameters
 }
 
-message BatchLinearProcessResponse {
+message BatchProcessLinearDocumentsResponse {
   string document_id = 1;
   string pipeline_id = 2;
   LinearProcessingResult result = 3;
@@ -68,7 +68,7 @@ message ProcessLinearDocumentRequest {
 }
 
 message ProcessLinearDocumentResponse {
-  ai.pipestream.data.module.v1.ModuleProcessResponse module_response = 1; // Full response from module
+  ai.pipestream.data.module.v1.ProcessDataResponse module_response = 1; // Full response from module
   LinearProcessingStatus status = 2;
   string error_message = 3;
   int64 processing_time_ms = 4;

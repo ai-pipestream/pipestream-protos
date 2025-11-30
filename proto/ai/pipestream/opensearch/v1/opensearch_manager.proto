@@ -26,19 +26,19 @@ service OpenSearchManagerService {
   // Document Operations (single documents)
   rpc IndexDocument(IndexDocumentRequest) returns (IndexDocumentResponse);
   // Indexes a document with dynamic schema.
-  rpc IndexAnyDocument(IndexAnyDocumentRequest) returns (IndexDocumentResponse);
+  rpc IndexAnyDocument(IndexAnyDocumentRequest) returns (IndexAnyDocumentResponse);
   // Deletes a document from an index.
   rpc DeleteDocument(DeleteDocumentRequest) returns (DeleteDocumentResponse);
   // Retrieves a document by ID from an index.
   rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
-  
+
   // Admin Operations
   rpc GetIndexStats(GetIndexStatsRequest) returns (GetIndexStatsResponse);
   // Lists all OpenSearch indices.
   rpc ListIndices(ListIndicesRequest) returns (ListIndicesResponse);
-  
+
   // Domain-Specific Search Operations
-  rpc SearchFilesystemMeta(FilesystemMetaSearchRequest) returns (FilesystemMetaSearchResponse);
+  rpc SearchFilesystemMeta(SearchFilesystemMetaRequest) returns (SearchFilesystemMetaResponse);
 }
 
 // === Schema Management Messages (from schema_manager.proto) ===
@@ -134,6 +134,12 @@ message IndexDocumentResponse {
   string message = 3;
 }
 
+message IndexAnyDocumentResponse {
+  bool success = 1;
+  string document_id = 2;
+  string message = 3;
+}
+
 message DeleteDocumentRequest {
   string index_name = 1;
   string document_id = 2;
@@ -188,7 +194,7 @@ message IndexInfo {
 
 // === Domain-Specific Search Messages ===
 
-message FilesystemMetaSearchRequest {
+message SearchFilesystemMetaRequest {
   string drive = 1;
   string query = 2;                        // Text query for name, description
   repeated string node_types = 3;          // FILE, FOLDER filter
@@ -199,7 +205,7 @@ message FilesystemMetaSearchRequest {
   optional bool include_content_search = 8; // Future: search file contents
 }
 
-message FilesystemMetaSearchResponse {
+message SearchFilesystemMetaResponse {
   repeated FilesystemSearchResult results = 1;
   int64 total_count = 2;
   string next_page_token = 3;

@@ -11,20 +11,20 @@ option java_multiple_files = true;
 service EngineV1Service {
   // Process document at specific node
   rpc ProcessNode(ProcessNodeRequest) returns (ProcessNodeResponse);
-  
+
   // Stream processing
-  rpc ProcessStream(stream ProcessNodeRequest) returns (stream ProcessNodeResponse);
-  
+  rpc ProcessStream(stream ProcessStreamRequest) returns (stream ProcessStreamResponse);
+
   // Cross-cluster routing
   rpc RouteToCluster(RouteToClusterRequest) returns (RouteToClusterResponse);
-  
+
   // Kafka topic subscription management
   rpc UpdateTopicSubscriptions(UpdateTopicSubscriptionsRequest) returns (UpdateTopicSubscriptionsResponse);
   // Retrieves topic subscriptions for the engine.
   rpc GetTopicSubscriptions(GetTopicSubscriptionsRequest) returns (GetTopicSubscriptionsResponse);
-  
+
   // Engine health
-  rpc GetHealth(HealthRequest) returns (HealthResponse);
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
 }
 
 message ProcessNodeRequest {
@@ -39,6 +39,17 @@ message ProcessNodeResponse {
   ProcessingMetrics metrics = 4;
 }
 
+message ProcessStreamRequest {
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  string routing_condition = 2; // Optional condition for next node selection
+}
+
+message ProcessStreamResponse {
+  bool success = 1;
+  string message = 2;
+  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+  ProcessingMetrics metrics = 4;
+}
 
 message RouteToClusterRequest {
   string target_cluster_id = 1;
@@ -60,10 +71,10 @@ message ProcessingMetrics {
   int64 hop_count = 5;
 }
 
-message HealthRequest {
+message GetHealthRequest {
 }
 
-message HealthResponse {
+message GetHealthResponse {
   EngineHealth health = 1;
   int64 active_streams = 2;
   int64 cache_hit_rate = 3;

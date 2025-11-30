@@ -4,6 +4,7 @@ package ai.pipestream.repository.v1;
 
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "ai/pipestream/repository/v1/repository_service_data.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;
@@ -15,47 +16,47 @@ option java_multiple_files = true;
 // Service for managing graph nodes, edges, and topology operations
 service GraphRepositoryService {
   // ========== NODE OPERATIONS ==========
-  rpc CreateNode(CreateNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  rpc CreateNode(CreateNodeRequest) returns (CreateNodeResponse);
   // Retrieves a graph node by ID.
-  rpc GetNode(GetNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   // Updates a graph node configuration.
-  rpc UpdateNode(UpdateNodeRequest) returns (ai.pipestream.config.v1.GraphNode);
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
   // Deletes a graph node.
-  rpc DeleteNode(DeleteNodeRequest) returns (DeleteResponse);
+  rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
   // Lists all graph nodes with filtering.
   rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
 
   // ========== GRAPH OPERATIONS ==========
-  rpc CreateGraph(CreateGraphRequest) returns (ai.pipestream.config.v1.PipelineGraph);
+  rpc CreateGraph(CreateGraphRequest) returns (CreateGraphResponse);
   // Retrieves a pipeline graph by ID.
-  rpc GetGraph(GetGraphRequest) returns (ai.pipestream.config.v1.NetworkTopology);
+  rpc GetGraph(GetGraphRequest) returns (GetGraphResponse);
   // Updates a pipeline graph.
-  rpc UpdateGraph(UpdateGraphRequest) returns (ai.pipestream.config.v1.PipelineGraph);
+  rpc UpdateGraph(UpdateGraphRequest) returns (UpdateGraphResponse);
   // Deletes a pipeline graph.
-  rpc DeleteGraph(DeleteGraphRequest) returns (DeleteResponse);
+  rpc DeleteGraph(DeleteGraphRequest) returns (DeleteGraphResponse);
   // Lists all pipeline graphs.
   rpc ListGraphs(ListGraphsRequest) returns (ListGraphsResponse);
 
   // ========== DNS-LIKE NODE RESOLUTION ==========
-  rpc ResolveNode(ResolveNodeRequest) returns (ai.pipestream.config.v1.NodeLookupResponse);
+  rpc ResolveNode(ResolveNodeRequest) returns (ResolveNodeResponse);
   // Resolves downstream nodes following graph edges.
   rpc ResolveNextNodes(ResolveNextNodesRequest) returns (ResolveNextNodesResponse);
   // Resolves a node reference across cluster boundaries.
-  rpc ResolveCrossClusterNode(ai.pipestream.config.v1.CrossClusterNodeLookup) returns (ai.pipestream.config.v1.NodeLookupResponse);
+  rpc ResolveCrossClusterNode(ResolveCrossClusterNodeRequest) returns (ResolveCrossClusterNodeResponse);
 
   // ========== KAFKA TOPIC DISCOVERY ==========
-  rpc FindNodesByInputTopic(FindNodesByTopicRequest) returns (FindNodesByTopicResponse);
+  rpc FindNodesByInputTopic(FindNodesByInputTopicRequest) returns (FindNodesByInputTopicResponse);
   // Finds all nodes that produce to a specific Kafka topic.
-  rpc FindNodesByOutputTopic(FindNodesByTopicRequest) returns (FindNodesByTopicResponse);
-  
+  rpc FindNodesByOutputTopic(FindNodesByOutputTopicRequest) returns (FindNodesByOutputTopicResponse);
+
   // ========== LOOP DETECTION ==========
   rpc DetectLoops(DetectLoopsRequest) returns (DetectLoopsResponse);
-  
+
   // ========== NETWORK TOPOLOGY ==========
-  rpc GetNetworkTopology(GetNetworkTopologyRequest) returns (ai.pipestream.config.v1.NetworkTopology);
-  
+  rpc GetNetworkTopology(GetNetworkTopologyRequest) returns (GetNetworkTopologyResponse);
+
   // ========== REAL-TIME UPDATES ==========
-  rpc SubscribeToUpdates(SubscribeToUpdatesRequest) returns (stream ai.pipestream.config.v1.GraphUpdateNotification);
+  rpc SubscribeToUpdates(SubscribeToUpdatesRequest) returns (stream SubscribeToUpdatesResponse);
 }
 
 // ============================================================================
@@ -88,6 +89,27 @@ message UpdateNodeRequest {
 // Delete Node request
 message DeleteNodeRequest {
   string node_id = 1;
+}
+
+// Create Node response
+message CreateNodeResponse {
+  ai.pipestream.config.v1.GraphNode node = 1;
+}
+
+// Get Node response
+message GetNodeResponse {
+  ai.pipestream.config.v1.GraphNode node = 1;
+}
+
+// Update Node response
+message UpdateNodeResponse {
+  ai.pipestream.config.v1.GraphNode node = 1;
+}
+
+// Delete Node response
+message DeleteNodeResponse {
+  bool success = 1;
+  string node_id = 2;
 }
 
 // List Nodes request
@@ -136,6 +158,27 @@ message DeleteGraphRequest {
   string graph_id = 1;
 }
 
+// Create Graph response
+message CreateGraphResponse {
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+}
+
+// Get Graph response
+message GetGraphResponse {
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+}
+
+// Update Graph response
+message UpdateGraphResponse {
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+}
+
+// Delete Graph response
+message DeleteGraphResponse {
+  bool success = 1;
+  string graph_id = 2;
+}
+
 // List Graphs request
 message ListGraphsRequest {
   string cluster_id = 1;
@@ -160,6 +203,11 @@ message ResolveNodeRequest {
   bool use_cache = 3; // Default true
 }
 
+// Resolve Node response
+message ResolveNodeResponse {
+  ai.pipestream.config.v1.NodeLookupResponse node = 1;
+}
+
 // Resolve Next Nodes request
 message ResolveNextNodesRequest {
   string current_node_id = 1;
@@ -174,19 +222,41 @@ message ResolveNextNodesResponse {
   repeated ai.pipestream.config.v1.CrossClusterNodeLookup cross_cluster_nodes = 2;
 }
 
+// Resolve Cross-Cluster Node request
+message ResolveCrossClusterNodeRequest {
+  string node_id = 1;
+  string source_cluster_id = 2;
+  string target_cluster_id = 3;
+}
+
+// Resolve Cross-Cluster Node response
+message ResolveCrossClusterNodeResponse {
+  ai.pipestream.config.v1.CrossClusterNodeLookup node = 1;
+}
+
 // ============================================================================
 // KAFKA TOPIC DISCOVERY MESSAGES
 // ============================================================================
 
-// Find Nodes by Topic request
-message FindNodesByTopicRequest {
+// Find Nodes by Input Topic request
+message FindNodesByInputTopicRequest {
   string topic_name = 1;
   string cluster_id = 2; // Optional: search specific cluster
-  bool input_topic = 3; // true for input, false for output
 }
 
-// Find Nodes by Topic response
-message FindNodesByTopicResponse {
+// Find Nodes by Input Topic response
+message FindNodesByInputTopicResponse {
+  repeated ai.pipestream.config.v1.GraphNode nodes = 1;
+}
+
+// Find Nodes by Output Topic request
+message FindNodesByOutputTopicRequest {
+  string topic_name = 1;
+  string cluster_id = 2; // Optional: search specific cluster
+}
+
+// Find Nodes by Output Topic response
+message FindNodesByOutputTopicResponse {
   repeated ai.pipestream.config.v1.GraphNode nodes = 1;
 }
 
@@ -224,6 +294,11 @@ message GetNetworkTopologyRequest {
   int32 max_depth = 3; // For large networks
 }
 
+// Get Network Topology response
+message GetNetworkTopologyResponse {
+  ai.pipestream.config.v1.NetworkTopology topology = 1;
+}
+
 // ============================================================================
 // REAL-TIME UPDATES MESSAGES
 // ============================================================================
@@ -232,4 +307,15 @@ message GetNetworkTopologyRequest {
 message SubscribeToUpdatesRequest {
   string cluster_id = 1;
   repeated ai.pipestream.config.v1.UpdateType update_types = 2; // Filter by update types
+}
+
+// Subscribe to Updates response (streaming)
+message SubscribeToUpdatesResponse {
+  ai.pipestream.config.v1.UpdateType update_type = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  oneof updated_entity {
+    ai.pipestream.config.v1.GraphNode node = 3;
+    ai.pipestream.config.v1.PipelineGraph graph = 4;
+    ai.pipestream.config.v1.GraphEdge edge = 5;
+  }
 }

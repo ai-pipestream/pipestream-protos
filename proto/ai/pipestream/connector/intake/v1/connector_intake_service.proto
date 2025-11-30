@@ -23,11 +23,11 @@ service ConnectorIntakeService {
   // 1. The "Power User" path: Client sends a full PipeDoc
   // Best for internal services, advanced connectors, or "Box.com" style integrations
   // where the client already knows the structure.
-  rpc UploadPipeDoc(UploadPipeDocRequest) returns (UploadResponse);
+  rpc UploadPipeDoc(UploadPipeDocRequest) returns (UploadPipeDocResponse);
 
   // 2. The "Simple" path: Client sends raw bytes (Blob) + minimal metadata
   // Best for "I just have a file" scenarios. Intake constructs the PipeDoc wrapper.
-  rpc UploadBlob(UploadBlobRequest) returns (UploadResponse);
+  rpc UploadBlob(UploadBlobRequest) returns (UploadBlobResponse);
 
   // Register a new crawl session (Async/Background only)
   rpc StartCrawlSession(StartCrawlSessionRequest) returns (StartCrawlSessionResponse);
@@ -55,7 +55,7 @@ service ConnectorAdminService {
   rpc UpdateConnector(UpdateConnectorRequest) returns (UpdateConnectorResponse);
 
   // Get connector details
-  rpc GetConnector(GetConnectorRequest) returns (ConnectorRegistration);
+  rpc GetConnector(GetConnectorRequest) returns (GetConnectorResponse);
 
   // Validate API key for a connector
   rpc ValidateApiKey(ValidateApiKeyRequest) returns (ValidateApiKeyResponse);
@@ -117,7 +117,16 @@ message UploadBlobRequest {
 }
 
 // Response from document upload operations.
-message UploadResponse {
+message UploadPipeDocResponse {
+  // Whether the upload succeeded.
+  bool success = 1;
+  // Document ID assigned by the repository service.
+  string doc_id = 2;
+  // Status or error message.
+  string message = 3;
+}
+
+message UploadBlobResponse {
   // Whether the upload succeeded.
   bool success = 1;
   // Document ID assigned by the repository service.
@@ -380,6 +389,12 @@ message UpdateConnectorResponse {
 message GetConnectorRequest {
   // Connector identifier to retrieve.
   string connector_id = 1;
+}
+
+// Response containing connector details.
+message GetConnectorResponse {
+  // The connector registration details.
+  ConnectorRegistration connector = 1;
 }
 
 // Request to validate an API key.

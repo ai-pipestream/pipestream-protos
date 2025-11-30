@@ -94,7 +94,7 @@ enum PipelineStatus {
 
 
 // Request to execute a linear pipeline.
-message LinearPipelineExecutionRequest {
+message ExecuteLinearPipelineRequest {
   // Pipeline identifier to execute.
   string pipeline_id = 1;
   // Specific document IDs to process.
@@ -110,7 +110,7 @@ message LinearPipelineExecutionRequest {
 }
 
 // Streaming response from pipeline execution.
-message LinearPipelineExecutionResponse {
+message ExecuteLinearPipelineResponse {
   // Execution identifier.
   string execution_id = 1;
   // Document being processed.
@@ -176,7 +176,7 @@ service LinearPipelineConfigService {
   rpc GetPipelineConfigsByTag(GetPipelineConfigsByTagRequest) returns (GetPipelineConfigsByTagResponse);
 
   // Execution operations
-  rpc ExecuteLinearPipeline(LinearPipelineExecutionRequest) returns (stream LinearPipelineExecutionResponse);
+  rpc ExecuteLinearPipeline(ExecuteLinearPipelineRequest) returns (stream ExecuteLinearPipelineResponse);
   // Validates a pipeline configuration without executing it.
   rpc ValidatePipelineConfig(ValidatePipelineConfigRequest) returns (ValidatePipelineConfigResponse);
 

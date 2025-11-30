@@ -94,22 +94,22 @@ message Node {
 // Service definition for filesystem operations
 service FilesystemService {
   // Drive management operations
-  rpc CreateDrive(CreateDriveRequest) returns (Drive);
+  rpc CreateDrive(CreateDriveRequest) returns (CreateDriveResponse);
   // Retrieves a drive by ID.
-  rpc GetDrive(GetDriveRequest) returns (Drive);
+  rpc GetDrive(GetDriveRequest) returns (GetDriveResponse);
   // Lists all drives for an account.
   rpc ListDrives(ListDrivesRequest) returns (ListDrivesResponse);
   // Deletes a drive and all associated nodes.
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
 
   // Node CRUD operations
-  rpc CreateNode(CreateNodeRequest) returns (Node);
+  rpc CreateNode(CreateNodeRequest) returns (CreateNodeResponse);
   // Retrieves a node by ID.
-  rpc GetNode(GetNodeRequest) returns (Node);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   // Retrieves a node by its filesystem path.
-  rpc GetNodeByPath(GetNodeByPathRequest) returns (Node);
+  rpc GetNodeByPath(GetNodeByPathRequest) returns (GetNodeByPathResponse);
   // Updates node metadata.
-  rpc UpdateNode(UpdateNodeRequest) returns (Node);
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
   // Deletes a node and optionally its children.
   rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
 
@@ -121,17 +121,17 @@ service FilesystemService {
   rpc GetTree(GetTreeRequest) returns (GetTreeResponse);
 
   // Move and copy operations
-  rpc MoveNode(MoveNodeRequest) returns (Node);
+  rpc MoveNode(MoveNodeRequest) returns (MoveNodeResponse);
   // Copies a node to a new location.
-  rpc CopyNode(CopyNodeRequest) returns (Node);
+  rpc CopyNode(CopyNodeRequest) returns (CopyNodeResponse);
 
   // Search operations
   rpc SearchNodes(SearchNodesRequest) returns (SearchNodesResponse);
   // Searches drives by name or metadata.
   rpc SearchDrives(SearchDrivesRequest) returns (SearchDrivesResponse);
-  
+
   // Bulk export operations for indexing
-  rpc StreamAllMetadata(StreamMetadataRequest) returns (stream MetadataExport);
+  rpc StreamAllMetadata(StreamAllMetadataRequest) returns (stream StreamAllMetadataResponse);
   
   // Format operations for filesystem
   rpc FormatFilesystem(FormatFilesystemRequest) returns (FormatFilesystemResponse);
@@ -216,6 +216,12 @@ message CreateNodeRequest {
   string path = 15;
 }
 
+// Response from creating a node.
+message CreateNodeResponse {
+  // The newly created node.
+  Node node = 1;
+}
+
 // Request to retrieve a node by its document ID.
 message GetNodeRequest {
   // Drive name (required).
@@ -224,6 +230,12 @@ message GetNodeRequest {
   string document_id = 2;
   // Whether to include file payload (default: false, Engine handles hydration).
   bool include_payload = 3;
+}
+
+// Response from retrieving a node.
+message GetNodeResponse {
+  // The requested node.
+  Node node = 1;
 }
 
 // Request to retrieve a node by its filesystem path.
@@ -236,6 +248,12 @@ message GetNodeByPathRequest {
   string path = 3;
   // Whether to include file payload in response.
   bool include_payload = 4;
+}
+
+// Response from retrieving a node by path.
+message GetNodeByPathResponse {
+  // The requested node.
+  Node node = 1;
 }
 
 // Request to update node metadata.
@@ -258,6 +276,12 @@ message UpdateNodeRequest {
   string service_type = 8;
   // Actual payload type.
   string payload_type = 9;
+}
+
+// Response from updating a node.
+message UpdateNodeResponse {
+  // The updated node.
+  Node node = 1;
 }
 
 // Request to delete a node.
@@ -358,6 +382,12 @@ message MoveNodeRequest {
   string new_name = 4;
 }
 
+// Response from moving a node.
+message MoveNodeResponse {
+  // The moved node with updated location.
+  Node node = 1;
+}
+
 // Request to copy a node to a new location.
 message CopyNodeRequest {
   // Drive name (required).
@@ -370,6 +400,12 @@ message CopyNodeRequest {
   string new_name = 4;
   // Whether to perform deep copy for folders.
   bool deep = 5;
+}
+
+// Response from copying a node.
+message CopyNodeResponse {
+  // The newly copied node.
+  Node node = 1;
 }
 
 // Request to search for nodes.
@@ -503,10 +539,22 @@ message CreateDriveRequest {
   bool create_bucket = 9;
 }
 
+// Response from creating a drive.
+message CreateDriveResponse {
+  // The newly created drive.
+  Drive drive = 1;
+}
+
 // Request to retrieve a drive by name.
 message GetDriveRequest {
   // Drive name to retrieve.
   string name = 1;
+}
+
+// Response from retrieving a drive.
+message GetDriveResponse {
+  // The requested drive.
+  Drive drive = 1;
 }
 
 // Request to list all drives.
@@ -592,7 +640,7 @@ message DriveSearchResult {
 }
 
 // Request to stream metadata for bulk export and indexing.
-message StreamMetadataRequest {
+message StreamAllMetadataRequest {
   // Optional: specific drive to export (empty for all drives).
   string drive = 1;
   // Number of items per batch (default 1000).
@@ -608,7 +656,7 @@ message StreamMetadataRequest {
 // Streamed metadata export item.
 //
 // Each message contains either drive or node metadata.
-message MetadataExport {
+message StreamAllMetadataResponse {
   // Exported metadata item.
   oneof item {
     // Drive metadata export.

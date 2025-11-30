@@ -18,10 +18,10 @@ option java_outer_classname = "PipeStepProcessorServiceProto";
 service PipeStepProcessorService {
   // Processes a document according to the step's configuration and logic.
   // Set is_test=true in the request for test calls that don't count as legitimate processing.
-  rpc ProcessData(ProcessDataRequest) returns (ModuleProcessResponse);
+  rpc ProcessData(ProcessDataRequest) returns (ProcessDataResponse);
 
   // Returns static registration information about this module with optional health check
-  rpc GetServiceRegistration(GetServiceRegistrationRequest) returns (ServiceRegistrationMetadata);
+  rpc GetServiceRegistration(GetServiceRegistrationRequest) returns (GetServiceRegistrationResponse);
 }
 
 // Request for module registration, optionally includes test data for health check
@@ -31,7 +31,7 @@ message GetServiceRegistrationRequest {
 }
 
 // Response containing module registration data and health status
-message ServiceRegistrationMetadata {
+message GetServiceRegistrationResponse {
   // --- Core Identity & Validation (Machine-Readable) ---
   // Unique, machine-readable identifier for the module (e.g., "acme-text-chunker-v2").
   string module_name = 1;
@@ -165,7 +165,7 @@ message ProcessDataRequest {
 // Response message for the ProcessData RPC.
 // This is returned by the gRPC Service Implementation back to the engine.
 // Renamed to avoid confusion with engine ProcessResponse.
-message ModuleProcessResponse {
+message ProcessDataResponse {
   // Outcome: True if this step's processing was successful, false otherwise.
   bool success = 1;
 

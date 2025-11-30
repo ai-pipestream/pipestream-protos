@@ -48,6 +48,11 @@ message GetAccountRequest {
   string account_id = 1;           // Account identifier
 }
 
+// Response from getting account
+message GetAccountResponse {
+  Account account = 1;
+}
+
 // Request to inactivate account
 message InactivateAccountRequest {
   string account_id = 1;           // Account identifier
@@ -101,7 +106,7 @@ service AccountService {
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
 
   // Get account details
-  rpc GetAccount(GetAccountRequest) returns (Account);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
 
   // Inactivate account (soft delete)
   rpc InactivateAccount(InactivateAccountRequest) returns (InactivateAccountResponse);

@@ -33,7 +33,8 @@ message ExecuteTestRequest {
 }
 
 // Request for GetModuleStatus RPC
-message GetModuleStatusRequest {}
+message GetModuleStatusRequest {
+}
 
 // Commands that can be sent to the test module
 message TestCommand {

@@ -118,7 +118,7 @@ message RegisterModuleRequest {
   // Module-specific metadata including schema and capabilities.
   //
   // Contains input/output formats, document types supported, and schema definition.
-  ai.pipestream.data.module.v1.ServiceRegistrationMetadata service_registration_metadata = 6;
+  ai.pipestream.data.module.v1.GetServiceRegistrationResponse service_registration_metadata = 6;
 }
 
 // Response for RegisterService RPC (streaming).
@@ -383,16 +383,20 @@ message GetModuleResponse {
 }
 
 // Request to list all registered services.
-message ListServicesRequest {}
+message ListServicesRequest {
+}
 
 // Request to list all registered modules.
-message ListModulesRequest {}
+message ListModulesRequest {
+}
 
 // Request to watch for service registration changes.
-message WatchServicesRequest {}
+message WatchServicesRequest {
+}
 
 // Request to watch for module registration changes.
-message WatchModulesRequest {}
+message WatchModulesRequest {
+}
 
 // Response containing list of all registered services.
 message ListServicesResponse {

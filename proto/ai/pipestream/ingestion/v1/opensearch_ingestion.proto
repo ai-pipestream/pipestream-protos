@@ -11,22 +11,22 @@ option java_outer_classname = "OpenSearchIngestionProto";
 // The new, dedicated service for high-throughput document ingestion.
 service OpenSearchIngestionService {
   // Bidirectional stream for ingesting documents and receiving real-time acknowledgements.
-  rpc StreamDocuments(stream IngestionRequest) returns (stream IngestionResponse);
+  rpc StreamDocuments(stream StreamDocumentsRequest) returns (stream StreamDocumentsResponse);
 }
 
 // A request to ingest a single document.
-message IngestionRequest {
+message StreamDocumentsRequest {
   // The document to be indexed, updated, or deleted.
   ai.pipestream.data.v1.PipeDoc document = 1;
 
   // A unique ID for this specific request, sent by the client.
-  // This ID will be returned in the corresponding IngestionResponse for correlation.
+  // This ID will be returned in the corresponding StreamDocumentsResponse for correlation.
   string request_id = 2;
 }
 
-// A response acknowledging the result of a single IngestionRequest.
-message IngestionResponse {
-  // The correlation ID from the IngestionRequest.
+// A response acknowledging the result of a single StreamDocumentsRequest.
+message StreamDocumentsResponse {
+  // The correlation ID from the StreamDocumentsRequest.
   string request_id = 1;
 
   // The ID of the document that was processed.

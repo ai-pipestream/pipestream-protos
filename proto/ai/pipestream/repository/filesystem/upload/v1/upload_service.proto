@@ -29,13 +29,17 @@ enum UploadState {
 service NodeUploadService {
   // Simplified unary upload for full PipeDoc
   // Accepts full payload (up to 2GB) and handles S3 upload internally
-  rpc UploadPipeDoc(ai.pipestream.data.v1.PipeDoc) returns (UploadResponse);
-  
+  rpc UploadPipeDoc(UploadPipeDocRequest) returns (UploadPipeDocResponse);
+
   // Retrieve document by ID
-  rpc GetDocument(GetDocumentRequest) returns (ai.pipestream.data.v1.PipeDoc);
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
 }
 
-message UploadResponse {
+message UploadPipeDocRequest {
+  ai.pipestream.data.v1.PipeDoc document = 1;
+}
+
+message UploadPipeDocResponse {
   bool success = 1;
   string document_id = 2;    // The ID assigned/used
   string s3_key = 3;         // Where it was stored
@@ -44,4 +48,8 @@ message UploadResponse {
 
 message GetDocumentRequest {
   string document_id = 1;
+}
+
+message GetDocumentResponse {
+  ai.pipestream.data.v1.PipeDoc document = 1;
 }
