@@ -1,5 +1,0 @@
-src/main/proto/ai/pipestream/linear/processor/v1/linear_pipeline_processor.proto:71:3:field ai.pipestream.linear.processor.v1.ProcessLinearDocumentResponse.module_response: unknown type ai.pipestream.data.module.v1.ModuleProcessResponse
-src/main/proto/ai/pipestream/platform/registration/v1/platform_registration.proto:84:3:field ai.pipestream.platform.registration.v1.v1.ModuleRegistrationRequest.serviceRegistrationMetadata: unknown type ai.pipestream.data.module.v1.ServiceRegistrationMetadata
-src/main/proto/ai/pipestream/repository/v1/repository_service_data.proto:30:3:field ai.pipestream.repository.v1.v1.StoredProcessRequest.request: unknown type ai.pipestream.data.module.v1.ModuleProcessRequest
-src/main/proto/ai/pipestream/repository/v1/repository_service_data.proto:41:3:field ai.pipestream.repository.v1.v1.StoredProcessResponse.response: unknown type ai.pipestream.data.module.v1.ModuleProcessResponse
-src/main/proto/ai/pipestream/testing/harness/v1/testing_harness.proto:79:5:field ai.pipestream.testing.harness.v1.v1.ProcessDocumentCommand.request: unknown type ai.pipestream.data.module.v1.ModuleProcessRequest
