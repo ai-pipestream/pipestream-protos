@@ -1,0 +1,52 @@
+name: Buf CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.lock'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.lock'
+
+jobs:
+  buf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Needed to post comments on PRs
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history for breaking change detection
+          fetch-depth: 0
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          token: ${{ secrets.BUF_TOKEN }}
+          input: 'proto'
+
+          # Format check (will fail if not formatted)
+          format: true
+
+          # Lint check (will fail on violations)
+          lint: true
+
+          # Breaking change check
+          # For PRs: compares against target branch
+          # For main: compares against previous commit
+          breaking: true
+
+          # Auto-push to BSR on main branch only
+          push: ${{ github.ref == 'refs/heads/main' }}
+
+          # Optional: Add PR comments with detailed feedback
+          pr_comment: true
