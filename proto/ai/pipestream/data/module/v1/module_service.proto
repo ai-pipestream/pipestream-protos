@@ -88,6 +88,7 @@ enum CapabilityType {
 
   // Module converts raw input (files, URLs) to documents
   CAPABILITY_TYPE_PARSER = 1;
+  // Module processes documents to produce output (documents, data)
   CAPABILITY_TYPE_SINK = 2;
 
   // Future capabilities (commented until needed):

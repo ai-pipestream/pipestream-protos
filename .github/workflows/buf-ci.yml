@@ -1,6 +1,7 @@
 name: Buf CI
 
 on:
+  # 1. Trigger on Pushes to Main (The "Release" / "Snapshot")
   push:
     branches:
       - main
@@ -8,9 +9,9 @@ on:
       - 'proto/**'
       - 'buf.yaml'
       - 'buf.lock'
+
+  # 2. Trigger on any Pull Request (The "Gatekeeper")
   pull_request:
-    branches:
-      - main
     paths:
       - 'proto/**'
       - 'buf.yaml'
@@ -21,32 +22,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write # Needed to post comments on PRs
+      pull-requests: write # Allows buf-action to comment on PRs
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          # Fetch full history for breaking change detection
-          fetch-depth: 0
+      - uses: actions/checkout@v6
 
       - uses: bufbuild/buf-action@v1
         with:
           token: ${{ secrets.BUF_TOKEN }}
           input: 'proto'
 
-          # Format check (will fail if not formatted)
+          # Enforce formatting rules
           format: true
 
-          # Lint check (will fail on violations)
-          lint: true
-
-          # Breaking change check
-          # For PRs: compares against target branch
-          # For main: compares against previous commit
+          # Breaking change detection (Compares current branch vs BSR main)
           breaking: true
 
-          # Auto-push to BSR on main branch only
+          # CRITICAL: Only push to Registry if we are on the 'main' branch
           push: ${{ github.ref == 'refs/heads/main' }}
-
-          # Optional: Add PR comments with detailed feedback
-          pr_comment: true
