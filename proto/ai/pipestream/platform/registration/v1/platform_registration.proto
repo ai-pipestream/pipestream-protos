@@ -383,20 +383,16 @@ message GetModuleResponse {
 }
 
 // Request to list all registered services.
-message ListServicesRequest {
-}
+message ListServicesRequest {}
 
 // Request to list all registered modules.
-message ListModulesRequest {
-}
+message ListModulesRequest {}
 
 // Request to watch for service registration changes.
-message WatchServicesRequest {
-}
+message WatchServicesRequest {}
 
 // Request to watch for module registration changes.
-message WatchModulesRequest {
-}
+message WatchModulesRequest {}
 
 // Response containing list of all registered services.
 message ListServicesResponse {
