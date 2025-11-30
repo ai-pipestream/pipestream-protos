@@ -8,74 +8,112 @@ option java_multiple_files = true;
 option java_outer_classname = "PipeDocServiceProto";
 option java_package = "ai.pipestream.repository.v1.pipedoc";
 
-// Request to save a PipeDoc
+// Request to persist a PipeDoc to the repository with associated metadata.
+// The PipeDoc will be stored in S3 and metadata indexed for retrieval.
 message SavePipeDocRequest {
+  // The PipeDoc to save to the repository
   ai.pipestream.data.v1.PipeDoc pipedoc = 1;
-  string drive = 2; // Which drive/bucket to save to
-  string connector_id = 3; // Source connector ID
-  map<string, string> metadata = 4; // Additional metadata
+  // Drive/bucket identifier where this document should be stored
+  string drive = 2;
+  // Connector ID that ingested this document (for tracking and attribution)
+  string connector_id = 3;
+  // Additional key-value metadata to associate with this document
+  map<string, string> metadata = 4;
 }
 
-// Response from saving a PipeDoc
+// Response containing details about the saved PipeDoc and its storage location.
 message SavePipeDocResponse {
-  string node_id = 1; // Repository node ID for the saved PipeDoc
+  // Unique repository node ID assigned to the saved PipeDoc
+  string node_id = 1;
+  // Drive identifier where the document was stored
   string drive = 2;
-  string s3_key = 3; // Full S3 key
+  // Complete S3 object key for the stored document
+  string s3_key = 3;
+  // Size of the saved document in bytes
   int64 size_bytes = 4;
+  // Checksum/hash of the document for integrity verification
   string checksum = 5;
+  // Timestamp when the document was saved (milliseconds since epoch)
   int64 created_at_epoch_ms = 6;
 }
 
-// Request to retrieve a PipeDoc
+// Request to retrieve a PipeDoc from the repository by its node ID.
 message GetPipeDocRequest {
-  string node_id = 1; // Repository node ID
+  // Unique repository node ID of the PipeDoc to retrieve
+  string node_id = 1;
 }
 
-// Response with the PipeDoc
+// Response containing the retrieved PipeDoc and associated metadata.
 message GetPipeDocResponse {
+  // The retrieved PipeDoc with all its content and metadata
   ai.pipestream.data.v1.PipeDoc pipedoc = 1;
+  // Repository node ID of the retrieved document
   string node_id = 2;
+  // Drive identifier where this document is stored
   string drive = 3;
+  // Size of the document in bytes
   int64 size_bytes = 4;
+  // Timestamp when the document was retrieved (milliseconds since epoch)
   int64 retrieved_at_epoch_ms = 5;
 }
 
-// Request to list PipeDocs
+// Request to list PipeDocs with optional filtering and pagination.
 message ListPipeDocsRequest {
+  // Drive identifier to list documents from
   string drive = 1;
-  string connector_id = 2; // Optional: filter by connector
-  int32 limit = 3; // Optional: max results (default 100)
-  string continuation_token = 4; // For pagination
+  // Optional connector ID filter to list only documents from a specific connector
+  string connector_id = 2;
+  // Maximum number of results to return (default 100 if not specified)
+  int32 limit = 3;
+  // Continuation token from previous response for paginating through results
+  string continuation_token = 4;
 }
 
-// Response with list of PipeDoc metadata
+// Response containing a paginated list of PipeDoc metadata entries.
 message ListPipeDocsResponse {
+  // List of PipeDoc metadata objects
   repeated PipeDocMetadata pipedocs = 1;
-  string next_continuation_token = 2; // For pagination
+  // Token to fetch the next page of results (empty if no more results)
+  string next_continuation_token = 2;
+  // Total count of matching documents (across all pages)
   int32 total_count = 3;
 }
 
-// Metadata about a saved PipeDoc
+// Lightweight metadata about a saved PipeDoc without loading the full content.
+// Used for listing and browsing documents efficiently.
 message PipeDocMetadata {
+  // Unique repository node ID
   string node_id = 1;
-  string doc_id = 2; // From PipeDoc.doc_id
+  // Original document ID from the PipeDoc
+  string doc_id = 2;
+  // Drive identifier where this document is stored
   string drive = 3;
+  // Connector ID that ingested this document
   string connector_id = 4;
+  // Size of the document in bytes
   int64 size_bytes = 5;
+  // Timestamp when the document was created (milliseconds since epoch)
   int64 created_at_epoch_ms = 6;
+  // Additional metadata key-value pairs associated with this document
   map<string, string> metadata = 7;
-  string title = 8; // From SearchMetadata if available
-  string document_type = 9; // From SearchMetadata if available
+  // Document title extracted from SearchMetadata (if available)
+  string title = 8;
+  // Document type classification from SearchMetadata (if available)
+  string document_type = 9;
 }
 
-// Service for PipeDoc operations
+// Repository service for managing PipeDoc storage and retrieval.
+// Handles persistence to S3, metadata indexing, and efficient listing.
 service PipeDocService {
-  // Save a PipeDoc to repository
+  // Persist a PipeDoc to the repository with metadata.
+  // Returns storage details including node ID and S3 location.
   rpc SavePipeDoc(SavePipeDocRequest) returns (SavePipeDocResponse);
 
-  // Retrieve a PipeDoc by node ID
+  // Retrieve a complete PipeDoc by its unique node ID.
+  // Loads the full document content from S3.
   rpc GetPipeDoc(GetPipeDocRequest) returns (GetPipeDocResponse);
 
-  // List PipeDocs with optional filtering
+  // List PipeDocs with optional filtering by drive and connector.
+  // Returns lightweight metadata without full document content. Supports pagination.
   rpc ListPipeDocs(ListPipeDocsRequest) returns (ListPipeDocsResponse);
 }
