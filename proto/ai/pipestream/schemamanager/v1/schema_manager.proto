@@ -40,26 +40,39 @@ message VectorFieldDefinition {
 
 // Defines the k-NN method and its parameters, mirroring the user-facing configuration.
 message KnnMethodDefinition {
+  // k-NN engine options for vector similarity search
   enum KnnEngine {
+    // Unspecified engine (defaults to OpenSearch default)
     KNN_ENGINE_UNSPECIFIED = 0;
   }
 
+  // Distance metrics for vector similarity calculation
   enum SpaceType {
+    // Unspecified space type
     SPACE_TYPE_UNSPECIFIED = 0;
+    // Cosine similarity: measures angle between vectors (normalized dot product)
     SPACE_TYPE_COSINESIMIL = 1;
+    // Inner product: raw dot product similarity
     SPACE_TYPE_INNERPRODUCT = 2;
   }
 
+  // k-NN engine to use for indexing and search
   KnnEngine engine = 1;
+  // Distance metric to use for vector similarity
   SpaceType space_type = 2;
+  // Algorithm-specific tuning parameters (HNSW)
   KnnParametersDefinition parameters = 3;
 }
 
-// Defines the tuning parameters for the HNSW algorithm.
+// Defines the tuning parameters for the HNSW (Hierarchical Navigable Small World) algorithm.
 // Using google.protobuf.Int32Value allows us to distinguish between a value of 0 and an omitted field.
+// These parameters control the tradeoff between search accuracy, speed, and index size.
 message KnnParametersDefinition {
+  // Number of bi-directional links per node (higher = more accurate but larger index)
   google.protobuf.Int32Value m = 1;
+  // Size of dynamic candidate list during index construction (higher = better quality)
   google.protobuf.Int32Value ef_construction = 2;
+  // Size of dynamic candidate list during search (higher = more accurate but slower)
   google.protobuf.Int32Value ef_search = 3;
 }
 
