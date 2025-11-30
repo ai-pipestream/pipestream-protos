@@ -75,7 +75,7 @@ service PlatformRegistrationService {
   //
   // Provides detailed version metadata from Apicurio Registry including
   // creation timestamps and version-specific descriptions.
-  rpc GetModuleSchemaVersions(GetModuleSchemaVersionsRequest) returns (ModuleSchemaVersionsResponse);
+  rpc GetModuleSchemaVersions(GetModuleSchemaVersionsRequest) returns (GetModuleSchemaVersionsResponse);
 }
 
 // Request to register a service with the platform.
@@ -541,7 +541,7 @@ message GetModuleSchemaVersionsRequest {
 //
 // Provides detailed version history from Apicurio Registry including
 // creation timestamps and version-specific metadata.
-message ModuleSchemaVersionsResponse {
+message GetModuleSchemaVersionsResponse {
   // Module name.
   string module_name = 1;
   // Apicurio Registry artifact ID.
