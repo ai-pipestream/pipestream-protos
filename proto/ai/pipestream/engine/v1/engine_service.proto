@@ -4,8 +4,8 @@ package ai.pipestream.engine.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
-option java_package = "ai.pipestream.engine.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.engine.v1";
 
 // V1 Engine - DNS-like routing with clean separation
 service EngineV1Service {

@@ -4,8 +4,8 @@ package ai.pipestream.schemamanager.v1;
 
 import "google/protobuf/wrappers.proto";
 
-option java_package = "ai.pipestream.schemamanager.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.schemamanager.v1";
 
 // The SchemaManagerService is responsible for dynamically managing OpenSearch index schemas.
 // It provides an idempotent API to ensure that the necessary mappings exist for the "Embedded Object" strategy.

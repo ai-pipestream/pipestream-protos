@@ -7,8 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.parsed.data.email.v1";
 option java_outer_classname = "EmailMetadataProto";
+option java_package = "ai.pipestream.parsed.data.email.v1";
 
 // Comprehensive email metadata as extracted by Tika from email files.
 // Based on Tika's Message interface, MAPI interface, TikaCoreProperties, and actual parser implementations.
@@ -53,7 +53,7 @@ message EmailMetadata {
   optional string comments = 18;
   // TikaCoreProperties.RATING
   optional int32 rating = 19;
-  
+
   // === Message Properties (Message interface) ===
   // Metadata.MESSAGE_FROM
   optional string message_from = 20;
@@ -89,7 +89,7 @@ message EmailMetadata {
   optional string multipart_subtype = 35;
   // Message.MULTIPART_BOUNDARY
   optional string multipart_boundary = 36;
-  
+
   // === MAPI Properties (Microsoft Outlook/Exchange specific) ===
   // MAPI.MESSAGE_CLASS (normalized)
   optional string message_class = 37;
@@ -125,7 +125,7 @@ message EmailMetadata {
   optional bool is_flagged = 52;
   // MAPI.BODY_TYPES_PROCESSED
   repeated string body_types_processed = 53;
-  
+
   // === MAPI Attachment Properties ===
   // MAPI.ATTACH_LONG_PATH_NAME
   optional string attach_long_path_name = 54;
@@ -145,11 +145,11 @@ message EmailMetadata {
   optional string attach_mime = 61;
   // MAPI.ATTACH_LANGUAGE
   optional string attach_language = 62;
-  
+
   // === RTF Properties (Rich Text Format specific) ===
   // RTFMetadata.CONTAINS_ENCAPSULATED_HTML
   optional bool contains_encapsulated_html = 63;
-  
+
   // === Raw Header Properties ===
   // Note: Raw headers are stored with MESSAGE_RAW_HEADER_PREFIX + header name
   // These are dynamic and parser-specific, so we include common ones
@@ -177,7 +177,7 @@ message EmailMetadata {
   optional string raw_header_content_encoding = 74;
   // Message-Raw-Header:MIME-Version
   optional string raw_header_mime_version = 75;
-  
+
   // === Content and Body Properties ===
   // Metadata.CONTENT_TYPE
   optional string content_type = 76;
@@ -189,7 +189,7 @@ message EmailMetadata {
   optional bool has_attachments = 79;
   // Number of attachments
   optional int32 attachment_count = 80;
-  
+
   // === Security and Encryption Properties ===
   // TikaCoreProperties.HAS_SIGNATURE
   optional bool has_signature = 81;
@@ -207,7 +207,7 @@ message EmailMetadata {
   repeated string signature_filter = 87;
   // TikaCoreProperties.SIGNATURE_CONTACT_INFO
   repeated string signature_contact_info = 88;
-  
+
   // === Threading and Conversation Properties ===
   // Thread topic (normalized)
   optional string thread_topic = 89;
@@ -215,7 +215,7 @@ message EmailMetadata {
   optional string thread_index = 90;
   // Depth in conversation thread
   optional int32 thread_depth = 91;
-  
+
   // === Delivery and Routing Properties ===
   // Delivery receipt flag
   optional string delivery_receipt_requested = 92;
@@ -229,7 +229,7 @@ message EmailMetadata {
   optional string x400_content_type = 96;
   // Transport headers
   optional string transport_message_headers = 97;
-  
+
   // === Size and Technical Properties ===
   // Message size in bytes
   optional int64 message_size = 98;
@@ -239,7 +239,7 @@ message EmailMetadata {
   optional string encoding_detector = 100;
   // TikaCoreProperties.DETECTED_ENCODING
   optional string detected_encoding = 101;
-  
+
   // === Parsing Metadata ===
   // TikaCoreProperties.TIKA_PARSED_BY
   repeated string parsed_by = 102;
@@ -247,7 +247,7 @@ message EmailMetadata {
   optional string detected_language = 103;
   // TikaCoreProperties.TIKA_DETECTED_LANGUAGE_CONFIDENCE
   optional double detected_language_confidence = 104;
-  
+
   // === Embedded Resource Properties ===
   // TikaCoreProperties.EMBEDDED_RESOURCE_TYPE
   optional string embedded_resource_type = 105;
@@ -255,10 +255,10 @@ message EmailMetadata {
   optional string resource_name = 106;
   // TikaCoreProperties.ORIGINAL_RESOURCE_NAME
   optional string original_resource_name = 107;
-  
+
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
-  
+
   // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

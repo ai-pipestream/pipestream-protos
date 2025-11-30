@@ -7,8 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.parsed.data.media.v1";
 option java_outer_classname = "MediaMetadataProto";
+option java_package = "ai.pipestream.parsed.data.media.v1";
 
 // Comprehensive media metadata as extracted by Tika from audio and video files.
 // Based on Tika's XMPDM interface, TikaCoreProperties, and actual parser implementations.
@@ -53,7 +53,7 @@ message MediaMetadata {
   optional string comments = 18;
   // TikaCoreProperties.RATING / XMP.RATING
   optional int32 rating = 19;
-  
+
   // === XMPDM Properties (XMP Dynamic Media schema) ===
   // XMPDM.ABS_PEAK_AUDIO_FILE_PATH
   optional string abs_peak_audio_file_path = 20;
@@ -149,7 +149,7 @@ message MediaMetadata {
   optional string video_pixel_depth = 65;
   // XMPDM.VIDEO_PIXEL_ASPECT_RATIO (rational: "648/720")
   optional string video_pixel_aspect_ratio = 66;
-  
+
   // === Parser-specific fields (from MP3Parser, MP4Parser, etc.) ===
   // Metadata.CONTENT_TYPE
   optional string content_type = 67;
@@ -161,7 +161,7 @@ message MediaMetadata {
   optional string version = 70;
   // Release year (from ID3 tags)
   optional string year = 71;
-  
+
   // === Additional technical fields ===
   // File size in bytes
   optional int64 file_size = 72;
@@ -177,7 +177,7 @@ message MediaMetadata {
   optional string duration_string = 77;
   // Start time offset
   optional double start_time = 78;
-  
+
   // === Video-specific technical fields ===
   // Video width in pixels
   optional int32 video_width = 79;
@@ -189,7 +189,7 @@ message MediaMetadata {
   optional string aspect_ratio = 82;
   // Video bitrate
   optional int32 video_bitrate = 83;
-  
+
   // === Audio-specific technical fields ===
   // Number of audio channels (numeric)
   optional int32 audio_channels = 84;
@@ -197,7 +197,7 @@ message MediaMetadata {
   optional int32 audio_bits_per_sample = 85;
   // Audio bitrate
   optional int32 audio_bitrate = 86;
-  
+
   // === Streaming and format fields ===
   // Can be streamed
   optional bool streaming_capable = 87;
@@ -209,7 +209,7 @@ message MediaMetadata {
   optional string major_brand = 90;
   // Codec used
   optional string codec = 91;
-  
+
   // === Geographic fields (if present in media) ===
   // TikaCoreProperties.LATITUDE
   optional double latitude = 92;
@@ -217,13 +217,13 @@ message MediaMetadata {
   optional double longitude = 93;
   // TikaCoreProperties.ALTITUDE
   optional double altitude = 94;
-  
+
   // === Signature and security fields ===
   // TikaCoreProperties.HAS_SIGNATURE
   optional bool has_signature = 95;
   // TikaCoreProperties.IS_ENCRYPTED
   optional bool is_encrypted = 96;
-  
+
   // === Parsing metadata ===
   // TikaCoreProperties.TIKA_PARSED_BY
   repeated string parsed_by = 97;
@@ -231,10 +231,10 @@ message MediaMetadata {
   optional string detected_language = 98;
   // TikaCoreProperties.TIKA_DETECTED_LANGUAGE_CONFIDENCE
   optional double detected_language_confidence = 99;
-  
+
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
-  
+
   // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

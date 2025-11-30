@@ -7,8 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.parsed.data.database.v1";
 option java_outer_classname = "DatabaseMetadataProto";
+option java_package = "ai.pipestream.parsed.data.database.v1";
 
 // Comprehensive Database metadata as extracted by Tika from database files.
 // Based on Tika's Database interface and actual database parser implementations
@@ -26,7 +26,7 @@ message DatabaseMetadata {
   optional int32 total_column_count = 3;
   // Database.COLUMN_NAME (all column names)
   repeated string column_names = 4;
-  
+
   // === Core Document Properties (from TikaCoreProperties) ===
   // TikaCoreProperties.TITLE (database name)
   optional string title = 5;
@@ -50,7 +50,7 @@ message DatabaseMetadata {
   optional google.protobuf.Timestamp modified = 14;
   // TikaCoreProperties.CREATOR_TOOL
   optional string creator_tool = 15;
-  
+
   // === Database Security and Access ===
   // JackcessParser.MDB_PW (database password)
   optional string password = 16;
@@ -60,7 +60,7 @@ message DatabaseMetadata {
   optional string access_level = 18;
   // Type of database encryption
   optional string encryption_type = 19;
-  
+
   // === Database Technical Properties ===
   // Database format version
   optional string database_version = 20;
@@ -72,7 +72,7 @@ message DatabaseMetadata {
   optional string application_version = 23;
   // HttpHeaders.CONTENT_ENCODING (character encoding)
   optional string content_encoding = 24;
-  
+
   // === Architecture and System Properties ===
   // MachineMetadata.ARCHITECTURE_BITS (32/64 bit)
   optional string architecture_bits = 25;
@@ -84,7 +84,7 @@ message DatabaseMetadata {
   optional string page_size = 28;
   // PagedText.N_PAGES (number of pages)
   optional int32 page_count = 29;
-  
+
   // === Table-Level Statistics ===
   // Detailed information per table
   repeated TableInfo tables = 30;
@@ -96,7 +96,7 @@ message DatabaseMetadata {
   optional int32 index_count = 33;
   // Number of stored queries
   optional int32 query_count = 34;
-  
+
   // === SAS-Specific Properties (from SAS7BDATParser) ===
   // SAS software release version
   optional string sas_release = 35;
@@ -110,7 +110,7 @@ message DatabaseMetadata {
   optional google.protobuf.Timestamp sas_date_created = 39;
   // SAS dataset modification date
   optional google.protobuf.Timestamp sas_date_modified = 40;
-  
+
   // === Access-Specific Properties (from JackcessParser) ===
   // MDB_PROPERTY_PREFIX properties
   repeated DatabaseProperty mdb_properties = 41;
@@ -122,7 +122,7 @@ message DatabaseMetadata {
   optional string mdb_author = 44;
   // COMPANY_PROP_KEY
   optional string mdb_company = 45;
-  
+
   // === Content and Resource Properties ===
   // Metadata.CONTENT_TYPE
   optional string content_type = 46;
@@ -132,7 +132,7 @@ message DatabaseMetadata {
   optional string resource_name = 48;
   // TikaCoreProperties.ORIGINAL_RESOURCE_NAME
   optional string original_resource_name = 49;
-  
+
   // === Database Schema Information ===
   // Detailed column information
   repeated ColumnInfo columns = 50;
@@ -140,7 +140,7 @@ message DatabaseMetadata {
   repeated IndexInfo indexes = 51;
   // Table relationships/foreign keys
   repeated RelationshipInfo relationships = 52;
-  
+
   // === Performance and Storage Metrics ===
   // Total database file size
   optional int64 database_size_bytes = 53;
@@ -150,10 +150,10 @@ message DatabaseMetadata {
   optional int64 index_size_bytes = 55;
   // Compression ratio if applicable
   optional double compression_ratio = 56;
-  
+
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
-  
+
   // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

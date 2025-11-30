@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.connector.intake.v1;
 
-option java_package = "ai.pipestream.connector.intake.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.connector.intake.v1";
 
 // ============================================
 // DOCUMENT UPLOAD SERVICE
@@ -29,18 +29,18 @@ service DocumentUploadService {
 // Auth: connector-id and api-key sent in gRPC metadata headers
 message UploadChunkRequest {
   // Identity (connector-id from gRPC metadata)
-  string crawl_id = 1;          // Which crawl this belongs to
-  string file_id = 2;           // Unique identifier for this file
+  string crawl_id = 1; // Which crawl this belongs to
+  string file_id = 2; // Unique identifier for this file
 
   // Chunk info
-  int32 chunk_number = 3;       // 0-based chunk number
-  int32 total_chunks = 4;       // Total chunks (0 if unknown, e.g. streaming from unknown source)
-  bytes data = 5;               // The actual chunk data
-  bool is_last = 6;             // Is this the final chunk? (required when total_chunks=0)
+  int32 chunk_number = 3; // 0-based chunk number
+  int32 total_chunks = 4; // Total chunks (0 if unknown, e.g. streaming from unknown source)
+  bytes data = 5; // The actual chunk data
+  bool is_last = 6; // Is this the final chunk? (required when total_chunks=0)
 
   // File metadata (only needed on first chunk, but can be on all for simplicity)
   string filename = 7;
-  string path = 8;              // File path/location
+  string path = 8; // File path/location
   string mime_type = 9;
   int64 file_size = 10;
   map<string, string> metadata = 11;
@@ -61,7 +61,7 @@ message UploadResult {
   string s3_key = 2;
   string s3_etag = 3;
   int64 size = 4;
-  string checksum = 5;          // SHA256
+  string checksum = 5; // SHA256
 }
 
 message GetUploadProgressRequest {

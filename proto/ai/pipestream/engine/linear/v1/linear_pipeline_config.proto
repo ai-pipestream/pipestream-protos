@@ -6,9 +6,9 @@ import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.engine.linear.v1";
 option java_multiple_files = true;
 option java_outer_classname = "LinearPipelineConfigProto";
+option java_package = "ai.pipestream.engine.linear.v1";
 
 // Linear pipeline configuration defining processing stages.
 //
@@ -91,7 +91,6 @@ enum PipelineStatus {
   // Archived for historical reference.
   PIPELINE_STATUS_ARCHIVED = 4;
 }
-
 
 // Request to execute a linear pipeline.
 message ExecuteLinearPipelineRequest {

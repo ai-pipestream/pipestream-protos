@@ -5,9 +5,9 @@ package ai.pipestream.platform.registration.v1;
 import "ai/pipestream/data/module/v1/module_service.proto";
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.platform.registration.v1";
-option java_outer_classname = "PlatformRegistrationProto";
 option java_multiple_files = true;
+option java_outer_classname = "PlatformRegistrationProto";
+option java_package = "ai.pipestream.platform.registration.v1";
 
 // Unified registration service for all platform services and modules.
 //

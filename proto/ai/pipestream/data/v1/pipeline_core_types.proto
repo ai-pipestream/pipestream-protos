@@ -7,10 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "PipelineCoreTypesV1Proto";
-
-
+option java_package = "ai.pipestream.data.v1";
 
 // Core document container for the pipeline processing system.
 //
@@ -75,7 +73,7 @@ message SearchMetadata {
   // Additional custom fields not covered by standard schema.
   optional google.protobuf.Struct custom_fields = 16;
   // Generic key-value metadata for extensibility.
-  map<string,string> metadata = 17;
+  map<string, string> metadata = 17;
   // Results from semantic chunking and embedding processes.
   //
   // Supports multiple processing configurations applied to the same document.
@@ -168,6 +166,7 @@ message LinkReference {
   // Whether the link points to a different host than source_uri.
   optional bool is_external = 5;
 }
+
 // Container for one or more binary blobs.
 //
 // Supports either a single blob or multiple blobs for flexible content storage.
@@ -298,7 +297,6 @@ enum Intent {
   INTENT_UPDATE = 2;
 }
 
-
 // Field mapping configuration for protobuf transformation.
 //
 // Defines how to transform data between processing steps using various mapping strategies.
@@ -394,7 +392,6 @@ message NodeProcessingConfig {
   // Node-specific custom configuration.
   google.protobuf.Any node_config = 5;
 }
-
 
 // Vector embedding for a document or document segment.
 //

@@ -6,8 +6,8 @@ import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.config.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.config.v1";
 
 // PipeStream Engine Configuration Service
 // Replaces Consul-based configuration with gRPC streaming
@@ -64,7 +64,7 @@ service PipelineConfigService {
   rpc WatchPipelineGraph(WatchPipelineGraphRequest) returns (stream WatchPipelineGraphResponse);
   // Streams real-time module registry changes.
   rpc WatchModuleRegistry(WatchModuleRegistryRequest) returns (stream WatchModuleRegistryResponse);
-  
+
   // Module Whitelisting
   rpc WhitelistModule(WhitelistModuleRequest) returns (WhitelistModuleResponse);
   // Removes a module from the whitelist.

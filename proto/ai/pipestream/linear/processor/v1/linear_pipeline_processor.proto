@@ -5,21 +5,22 @@ package ai.pipestream.linear.processor.v1;
 import "ai/pipestream/data/module/v1/module_service.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/timestamp.proto";
+
 option java_multiple_files = true;
-option java_package = "ai.pipestream.linear.processor.v1";
 option java_outer_classname = "LinearPipelineProcessorProto";
+option java_package = "ai.pipestream.linear.processor.v1";
 
 // Linear Pipeline Processor Service - Pipeline execution for development/testing
 service LinearPipelineProcessorService {
   // Execute pipeline on documents
   rpc ExecuteLinearPipeline(ExecuteLinearPipelineRequest) returns (stream ExecuteLinearPipelineResponse);
-  
+
   // Batch process multiple documents through pipelines
   rpc BatchProcessLinearDocuments(stream BatchProcessLinearDocumentsRequest) returns (stream BatchProcessLinearDocumentsResponse);
-  
+
   // Test single document through single module (for quick testing)
   rpc ProcessLinearDocument(ProcessLinearDocumentRequest) returns (ProcessLinearDocumentResponse);
-  
+
   // Validate pipeline configuration
   rpc ValidateLinearPipeline(ValidateLinearPipelineRequest) returns (ValidateLinearPipelineResponse);
 }

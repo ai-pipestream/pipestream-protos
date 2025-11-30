@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.processing.tika.v1;
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.search.model";
 option java_outer_classname = "TikaParserProto";
+option java_package = "ai.pipestream.search.model";
 
 // Represents a document parsed by Apache Tika
 message ParsedDocument {
@@ -22,10 +22,10 @@ message ParsedDocument {
 message ParsedDocumentReply {
   // Whether parsing was successful
   bool success = 1;
-  
+
   // The parsed document (if successful)
   ParsedDocument parsed_document = 2;
-  
+
   // Error message (if not successful)
   string error_message = 3;
 }

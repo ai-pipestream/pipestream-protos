@@ -5,26 +5,26 @@ package ai.pipestream.design.v1;
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
-option java_package = "ai.pipestream.design.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.design.v1";
 
 // Design Mode Service - Frontend pipeline simulation
 service DesignModev1Service {
   // Create design-time graph (not deployed)
   rpc CreateDesignGraph(CreateDesignGraphRequest) returns (CreateDesignGraphResponse);
-  
+
   // Simulate pipeline execution in frontend
   rpc SimulatePipeline(SimulatePipelineRequest) returns (SimulatePipelineResponse);
-  
+
   // Test individual node with sample data
   rpc TestNode(TestNodeRequest) returns (TestNodeResponse);
-  
+
   // Validate graph before deployment
   rpc ValidateGraph(ValidateGraphRequest) returns (ValidateGraphResponse);
-  
+
   // Deploy graph from design to production
   rpc DeployGraph(DeployGraphRequest) returns (DeployGraphResponse);
-  
+
   // Get design-time graphs for user
   rpc ListDesignGraphs(ListDesignGraphsRequest) returns (ListDesignGraphsResponse);
 }

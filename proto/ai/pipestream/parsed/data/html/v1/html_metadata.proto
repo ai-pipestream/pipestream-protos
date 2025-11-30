@@ -7,8 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.parsed.data.html.v1";
 option java_outer_classname = "HtmlMetadataProto";
+option java_package = "ai.pipestream.parsed.data.html.v1";
 
 // Comprehensive HTML metadata as extracted by Tika from HTML and web documents.
 // Based on Tika's HTML interface, TikaCoreProperties, and actual HTML parser implementations.
@@ -53,11 +53,11 @@ message HtmlMetadata {
   optional string comments = 18;
   // TikaCoreProperties.RATING
   optional int32 rating = 19;
-  
+
   // === HTML Specific Properties ===
   // HTML.SCRIPT_SOURCE (from <script src="">)
   optional string script_source = 20;
-  
+
   // === Content and Language Properties ===
   // Metadata.CONTENT_TYPE
   optional string content_type = 21;
@@ -69,7 +69,7 @@ message HtmlMetadata {
   optional string content_location = 24;
   // TikaCoreProperties.CONTENT_TYPE_HINT (from <meta http-equiv="content-type">)
   optional string content_type_hint = 25;
-  
+
   // === Geographic Properties (from ICBM meta tag) ===
   // "ICBM" (raw ICBM coordinates)
   optional string icbm = 26;
@@ -77,7 +77,7 @@ message HtmlMetadata {
   optional string latitude = 27;
   // Metadata.LONGITUDE (parsed from ICBM)
   optional string longitude = 28;
-  
+
   // === Meta Tag Properties ===
   // Standard HTML meta tags that are commonly extracted
   // <meta name="description" content="...">
@@ -96,7 +96,7 @@ message HtmlMetadata {
   optional string meta_charset = 35;
   // <meta http-equiv="refresh" content="...">
   optional string meta_refresh = 36;
-  
+
   // === Open Graph Properties ===
   // <meta property="og:title" content="...">
   optional string og_title = 37;
@@ -110,7 +110,7 @@ message HtmlMetadata {
   optional string og_type = 41;
   // <meta property="og:site_name" content="...">
   optional string og_site_name = 42;
-  
+
   // === Twitter Card Properties ===
   // <meta name="twitter:card" content="...">
   optional string twitter_card = 43;
@@ -124,7 +124,7 @@ message HtmlMetadata {
   optional string twitter_description = 47;
   // <meta name="twitter:image" content="...">
   optional string twitter_image = 48;
-  
+
   // === Dublin Core Properties (from meta tags) ===
   // <meta name="DC.title" content="...">
   optional string dc_title = 49;
@@ -156,7 +156,7 @@ message HtmlMetadata {
   optional string dc_coverage = 62;
   // <meta name="DC.rights" content="...">
   optional string dc_rights = 63;
-  
+
   // === Link Properties ===
   // <link rel="canonical" href="...">
   optional string canonical_url = 64;
@@ -170,19 +170,19 @@ message HtmlMetadata {
   optional string rss_url = 68;
   // <link rel="alternate" type="application/atom+xml" href="...">
   optional string atom_url = 69;
-  
+
   // === Embedded Resource Properties ===
   // Data URI schemes found in the document
   repeated string data_uri_schemes = 70;
   // TikaCoreProperties.EMBEDDED_RESOURCE_TYPE
   optional string embedded_resource_type = 71;
-  
+
   // === Security and Signature Properties ===
   // TikaCoreProperties.HAS_SIGNATURE
   optional bool has_signature = 72;
   // TikaCoreProperties.IS_ENCRYPTED
   optional bool is_encrypted = 73;
-  
+
   // === Parsing Metadata ===
   // TikaCoreProperties.TIKA_PARSED_BY
   repeated string parsed_by = 74;
@@ -194,16 +194,16 @@ message HtmlMetadata {
   optional string encoding_detector = 77;
   // TikaCoreProperties.DETECTED_ENCODING
   optional string detected_encoding = 78;
-  
+
   // === Resource Properties ===
   // TikaCoreProperties.RESOURCE_NAME_KEY
   optional string resource_name = 79;
   // TikaCoreProperties.ORIGINAL_RESOURCE_NAME
   optional string original_resource_name = 80;
-  
+
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
-  
+
   // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

@@ -5,8 +5,9 @@ package ai.pipestream.testing.harness.v1;
 import "ai/pipestream/data/module/v1/module_service.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-option java_package = "ai.pipestream.testing.harness.v1.grpc";
+
 option java_multiple_files = true;
+option java_package = "ai.pipestream.testing.harness.v1.grpc";
 
 // Test harness service for integration testing
 service TestHarnessService {
@@ -65,7 +66,7 @@ message TestCommand {
 // Events reported back from the test module
 message ExecuteTestStreamResponse {
   string event_id = 1;
-  string command_id = 2;  // Links back to the command that triggered this
+  string command_id = 2; // Links back to the command that triggered this
   google.protobuf.Timestamp timestamp = 3;
 
   oneof event {
@@ -109,7 +110,7 @@ message CheckHealthCommand {
 
 // Command to wait for specific events
 message WaitForEventCommand {
-  repeated string event_types = 1;  // Types of events to wait for
+  repeated string event_types = 1; // Types of events to wait for
   int64 timeout_ms = 2;
 }
 

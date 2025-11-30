@@ -5,22 +5,22 @@ package ai.pipestream.repository.pipedoc.v1;
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.repository.v1.pipedoc";
 option java_outer_classname = "PipeDocServiceProto";
+option java_package = "ai.pipestream.repository.v1.pipedoc";
 
 // Request to save a PipeDoc
 message SavePipeDocRequest {
   ai.pipestream.data.v1.PipeDoc pipedoc = 1;
-  string drive = 2;  // Which drive/bucket to save to
-  string connector_id = 3;  // Source connector ID
-  map<string,string> metadata = 4;  // Additional metadata
+  string drive = 2; // Which drive/bucket to save to
+  string connector_id = 3; // Source connector ID
+  map<string, string> metadata = 4; // Additional metadata
 }
 
 // Response from saving a PipeDoc
 message SavePipeDocResponse {
-  string node_id = 1;  // Repository node ID for the saved PipeDoc
+  string node_id = 1; // Repository node ID for the saved PipeDoc
   string drive = 2;
-  string s3_key = 3;  // Full S3 key
+  string s3_key = 3; // Full S3 key
   int64 size_bytes = 4;
   string checksum = 5;
   int64 created_at_epoch_ms = 6;
@@ -28,7 +28,7 @@ message SavePipeDocResponse {
 
 // Request to retrieve a PipeDoc
 message GetPipeDocRequest {
-  string node_id = 1;  // Repository node ID
+  string node_id = 1; // Repository node ID
 }
 
 // Response with the PipeDoc
@@ -43,29 +43,29 @@ message GetPipeDocResponse {
 // Request to list PipeDocs
 message ListPipeDocsRequest {
   string drive = 1;
-  string connector_id = 2;  // Optional: filter by connector
-  int32 limit = 3;  // Optional: max results (default 100)
-  string continuation_token = 4;  // For pagination
+  string connector_id = 2; // Optional: filter by connector
+  int32 limit = 3; // Optional: max results (default 100)
+  string continuation_token = 4; // For pagination
 }
 
 // Response with list of PipeDoc metadata
 message ListPipeDocsResponse {
   repeated PipeDocMetadata pipedocs = 1;
-  string next_continuation_token = 2;  // For pagination
+  string next_continuation_token = 2; // For pagination
   int32 total_count = 3;
 }
 
 // Metadata about a saved PipeDoc
 message PipeDocMetadata {
   string node_id = 1;
-  string doc_id = 2;  // From PipeDoc.doc_id
+  string doc_id = 2; // From PipeDoc.doc_id
   string drive = 3;
   string connector_id = 4;
   int64 size_bytes = 5;
   int64 created_at_epoch_ms = 6;
-  map<string,string> metadata = 7;
-  string title = 8;  // From SearchMetadata if available
-  string document_type = 9;  // From SearchMetadata if available
+  map<string, string> metadata = 7;
+  string title = 8; // From SearchMetadata if available
+  string document_type = 9; // From SearchMetadata if available
 }
 
 // Service for PipeDoc operations

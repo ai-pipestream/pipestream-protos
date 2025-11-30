@@ -5,8 +5,8 @@ package ai.pipestream.events.v1;
 import "google/protobuf/struct.proto"; // For flexible metadata
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.events.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.events.v1";
 
 // Event emitted by the Repository Service's Metadata Indexer
 // once a document's core metadata has been successfully persisted to the database.
@@ -14,25 +14,25 @@ option java_multiple_files = true;
 message RepoMetadataEvent {
   string event_id = 1;
   google.protobuf.Timestamp timestamp = 2;
-  
+
   string document_id = 3;
   string drive_id = 4; // Using string for UUID
   string account_id = 5;
   string connector_id = 6;
-  
+
   // Basic file info from the Node entity
   string name = 7;
   string path = 8;
   string content_type = 9;
   int64 size_bytes = 10;
-  
+
   // S3 information
   string s3_key = 11;
   string s3_version_id = 12;
-  
+
   // Additional JSON metadata (from Node entity)
   google.protobuf.Struct metadata = 13;
-  
+
   // Type of update
   UpdateType update_type = 14;
 

@@ -7,8 +7,8 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.parsed.data.rtf.v1";
 option java_outer_classname = "RtfMetadataProto";
+option java_package = "ai.pipestream.parsed.data.rtf.v1";
 
 // Comprehensive RTF (Rich Text Format) metadata as extracted by Tika.
 // Based on Tika's RTFMetadata interface, TextExtractor, and RTFEmbObjHandler implementations.
@@ -19,9 +19,8 @@ message RtfMetadata {
   // Dublin/Core fields are normalized at TikaResponse.dublin_core.
   // Reserve these names and field numbers to prevent reuse here.
   reserved 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11;
-  reserved "title", "creator", "description", "subject", "language", "format",
-           "identifier", "comments", "created", "modified", "creator_tool";
-  
+  reserved "title", "creator", "description", "subject", "language", "format", "identifier", "comments", "created", "modified", "creator_tool";
+
   // === Office-style Properties (from Office/OfficeOpenXML interfaces) ===
   // Office.KEYWORDS (from \keywords)
   optional string keywords = 12;
@@ -33,7 +32,7 @@ message RtfMetadata {
   optional string manager = 15;
   // OfficeOpenXMLExtended.TEMPLATE (from \template)
   optional string template = 16;
-  
+
   // === Document Statistics (from Office interface) ===
   // Office.PAGE_COUNT (from \nofpages)
   optional int32 page_count = 17;
@@ -41,7 +40,7 @@ message RtfMetadata {
   optional int32 word_count = 18;
   // Office.CHARACTER_COUNT (from \nofchars)
   optional int32 character_count = 19;
-  
+
   // === RTF-Specific Properties (from RTFMetadata interface) ===
   // RTFMetadata.CONTAINS_ENCAPSULATED_HTML
   optional bool contains_encapsulated_html = 20;
@@ -55,7 +54,7 @@ message RtfMetadata {
   optional string emb_topic = 24;
   // RTFMetadata.EMB_ITEM
   optional string emb_item = 25;
-  
+
   // === Content and Resource Properties ===
   // Metadata.CONTENT_TYPE ("application/rtf")
   optional string content_type = 26;
@@ -69,7 +68,7 @@ message RtfMetadata {
   optional string original_resource_name = 30;
   // TikaCoreProperties.EMBEDDED_RELATIONSHIP_ID
   optional string embedded_relationship_id = 31;
-  
+
   // === Font and Formatting Properties ===
   // Default font number (from \deff)
   optional int32 default_font = 32;
@@ -79,7 +78,7 @@ message RtfMetadata {
   optional string color_table = 34;
   // Style sheet information
   optional string style_sheet = 35;
-  
+
   // === RTF Version and Compatibility ===
   // RTF version (from \rtf1)
   optional string rtf_version = 36;
@@ -89,7 +88,7 @@ message RtfMetadata {
   optional string view_kind = 38;
   // View scale (from \viewscale)
   optional int32 view_scale = 39;
-  
+
   // === Document Layout Properties ===
   // Paper width (from \paperw)
   optional int32 paper_width = 40;
@@ -103,7 +102,7 @@ message RtfMetadata {
   optional int32 margin_top = 44;
   // Bottom margin (from \margb)
   optional int32 margin_bottom = 45;
-  
+
   // === Embedded Objects and Pictures ===
   // Names of embedded resources
   repeated string embedded_resource_names = 46;
@@ -113,7 +112,7 @@ message RtfMetadata {
   optional int32 embedded_object_count = 48;
   // Count of embedded pictures
   optional int32 picture_count = 49;
-  
+
   // === RTF Control Properties ===
   // Parser setting for list markup
   optional bool ignore_list_markup = 50;
@@ -121,7 +120,7 @@ message RtfMetadata {
   optional int32 memory_limit_kb = 51;
   // RTF picture metadata prefix
   optional string rtf_pict_meta_prefix = 52;
-  
+
   // === Revision and Tracking Properties ===
   // Revision time (from \revtim)
   optional google.protobuf.Timestamp revision_time = 53;
@@ -131,16 +130,16 @@ message RtfMetadata {
   optional int32 version = 55;
   // Number of revisions
   optional int32 revision_count = 56;
-  
+
   // === Security and Protection ===
   // Document password protection
   optional bool password_protected = 57;
   // Type of document protection
   optional string protection_type = 58;
-  
+
   // === Catch-all for unknown/unmapped fields ===
   google.protobuf.Struct additional_metadata = 200;
-  
+
   // Base Tika fields common to all document types
   ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
 }

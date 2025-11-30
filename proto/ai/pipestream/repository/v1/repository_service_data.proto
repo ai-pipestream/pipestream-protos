@@ -7,8 +7,8 @@ import "ai/pipestream/data/module/v1/module_service.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.v1";
 
 // ============================================================================
 // SHARED REPOSITORY DATA TYPES
@@ -71,7 +71,7 @@ message PaginationRequest {
 // Export formats supported across services
 enum ExportFormat {
   EXPORT_FORMAT_UNSPECIFIED = 0; // Primary: Binary .pb files
-  EXPORT_FORMAT_ZIP = 1;      // Bulk export with metadata
+  EXPORT_FORMAT_ZIP = 1; // Bulk export with metadata
 }
 
 // Streaming export chunk
@@ -167,7 +167,7 @@ message PipeDocUpdateNotification {
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
   int64 timestamp = 8;
-  
+
   // Optional search metadata
   string title = 9;
   string author = 10;
@@ -184,7 +184,7 @@ message ProcessRequestUpdateNotification {
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
   int64 timestamp = 9;
-  
+
   // Optional metadata from the request
   string module_id = 10;
   string processor_id = 11;
@@ -201,7 +201,7 @@ message ProcessResponseUpdateNotification {
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
   int64 timestamp = 9;
-  
+
   // Optional metadata from the response
   string request_id = 10; // Link to original request
   string status = 11; // SUCCESS, FAILURE, etc

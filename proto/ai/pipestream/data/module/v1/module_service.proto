@@ -9,9 +9,9 @@ import "ai/pipestream/data/v1/pipeline_core_types.proto"; // This file should co
 import "google/protobuf/struct.proto"; // For custom_json_config
 import "google/protobuf/timestamp.proto";
 
-option java_package = "ai.pipestream.data.module.v1"; // Or ai.pipestream.search.model - for generated Java
 option java_multiple_files = true;
 option java_outer_classname = "PipeStepProcessorServiceProto";
+option java_package = "ai.pipestream.data.module.v1"; // Or ai.pipestream.search.model - for generated Java
 
 // Service definition for a pipeline step processor.
 // This interface is implemented by developer-created gRPC modules/services.

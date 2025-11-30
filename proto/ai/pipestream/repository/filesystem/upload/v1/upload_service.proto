@@ -5,8 +5,8 @@ package ai.pipestream.repository.filesystem.upload.v1;
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.repository.v1.filesystem.upload";
 option java_outer_classname = "NodeUploadProto";
+option java_package = "ai.pipestream.repository.v1.filesystem.upload";
 
 enum UploadState {
   UPLOAD_STATE_UNSPECIFIED = 0;
@@ -35,21 +35,32 @@ service NodeUploadService {
   rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
 }
 
+// Request to upload a PipeDoc
 message UploadPipeDocRequest {
+  // The document to upload
   ai.pipestream.data.v1.PipeDoc document = 1;
 }
 
+// Response from uploading a PipeDoc
 message UploadPipeDocResponse {
+  // Whether the upload succeeded
   bool success = 1;
-  string document_id = 2;    // The ID assigned/used
-  string s3_key = 3;         // Where it was stored
+  // The ID assigned/used for the document
+  string document_id = 2;
+  // Where it was stored in S3
+  string s3_key = 3;
+  // Status or error message
   string message = 4;
 }
 
+// Request to retrieve a document by ID
 message GetDocumentRequest {
+  // The document ID to retrieve
   string document_id = 1;
 }
 
+// Response containing the requested document
 message GetDocumentResponse {
+  // The retrieved document
   ai.pipestream.data.v1.PipeDoc document = 1;
 }
