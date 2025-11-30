@@ -24,70 +24,89 @@ message WarcMetadata {
   
   // WARC warnings encountered during parsing
   // Multiple warnings can be present
-  repeated string warc_warnings = 1;                // WARC.WARC_WARNING
+  // WARC.WARC_WARNING
+  repeated string warc_warnings = 1;
   
   // Content type of the WARC record itself
   // e.g., "application/http; msgtype=response"
-  optional string warc_record_content_type = 2;    // WARC.WARC_RECORD_CONTENT_TYPE
+  // WARC.WARC_RECORD_CONTENT_TYPE
+  optional string warc_record_content_type = 2;
   
   // Content type of the payload within the WARC record
   // e.g., "text/html", "image/jpeg"
-  optional string warc_payload_content_type = 3;   // WARC.WARC_PAYLOAD_CONTENT_TYPE
+  // WARC.WARC_PAYLOAD_CONTENT_TYPE
+  optional string warc_payload_content_type = 3;
   
   // Unique identifier for this WARC record
   // Format: <urn:uuid:...> or similar URI
-  optional string warc_record_id = 4;              // WARC.WARC_RECORD_ID
+  // WARC.WARC_RECORD_ID
+  optional string warc_record_id = 4;
   
   // === Core WARC Headers (Standard WARC Fields) ===
   
   // Type of WARC record (response, request, metadata, resource, etc.)
-  optional string warc_type = 5;                   // WARC-Type header
+  // WARC-Type header
+  optional string warc_type = 5;
   
   // Target URI that was archived
   // The original URL of the web resource
-  optional string warc_target_uri = 6;             // WARC-Target-URI
+  // WARC-Target-URI
+  optional string warc_target_uri = 6;
   
   // Date and time when the resource was captured
-  optional google.protobuf.Timestamp warc_date = 7; // WARC-Date
+  // WARC-Date
+  optional google.protobuf.Timestamp warc_date = 7;
   
   // Length of the record payload in bytes
-  optional int64 warc_content_length = 8;          // Content-Length
+  // Content-Length
+  optional int64 warc_content_length = 8;
   
   // WARC filename where this record is stored
-  optional string warc_filename = 9;               // WARC-Filename
+  // WARC-Filename
+  optional string warc_filename = 9;
   
   // WARC record ID that this record refers to
   // Used for linking related records
-  optional string warc_refers_to = 10;             // WARC-Refers-To
+  // WARC-Refers-To
+  optional string warc_refers_to = 10;
   
   // WARC record ID that this record is concurrent with
-  optional string warc_concurrent_to = 11;         // WARC-Concurrent-To
+  // WARC-Concurrent-To
+  optional string warc_concurrent_to = 11;
   
   // WARC record ID of the warcinfo record for this crawl
-  optional string warc_warcinfo_id = 12;           // WARC-Warcinfo-ID
+  // WARC-Warcinfo-ID
+  optional string warc_warcinfo_id = 12;
   
   // IP address of the server that provided this resource
-  optional string warc_ip_address = 13;            // WARC-IP-Address
+  // WARC-IP-Address
+  optional string warc_ip_address = 13;
   
   // Block digest (hash) of the payload
-  optional string warc_block_digest = 14;          // WARC-Block-Digest
+  // WARC-Block-Digest
+  optional string warc_block_digest = 14;
   
   // Payload digest (hash) of the actual content
-  optional string warc_payload_digest = 15;        // WARC-Payload-Digest
+  // WARC-Payload-Digest
+  optional string warc_payload_digest = 15;
   
   // Truncation reason if record was truncated
-  optional string warc_truncated = 16;             // WARC-Truncated
+  // WARC-Truncated
+  optional string warc_truncated = 16;
   
   // Identified payload type (may differ from Content-Type)
-  optional string warc_identified_payload_type = 17; // WARC-Identified-Payload-Type
+  // WARC-Identified-Payload-Type
+  optional string warc_identified_payload_type = 17;
   
   // === HTTP Response Metadata (for HTTP response records) ===
   
   // HTTP status code (200, 404, 500, etc.)
-  optional int32 http_status_code = 18;            // HTTP status
+  // HTTP status
+  optional int32 http_status_code = 18;
   
   // HTTP status reason phrase ("OK", "Not Found", etc.)
-  optional string http_status_reason = 19;         // HTTP reason phrase
+  // HTTP reason phrase
+  optional string http_status_reason = 19;
   
   // HTTP response headers
   repeated WarcHttpHeader http_headers = 20;
@@ -95,19 +114,24 @@ message WarcMetadata {
   // === Crawl and Archive Metadata ===
   
   // Software/crawler that created this WARC file
-  optional string warc_created_by = 21;            // Software info
+  // Software info
+  optional string warc_created_by = 21;
   
   // Version of the WARC format specification used
-  optional string warc_format_version = 22;        // WARC format version
+  // WARC format version
+  optional string warc_format_version = 22;
   
   // Crawl or collection identifier
-  optional string warc_collection = 23;            // Collection name
+  // Collection name
+  optional string warc_collection = 23;
   
   // Crawl job or session identifier
-  optional string warc_crawl_id = 24;              // Crawl identifier
+  // Crawl identifier
+  optional string warc_crawl_id = 24;
   
   // Robot policy information (robots.txt compliance)
-  optional string warc_robot_policy = 25;          // Robot policy
+  // Robot policy
+  optional string warc_robot_policy = 25;
   
   // Fetch timestamp (may differ from WARC-Date)
   optional google.protobuf.Timestamp fetch_timestamp = 26;

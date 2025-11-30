@@ -25,33 +25,41 @@ message CreativeCommonsMetadata {
   
   // URL to the license document
   // e.g., "https://creativecommons.org/licenses/by/4.0/"
-  optional string license_url = 1;                  // CreativeCommons.LICENSE_URL
+  // CreativeCommons.LICENSE_URL
+  optional string license_url = 1;
   
   // Location where the license is specified
   // e.g., "XMP metadata", "HTML meta tag", "document properties"
-  optional string license_location = 2;             // CreativeCommons.LICENSE_LOCATION
+  // CreativeCommons.LICENSE_LOCATION
+  optional string license_location = 2;
   
   // Type of work being licensed
   // e.g., "photograph", "text", "video", "software"
-  optional string work_type = 3;                    // CreativeCommons.WORK_TYPE
+  // CreativeCommons.WORK_TYPE
+  optional string work_type = 3;
   
   // === XMP Rights Management Properties (from XMPRights.java) ===
   
   // Web URL for a rights management certificate
-  optional string rights_certificate = 4;          // XMPRights.CERTIFICATE
+  // XMPRights.CERTIFICATE
+  optional string rights_certificate = 4;
   
   // Whether this is a rights-managed resource
   // true = rights-managed, false = public domain, null = unknown
-  optional bool rights_marked = 5;                  // XMPRights.MARKED
+  // XMPRights.MARKED
+  optional bool rights_marked = 5;
   
   // Legal owners of the resource
-  repeated string rights_owners = 6;                // XMPRights.OWNER
+  // XMPRights.OWNER
+  repeated string rights_owners = 6;
   
   // Usage terms and conditions
-  optional string usage_terms = 7;                  // XMPRights.USAGE_TERMS
+  // XMPRights.USAGE_TERMS
+  optional string usage_terms = 7;
   
   // Web URL for ownership and usage rights statement
-  optional string web_statement = 8;                // XMPRights.WEB_STATEMENT
+  // XMPRights.WEB_STATEMENT
+  optional string web_statement = 8;
   
   // === Creative Commons License Details ===
   

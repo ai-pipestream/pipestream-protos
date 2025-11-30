@@ -24,11 +24,13 @@ message EpubMetadata {
   // EPUB rendition layout type - determines how content should be displayed
   // Values: "pre-paginated" or "reflowable" (default)
   // Set to "pre-paginated" if any itemref on spine has pre-paginated property
-  optional string rendition_layout = 1;           // Epub.RENDITION_LAYOUT
+  // Epub.RENDITION_LAYOUT
+  optional string rendition_layout = 1;
   
   // EPUB specification version (e.g., "2.0", "3.0", "3.1")
   // Extracted from package element version attribute in OPF file
-  optional string version = 2;                    // Epub.VERSION
+  // Epub.VERSION
+  optional string version = 2;
   
   // === Content Structure (Critical for Chunking) ===
   
@@ -51,7 +53,8 @@ message EpubMetadata {
   optional string root_opf_path = 6;
   
   // MIME type from mimetype file (should be "application/epub+zip")
-  optional string mimetype = 7;                   // From mimetype file
+  // From mimetype file
+  optional string mimetype = 7;
   
   // Whether the EPUB contains encrypted/DRM-protected content
   optional bool has_drm = 8;

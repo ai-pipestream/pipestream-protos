@@ -25,68 +25,84 @@ message ClimateForcastMetadata {
   
   // Program identifier that created this data
   // Maps to "prg_ID" in CF Convention
-  optional string program_id = 1;                   // ClimateForcast.PROGRAM_ID
+  // ClimateForcast.PROGRAM_ID
+  optional string program_id = 1;
   
   // Command line used to generate this data
   // Maps to "cmd_ln" in CF Convention
-  optional string command_line = 2;                 // ClimateForcast.COMMAND_LINE
+  // ClimateForcast.COMMAND_LINE
+  optional string command_line = 2;
   
   // History of data processing and transformations
   // Maps to "history" in CF Convention
-  optional string history = 3;                      // ClimateForcast.HISTORY
+  // ClimateForcast.HISTORY
+  optional string history = 3;
   
   // Table identifier for data organization
   // Maps to "table_id" in CF Convention
-  optional string table_id = 4;                     // ClimateForcast.TABLE_ID
+  // ClimateForcast.TABLE_ID
+  optional string table_id = 4;
   
   // Institution that created or maintains this data
   // Maps to "institution" in CF Convention
-  optional string institution = 5;                  // ClimateForcast.INSTITUTION
+  // ClimateForcast.INSTITUTION
+  optional string institution = 5;
   
   // Source of the data (model, observations, etc.)
   // Maps to "source" in CF Convention
-  optional string source = 6;                       // ClimateForcast.SOURCE
+  // ClimateForcast.SOURCE
+  optional string source = 6;
   
   // Contact information for data maintainer
   // Maps to "contact" in CF Convention
-  optional string contact = 7;                      // ClimateForcast.CONTACT
+  // ClimateForcast.CONTACT
+  optional string contact = 7;
   
   // Project identifier (e.g., "IPCC Fourth Assessment")
   // Maps to "project_id" in CF Convention
-  optional string project_id = 8;                   // ClimateForcast.PROJECT_ID
+  // ClimateForcast.PROJECT_ID
+  optional string project_id = 8;
   
   // CF Convention version used (e.g., "CF-1.0", "CF-1.8")
   // Maps to "Conventions" in CF Convention
-  optional string conventions = 9;                  // ClimateForcast.CONVENTIONS
+  // ClimateForcast.CONVENTIONS
+  optional string conventions = 9;
   
   // References to publications or documentation
   // Maps to "references" in CF Convention
-  optional string references = 10;                  // ClimateForcast.REFERENCES
+  // ClimateForcast.REFERENCES
+  optional string references = 10;
   
   // Acknowledgements for data sources or funding
   // Maps to "acknowledgement" in CF Convention
-  optional string acknowledgement = 11;             // ClimateForcast.ACKNOWLEDGEMENT
+  // ClimateForcast.ACKNOWLEDGEMENT
+  optional string acknowledgement = 11;
   
   // Realization number for ensemble runs
   // Maps to "realization" in CF Convention
-  optional string realization = 12;                 // ClimateForcast.REALIZATION
+  // ClimateForcast.REALIZATION
+  optional string realization = 12;
   
   // Experiment identifier (e.g., "720 ppm stabilization experiment")
   // Maps to "experiment_id" in CF Convention
-  optional string experiment_id = 13;               // ClimateForcast.EXPERIMENT_ID
+  // ClimateForcast.EXPERIMENT_ID
+  optional string experiment_id = 13;
   
   // Additional comments about the data
   // Maps to "comment" in CF Convention
-  optional string comment = 14;                     // ClimateForcast.COMMENT
+  // ClimateForcast.COMMENT
+  optional string comment = 14;
   
   // English name of the model used
   // Maps to "model_name_english" in CF Convention
-  optional string model_name_english = 15;          // ClimateForcast.MODEL_NAME_ENGLISH
+  // ClimateForcast.MODEL_NAME_ENGLISH
+  optional string model_name_english = 15;
   
   // === NetCDF Technical Metadata ===
   
   // NetCDF file type description (e.g., "NetCDF-3/CDM", "NetCDF-4")
-  optional string file_type_description = 16;      // From NetCDF file header
+  // From NetCDF file header
+  optional string file_type_description = 16;
   
   // NetCDF format version
   optional string netcdf_version = 17;
