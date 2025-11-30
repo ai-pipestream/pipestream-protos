@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.crawler;
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.crawler";
+option java_outer_classname = "FilesystemCrawlerProto";
+
+// Request to crawl a filesystem directory
+message CrawlDirectoryRequest {
+  string path = 1;           // Directory path to crawl
+  bool recursive = 2;        // Whether to crawl subdirectories
+  string drive = 3;          // Target drive to save to
+  string connector_id = 4;   // Connector ID for tracking
+}
+
+// Response from crawling
+message CrawlDirectoryResponse {
+  int32 files_found = 1;
+  int32 files_processed = 2;
+  int32 files_failed = 3;
+  repeated string processed_files = 4;
+  repeated string failed_files = 5;
+}
+
+// Service for filesystem crawling
+service FilesystemCrawlerService {
+  // Crawl a directory and create PipeDocs
+  rpc CrawlDirectory(CrawlDirectoryRequest) returns (CrawlDirectoryResponse);
+}

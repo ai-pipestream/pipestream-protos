@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.intake;
+
+option java_package = "ai.pipestream.connector.intake";
+option java_multiple_files = true;
+
+// ============================================
+// DOCUMENT UPLOAD SERVICE
+// Simple, fast chunk upload - no streaming complexity
+// ============================================
+
+service DocumentUploadService {
+  // Upload a single chunk - can be called in parallel for same file
+  rpc UploadChunk(UploadChunkRequest) returns (UploadChunkResponse);
+
+  // Get upload progress - single snapshot
+  rpc GetUploadProgress(UploadProgressRequest) returns (UploadProgressResponse);
+
+  // Stream upload progress - real-time updates
+  rpc StreamUploadProgress(UploadProgressRequest) returns (stream UploadProgressResponse);
+}
+
+// Upload a single chunk of a file
+// Auth: connector-id and api-key sent in gRPC metadata headers
+message UploadChunkRequest {
+  // Identity (connector-id from gRPC metadata)
+  string crawl_id = 1;          // Which crawl this belongs to
+  string file_id = 2;           // Unique identifier for this file
+
+  // Chunk info
+  int32 chunk_number = 3;       // 0-based chunk number
+  int32 total_chunks = 4;       // Total chunks (0 if unknown, e.g. streaming from unknown source)
+  bytes data = 5;               // The actual chunk data
+  bool is_last = 6;             // Is this the final chunk? (required when total_chunks=0)
+
+  // File metadata (only needed on first chunk, but can be on all for simplicity)
+  string filename = 7;
+  string path = 8;              // File path/location
+  string mime_type = 9;
+  int64 file_size = 10;
+  map<string, string> metadata = 11;
+}
+
+message UploadChunkResponse {
+  string file_id = 1;
+  int32 chunk_number = 2;
+  bool success = 3;
+  string message = 4;
+
+  // If is_last=true and all chunks received, this is populated
+  UploadResult result = 5;
+}
+
+message UploadResult {
+  string file_id = 1;
+  string s3_key = 2;
+  string s3_etag = 3;
+  int64 size = 4;
+  string checksum = 5;          // SHA256
+}
+
+message UploadProgressRequest {
+  string file_id = 1;
+}
+
+message UploadProgressResponse {
+  string file_id = 1;
+  int32 chunks_received = 2;
+  int32 total_chunks = 3;
+  int32 chunks_uploaded_to_s3 = 4;
+  bool complete = 5;
+  UploadResult result = 6;
+}

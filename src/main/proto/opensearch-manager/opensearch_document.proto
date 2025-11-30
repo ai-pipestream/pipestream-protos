@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ai.pipestream.opensearch.v1";
+option java_multiple_files = true;
+option java_outer_classname = "OpenSearchDocumentProto";
+
+// Represents the canonical structure of a document to be indexed in OpenSearch.
+// This message is the single source of truth for our document model, combining
+// system-managed base fields with a flexible container for arbitrary user data.
+message OpenSearchDocument {
+  // --- Core Identity & System Fields ---
+  string original_doc_id = 1;
+  string doc_type = 2;
+  string created_by = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp last_modified_at = 5;
+
+  // --- Fields Derived from PipeDoc Schema ---
+  optional string source_uri = 6;
+  optional string source_mime_type = 7;
+  optional string title = 8;
+  optional string body = 9;
+  repeated string tags = 10; // Renamed from 'keywords' for clarity
+  optional string revision_id = 11;
+
+  // --- The Nested Embeddings ---
+  // A list of all embeddings (both chunked and non-chunked) for this document.
+  // This will be mapped to a 'nested' field in OpenSearch.
+  repeated Embedding embeddings = 12;
+
+  // --- User-Defined Flexible Data ---
+  // A flexible container for any arbitrary user-defined fields that are NOT part of the PipeDoc schema.
+  google.protobuf.Struct custom_fields = 13;
+}
+
+// The canonical representation of a single vector embedding and its associated metadata.
+// This is the object that gets stored in the 'nested' field in OpenSearch.
+message Embedding {
+  // The vector embedding itself.
+  repeated float vector = 1;
+
+  // The original, unmodified source text that was used to generate this vector.
+  string source_text = 2;
+
+  // A list of additional, derived textual data related to the source_text.
+  repeated string context_text = 3;
+
+  // The unique identifier of the chunking strategy used.
+  string chunk_config_id = 4;
+
+  // The unique identifier of the embedding model used.
+  string embedding_id = 5;
+
+  // A flag to distinguish "primary" embeddings (from non-chunked fields like a title)
+  // from "secondary" embeddings (from the many chunks of a body text).
+  bool is_primary = 6;
+}

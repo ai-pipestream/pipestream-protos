@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package ai.pipestream.config.v1;
+
+import "google/protobuf/struct.proto";
+
+option java_package = "ai.pipestream.config.v1";
+option java_multiple_files = true;
+
+// V1 Graph-first pipeline configuration models
+
+// Cluster - just metadata, no default pipeline needed
+message Cluster {
+  string cluster_id = 1;
+  string name = 2;
+  ClusterMetadata metadata = 3;
+  repeated string allowed_kafka_topics = 4;
+  repeated string allowed_grpc_services = 5;
+}
+
+message ClusterMetadata {
+  string name = 1;
+  int64 created_at = 2;
+  google.protobuf.Struct metadata = 3;
+}
+
+// Graph - references nodes by ID
+message PipelineGraph {
+  string graph_id = 1;
+  string cluster_id = 2;
+  string name = 3;
+  string description = 4;
+  repeated string node_ids = 5; // References to GraphNode IDs
+  repeated GraphEdge edges = 6;
+  GraphMode mode = 7; // Design vs Production mode
+  int64 created_at = 8;
+  int64 modified_at = 9;
+}
+
+
+
+// Graph Node - individual processing step (DNS-like, exists independently)
+message GraphNode {
+  string node_id = 1; // Globally unique: cluster_id.node_name (e.g., "prod.chunker-v1")
+  string cluster_id = 2;
+  string name = 3; // Human-readable name
+  NodeType node_type = 4;
+  string module_id = 5; // References ModuleDefinition
+  JsonConfigOptions custom_config = 6;
+  TransportConfig transport = 7;
+  ClusterVisibility visibility = 8;
+  NodeMode mode = 9; // Design vs Production mode
+  
+  // Production mode fields (only used when deployed)
+  string kafka_input_topic = 10; // Same as node_id: "prod.chunker-v1"
+  string kafka_output_topic = 11; // Next node's input topic or custom
+  string repository_path = 12; // Auto-generated: /clusters/{cluster_id}/nodes/{node_id}
+  
+  // Design mode fields (frontend simulation)
+  DesignModeConfig design_config = 13;
+  
+  int64 created_at = 14;
+  int64 modified_at = 15;
+}
+
+// Graph Edge - connection between nodes (can span clusters)
+message GraphEdge {
+  string edge_id = 1;
+  string from_node_id = 2;
+  string to_node_id = 3;
+  string to_cluster_id = 4; // Optional: for cross-cluster edges
+  string condition = 5; // Optional routing condition
+  int32 priority = 6; // For multiple edges from same node
+  bool is_cross_cluster = 7;
+}
+
+// Module Definition - normalized module metadata
+message ModuleDefinition {
+  string module_id = 1;
+  string implementation_name = 2;
+  string grpc_service_name = 3;
+  SchemaReference config_schema = 4;
+  google.protobuf.Struct default_config = 5;
+  ModuleVisibility visibility = 6;
+  int64 created_at = 7;
+  int64 modified_at = 8;
+}
+
+// Simplified transport - just topics and subscriptions
+message TransportConfig {
+  TransportType type = 1;
+  GrpcConfig grpc = 2;
+  MessagingConfig messaging = 3;
+  int32 max_retries = 4;
+  int64 retry_backoff_ms = 5;
+  int64 step_timeout_ms = 6;
+}
+
+message JsonConfigOptions {
+  google.protobuf.Struct json_config = 1;
+  map<string, string> config_params = 2;
+}
+
+message GrpcConfig {
+  string service_name = 1;
+  map<string, string> properties = 2;
+}
+
+// Messaging abstraction (Kafka, Pulsar, etc.)
+message MessagingConfig {
+  repeated string topics = 1; // Topics to publish to
+  repeated string subscriptions = 2; // Topics to subscribe to
+  string partition_key_field = 3;
+  map<string, string> properties = 4; // Platform-specific properties
+}
+
+// Real-time update notifications
+message GraphUpdateNotification {
+  string cluster_id = 1;
+  UpdateType update_type = 2;
+  oneof target {
+    GraphNode node = 3;
+    GraphEdge edge = 4;
+    PipelineGraph graph = 5;
+    ModuleDefinition module = 6;
+  }
+  int64 timestamp = 7;
+}
+
+enum UpdateType {
+  UPDATE_TYPE_UNSPECIFIED = 0;
+  UPDATE_TYPE_CREATED = 1;
+  UPDATE_TYPE_UPDATED = 2;
+  UPDATE_TYPE_DELETED = 3;
+}
+
+message SchemaReference {
+  string subject = 1;
+  int32 version = 2;
+}
+
+// Enums
+enum NodeType {
+  NODE_TYPE_UNSPECIFIED = 0;
+  NODE_TYPE_CONNECTOR = 1; // Entry point
+  NODE_TYPE_PROCESSOR = 2; // Processing step
+  NODE_TYPE_SINK = 3; // Exit point
+}
+
+enum TransportType {
+  TRANSPORT_TYPE_UNSPECIFIED = 0;
+  TRANSPORT_TYPE_MESSAGING = 1; // Topics/Subscriptions
+  TRANSPORT_TYPE_GRPC = 2;
+}
+
+enum ClusterVisibility {
+  CLUSTER_VISIBILITY_UNSPECIFIED = 0;
+  CLUSTER_VISIBILITY_PRIVATE = 1; // Only this cluster
+  CLUSTER_VISIBILITY_PUBLIC = 2; // All subscribed clusters
+  CLUSTER_VISIBILITY_RESTRICTED = 3; // Specific clusters only
+}
+
+enum GraphMode {
+  GRAPH_MODE_UNSPECIFIED = 0;
+  GRAPH_MODE_DESIGN = 1; // Frontend design/simulation mode
+  GRAPH_MODE_PRODUCTION = 2; // Deployed and running
+}
+
+enum NodeMode {
+  NODE_MODE_UNSPECIFIED = 0;
+  NODE_MODE_DESIGN = 1; // Design-time node (not deployed)
+  NODE_MODE_PRODUCTION = 2; // Production node (deployed)
+}
+
+// Design mode configuration for frontend simulation
+message DesignModeConfig {
+  // UI positioning
+  int32 canvas_x = 1;
+  int32 canvas_y = 2;
+  
+  // Simulation settings
+  bool simulate_processing = 3; // Whether to simulate processing in frontend
+  int64 simulated_processing_time_ms = 4; // Fake processing time for UI
+  double simulated_success_rate = 5; // 0.0-1.0 for error simulation
+  
+  // Sample data for testing
+  repeated string sample_input_data = 6; // JSON strings for testing
+  repeated string expected_output_data = 7; // Expected results
+  
+  // UI metadata
+  string ui_color = 8; // Hex color for node visualization
+  string ui_icon = 9; // Icon name/path for node
+  bool ui_collapsed = 10; // Whether node is collapsed in UI
+}
+
+// Pipeline Instance Management
+message PipelineInstance {
+  string instance_id = 1;
+  string pipeline_definition_id = 2;
+  string cluster_name = 3;
+  string name = 4;
+  string description = 5;
+  PipelineInstanceStatus status = 6;
+  map<string, StepConfigOverride> config_overrides = 7;
+  string kafka_topic_prefix = 8;
+  int32 priority = 9;
+  int32 max_parallelism = 10;
+  map<string, string> metadata = 11;
+  int64 created_at = 12;
+  int64 modified_at = 13;
+  int64 started_at = 14;
+  int64 stopped_at = 15;
+}
+
+message StepConfigOverride {
+  bool enabled = 1;
+  JsonConfigOptions custom_config = 2;
+  int32 max_retries = 3;
+  int64 step_timeout_ms = 4;
+  int32 priority = 5;
+}
+
+enum PipelineInstanceStatus {
+  PIPELINE_INSTANCE_STATUS_UNSPECIFIED = 0;
+  PIPELINE_INSTANCE_STATUS_STOPPED = 1;
+  PIPELINE_INSTANCE_STATUS_STARTING = 2;
+  PIPELINE_INSTANCE_STATUS_RUNNING = 3;
+  PIPELINE_INSTANCE_STATUS_STOPPING = 4;
+  PIPELINE_INSTANCE_STATUS_ERROR = 5;
+  PIPELINE_INSTANCE_STATUS_SUSPENDED = 6;
+}
+
+// Module Registration - uses standard gRPC health checks
+message ModuleRegistration {
+  string module_id = 1;
+  string host = 2;
+  int32 port = 3;
+  int64 registered_at = 4;
+  int64 last_health_check = 5;
+  map<string, string> metadata = 6;
+  // Health status obtained via grpc.health.v1.Health service
+}
+
+enum ModuleVisibility {
+  MODULE_VISIBILITY_UNSPECIFIED = 0;
+  MODULE_VISIBILITY_PUBLIC = 1;
+  MODULE_VISIBILITY_PRIVATE = 2;
+  MODULE_VISIBILITY_RESTRICTED = 3;
+}
+
+// DNS-like node resolution (no full graph needed)
+message NodeLookupResponse {
+  GraphNode node = 1;
+  repeated GraphEdge outgoing_edges = 2;
+  ModuleDefinition module = 3;
+  bool cache_hit = 4;
+}
+
+// Cross-cluster node discovery
+message CrossClusterNodeLookup {
+  string source_cluster_id = 1;
+  string target_cluster_id = 2;
+  string node_id = 3;
+  string routing_hint = 4; // Optional hint for faster resolution
+}
+
+// Network topology for visualization (cluster-aware)
+message NetworkTopology {
+  string cluster_id = 1;
+  repeated GraphNode nodes = 2;
+  repeated GraphEdge edges = 3;
+  repeated CrossClusterEdge cross_cluster_edges = 4;
+  repeated ClusterSubscription subscriptions = 5;
+  int64 snapshot_time = 6;
+  bool includes_subscribed_clusters = 7;
+}
+
+// Cross-cluster edge with loop prevention
+message CrossClusterEdge {
+  string edge_id = 1;
+  string from_cluster_id = 2;
+  string from_node_id = 3;
+  string to_cluster_id = 4;
+  string to_node_id = 5;
+  TransportType transport_type = 6;
+  string bridge_topic = 7; // For cross-cluster messaging routing
+  int32 max_hops = 8; // Prevent infinite loops
+}
+
+// Cluster subscription for node visibility
+message ClusterSubscription {
+  string subscriber_cluster_id = 1;
+  string provider_cluster_id = 2;
+  repeated string allowed_node_types = 3; // Optional filter
+  bool bidirectional = 4; // Allow provider to see subscriber's nodes
+  int64 subscribed_at = 5;
+}

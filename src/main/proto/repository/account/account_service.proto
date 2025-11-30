@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.account;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.account";
+option java_outer_classname = "AccountServiceProto";
+
+// Account for multi-tenancy
+message Account {
+  string account_id = 1;                      // Unique account identifier
+  string name = 2;                            // Account display name
+  string description = 3;                     // Account description
+  bool active = 4;                            // Whether account is active
+  google.protobuf.Timestamp created_at = 5;   // Creation timestamp
+  google.protobuf.Timestamp updated_at = 6;   // Last update timestamp
+}
+
+// Request to create account
+message CreateAccountRequest {
+  string account_id = 1;           // Unique account identifier
+  string name = 2;                 // Account display name
+  string description = 3;          // Account description
+}
+
+// Response from creating account
+message CreateAccountResponse {
+  Account account = 1;
+  bool created = 2;                // true if created, false if already existed
+}
+
+// Request to update account metadata
+message UpdateAccountRequest {
+  string account_id = 1;           // Account identifier (required)
+  string name = 2;                 // Updated display name (required)
+  string description = 3;          // Updated description (optional)
+}
+
+// Response from updating account
+message UpdateAccountResponse {
+  Account account = 1;
+}
+
+// Request to get account
+message GetAccountRequest {
+  string account_id = 1;           // Account identifier
+}
+
+// Request to inactivate account
+message InactivateAccountRequest {
+  string account_id = 1;           // Account identifier
+  string reason = 2;               // Reason for inactivation
+}
+
+// Response from inactivating account
+message InactivateAccountResponse {
+  bool success = 1;
+  string message = 2;
+  int32 drives_affected = 3;       // Number of drives that were also inactivated
+}
+
+// Request to reactivate account
+message ReactivateAccountRequest {
+  string account_id = 1;           // Account identifier
+  string reason = 2;               // Reason for reactivation
+}
+
+// Response from reactivating account
+message ReactivateAccountResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to list accounts with optional filters
+message ListAccountsRequest {
+  // Optional partial search on account_id or name
+  string query = 1;
+  // Whether to include inactive accounts (defaults to false)
+  bool include_inactive = 2;
+  // Pagination - page size (defaults to 50, max 200)
+  int32 page_size = 3;
+  // Pagination - page token (offset cursor)
+  string page_token = 4;
+}
+
+// Response for account listing
+message ListAccountsResponse {
+  repeated Account accounts = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+// Account service
+service AccountService {
+  // Register a new account
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+
+  // Update account metadata
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
+
+  // Get account details
+  rpc GetAccount(GetAccountRequest) returns (Account);
+
+  // Inactivate account (soft delete)
+  rpc InactivateAccount(InactivateAccountRequest) returns (InactivateAccountResponse);
+
+  // Reactivate account
+  rpc ReactivateAccount(ReactivateAccountRequest) returns (ReactivateAccountResponse);
+
+  // List accounts with optional filtering
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+}

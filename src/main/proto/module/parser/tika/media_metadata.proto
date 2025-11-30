@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package ai.pipestream.parsed.data.media.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "module/parser/tika/tika_base_metadata.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.parsed.data.media.v1";
+option java_outer_classname = "MediaMetadataProto";
+
+/**
+ * Comprehensive media metadata as extracted by Tika from audio and video files.
+ * Based on Tika's XMPDM interface, TikaCoreProperties, and actual parser implementations.
+ * This is a 1:1 mapping to all fields that Tika can extract from media files.
+ */
+message MediaMetadata {
+  // === TikaCoreProperties (Core Tika metadata) ===
+  optional string title = 1;                   // TikaCoreProperties.TITLE / DublinCore.TITLE
+  optional string creator = 2;                 // TikaCoreProperties.CREATOR / DublinCore.CREATOR
+  optional string description = 3;             // TikaCoreProperties.DESCRIPTION / DublinCore.DESCRIPTION
+  optional string subject = 4;                 // TikaCoreProperties.SUBJECT / DublinCore.SUBJECT
+  optional string language = 5;                // TikaCoreProperties.LANGUAGE / DublinCore.LANGUAGE
+  optional string publisher = 6;               // TikaCoreProperties.PUBLISHER / DublinCore.PUBLISHER
+  optional string rights = 7;                  // TikaCoreProperties.RIGHTS / DublinCore.RIGHTS
+  optional string format = 8;                  // TikaCoreProperties.FORMAT / DublinCore.FORMAT
+  optional string identifier = 9;              // TikaCoreProperties.IDENTIFIER / DublinCore.IDENTIFIER
+  optional string contributor = 10;            // TikaCoreProperties.CONTRIBUTOR / DublinCore.CONTRIBUTOR
+  optional string coverage = 11;               // TikaCoreProperties.COVERAGE / DublinCore.COVERAGE
+  optional string relation = 12;               // TikaCoreProperties.RELATION / DublinCore.RELATION
+  optional string source = 13;                 // TikaCoreProperties.SOURCE / DublinCore.SOURCE
+  optional string type = 14;                   // TikaCoreProperties.TYPE / DublinCore.TYPE
+  optional google.protobuf.Timestamp created = 15;    // TikaCoreProperties.CREATED / DublinCore.CREATED
+  optional google.protobuf.Timestamp modified = 16;   // TikaCoreProperties.MODIFIED / DublinCore.MODIFIED
+  optional string creator_tool = 17;           // TikaCoreProperties.CREATOR_TOOL / XMP.CREATOR_TOOL
+  optional string comments = 18;               // TikaCoreProperties.COMMENTS
+  optional int32 rating = 19;                  // TikaCoreProperties.RATING / XMP.RATING
+  
+  // === XMPDM Properties (XMP Dynamic Media schema) ===
+  optional string abs_peak_audio_file_path = 20;      // XMPDM.ABS_PEAK_AUDIO_FILE_PATH
+  optional string album = 21;                         // XMPDM.ALBUM
+  optional string alt_tape_name = 22;                 // XMPDM.ALT_TAPE_NAME
+  optional string artist = 23;                        // XMPDM.ARTIST
+  optional string album_artist = 24;                  // XMPDM.ALBUM_ARTIST
+  optional google.protobuf.Timestamp audio_mod_date = 25;  // XMPDM.AUDIO_MOD_DATE
+  optional int32 audio_sample_rate = 26;              // XMPDM.AUDIO_SAMPLE_RATE
+  optional string audio_sample_type = 27;             // XMPDM.AUDIO_SAMPLE_TYPE (8Int, 16Int, 32Int, 32Float)
+  optional string audio_channel_type = 28;            // XMPDM.AUDIO_CHANNEL_TYPE (Mono, Stereo, 5.1, 7.1)
+  optional string audio_compressor = 29;              // XMPDM.AUDIO_COMPRESSOR
+  optional int32 compilation = 30;                    // XMPDM.COMPILATION
+  optional string composer = 31;                      // XMPDM.COMPOSER
+  optional string copyright = 32;                     // XMPDM.COPYRIGHT
+  optional int32 disc_number = 33;                    // XMPDM.DISC_NUMBER
+  optional double duration = 34;                      // XMPDM.DURATION (in seconds unless scale is set)
+  optional string engineer = 35;                      // XMPDM.ENGINEER
+  optional string file_data_rate = 36;                // XMPDM.FILE_DATA_RATE (rational: "36/10" = 3.6 MB/sec)
+  optional string genre = 37;                         // XMPDM.GENRE
+  optional string instrument = 38;                    // XMPDM.INSTRUMENT
+  optional string key = 39;                           // XMPDM.KEY (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
+  optional string log_comment = 40;                   // XMPDM.LOG_COMMENT
+  optional bool loop = 41;                            // XMPDM.LOOP
+  optional double number_of_beats = 42;               // XMPDM.NUMBER_OF_BEATS
+  optional google.protobuf.Timestamp metadata_mod_date = 43;  // XMPDM.METADATA_MOD_DATE
+  optional string pull_down = 44;                     // XMPDM.PULL_DOWN (WSSWW, SSWWW, etc.)
+  optional string relative_peak_audio_file_path = 45; // XMPDM.RELATIVE_PEAK_AUDIO_FILE_PATH
+  optional google.protobuf.Timestamp release_date = 46;       // XMPDM.RELEASE_DATE
+  optional string scale_type = 47;                    // XMPDM.SCALE_TYPE (Major, Minor, Both, Neither)
+  optional string scene = 48;                         // XMPDM.SCENE
+  optional google.protobuf.Timestamp shot_date = 49;          // XMPDM.SHOT_DATE
+  optional string shot_location = 50;                 // XMPDM.SHOT_LOCATION
+  optional string shot_name = 51;                     // XMPDM.SHOT_NAME
+  optional string speaker_placement = 52;             // XMPDM.SPEAKER_PLACEMENT
+  optional string stretch_mode = 53;                  // XMPDM.STRETCH_MODE (Fixed length, Time-Scale, etc.)
+  optional string tape_name = 54;                     // XMPDM.TAPE_NAME
+  optional double tempo = 55;                         // XMPDM.TEMPO
+  optional string time_signature = 56;                // XMPDM.TIME_SIGNATURE (2/4, 3/4, 4/4, etc.)
+  optional int32 track_number = 57;                   // XMPDM.TRACK_NUMBER
+  optional string video_alpha_mode = 58;              // XMPDM.VIDEO_ALPHA_MODE (straight, pre-multiplied)
+  optional bool video_alpha_unity_is_transparent = 59; // XMPDM.VIDEO_ALPHA_UNITY_IS_TRANSPARENT
+  optional string video_color_space = 60;             // XMPDM.VIDEO_COLOR_SPACE (sRGB, CCIR-601, CCIR-709)
+  optional string video_compressor = 61;              // XMPDM.VIDEO_COMPRESSOR
+  optional string video_field_order = 62;             // XMPDM.VIDEO_FIELD_ORDER (Upper, Lower, Progressive)
+  optional string video_frame_rate = 63;              // XMPDM.VIDEO_FRAME_RATE (24, NTSC, PAL)
+  optional google.protobuf.Timestamp video_mod_date = 64;     // XMPDM.VIDEO_MOD_DATE
+  optional string video_pixel_depth = 65;             // XMPDM.VIDEO_PIXEL_DEPTH (8Int, 16Int, 32Int, 32Float)
+  optional string video_pixel_aspect_ratio = 66;      // XMPDM.VIDEO_PIXEL_ASPECT_RATIO (rational: "648/720")
+  
+  // === Parser-specific fields (from MP3Parser, MP4Parser, etc.) ===
+  optional string content_type = 67;                  // Metadata.CONTENT_TYPE
+  optional string samplerate = 68;                    // "samplerate" (MP3Parser)
+  optional string channels = 69;                      // "channels" (MP3Parser)
+  optional string version = 70;                       // "version" (MP3Parser - audio version)
+  optional string year = 71;                          // Release year (from ID3 tags)
+  
+  // === Additional technical fields ===
+  optional int64 file_size = 72;                      // File size in bytes
+  optional int32 bitrate = 73;                        // Overall bitrate
+  optional string encoding = 74;                      // Encoding used
+  optional string encoder = 75;                       // Encoder software
+  optional double duration_seconds = 76;              // Duration in seconds (calculated)
+  optional string duration_string = 77;               // Human readable duration
+  optional double start_time = 78;                    // Start time offset
+  
+  // === Video-specific technical fields ===
+  optional int32 video_width = 79;                    // Video width in pixels
+  optional int32 video_height = 80;                   // Video height in pixels
+  optional double video_frame_rate_numeric = 81;      // Numeric video frame rate
+  optional string aspect_ratio = 82;                  // Video aspect ratio
+  optional int32 video_bitrate = 83;                  // Video bitrate
+  
+  // === Audio-specific technical fields ===
+  optional int32 audio_channels = 84;                 // Number of audio channels (numeric)
+  optional int32 audio_bits_per_sample = 85;          // Audio bit depth
+  optional int32 audio_bitrate = 86;                  // Audio bitrate
+  
+  // === Streaming and format fields ===
+  optional bool streaming_capable = 87;               // Can be streamed
+  optional string streaming_format = 88;              // Streaming format
+  optional double streaming_bitrate = 89;             // Streaming bitrate
+  optional string major_brand = 90;                   // Major brand (MP4)
+  optional string codec = 91;                         // Codec used
+  
+  // === Geographic fields (if present in media) ===
+  optional double latitude = 92;                      // TikaCoreProperties.LATITUDE
+  optional double longitude = 93;                     // TikaCoreProperties.LONGITUDE
+  optional double altitude = 94;                      // TikaCoreProperties.ALTITUDE
+  
+  // === Signature and security fields ===
+  optional bool has_signature = 95;                   // TikaCoreProperties.HAS_SIGNATURE
+  optional bool is_encrypted = 96;                    // TikaCoreProperties.IS_ENCRYPTED
+  
+  // === Parsing metadata ===
+  repeated string parsed_by = 97;                     // TikaCoreProperties.TIKA_PARSED_BY
+  optional string detected_language = 98;             // TikaCoreProperties.TIKA_DETECTED_LANGUAGE
+  optional double detected_language_confidence = 99;  // TikaCoreProperties.TIKA_DETECTED_LANGUAGE_CONFIDENCE
+  
+  // === Catch-all for unknown/unmapped fields ===
+  google.protobuf.Struct additional_metadata = 200;
+  
+  /**
+   * Base Tika fields common to all document types
+   */
+  ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
+}
