@@ -99,6 +99,9 @@ jobs:
           # Create and push the tag
           git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
           git push origin "$NEW_TAG"
+          
+          # Export version for subsequent steps
+          echo "RELEASE_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -110,10 +113,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build -Pversion=${{ env.RELEASE_VERSION }} --no-daemon
 
       - name: Publish release to Maven Central
-        run: ./gradlew publishAggregationToCentralPortal --no-daemon
+        run: ./gradlew publishAggregationToCentralPortal -Pversion=${{ env.RELEASE_VERSION }} --no-daemon
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
