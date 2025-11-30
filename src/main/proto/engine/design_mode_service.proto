@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package ai.pipestream.design.v1;
+
+import "core/pipeline_config_models.proto";
+import "core/pipeline_core_types.proto";
+
+option java_package = "ai.pipestream.design.v1";
+option java_multiple_files = true;
+
+// Design Mode Service - Frontend pipeline simulation
+service DesignModev1Service {
+  // Create design-time graph (not deployed)
+  rpc CreateDesignGraph(CreateDesignGraphRequest) returns (CreateDesignGraphResponse);
+  
+  // Simulate pipeline execution in frontend
+  rpc SimulatePipeline(SimulatePipelineRequest) returns (SimulatePipelineResponse);
+  
+  // Test individual node with sample data
+  rpc TestNode(TestNodeRequest) returns (TestNodeResponse);
+  
+  // Validate graph before deployment
+  rpc ValidateGraph(ValidateGraphRequest) returns (ValidateGraphResponse);
+  
+  // Deploy graph from design to production
+  rpc DeployGraph(DeployGraphRequest) returns (DeployGraphResponse);
+  
+  // Get design-time graphs for user
+  rpc ListDesignGraphs(ListDesignGraphsRequest) returns (ListDesignGraphsResponse);
+}
+
+message CreateDesignGraphRequest {
+  string cluster_id = 1;
+  string graph_name = 2;
+  string description = 3;
+  string user_id = 4; // Designer/owner
+}
+
+message CreateDesignGraphResponse {
+  bool success = 1;
+  string message = 2;
+  ai.pipestream.config.v1.PipelineGraph design_graph = 3;
+}
+
+message SimulatePipelineRequest {
+  string design_graph_id = 1;
+  ai.pipestream.data.v1.PipeDoc sample_document = 2;
+  string starting_node_id = 3;
+  bool step_by_step = 4; // Return results after each step
+}
+
+message SimulatePipelineResponse {
+  bool success = 1;
+  string message = 2;
+  repeated SimulationStep steps = 3;
+  ai.pipestream.data.v1.PipeDoc final_result = 4;
+  SimulationMetrics metrics = 5;
+}
+
+message SimulationStep {
+  string node_id = 1;
+  string node_name = 2;
+  ai.pipestream.data.v1.PipeDoc input_document = 3;
+  ai.pipestream.data.v1.PipeDoc output_document = 4;
+  int64 simulated_processing_time_ms = 5;
+  bool simulated_success = 6;
+  string simulated_error_message = 7;
+}
+
+message SimulationMetrics {
+  int64 total_simulation_time_ms = 1;
+  int32 nodes_processed = 2;
+  int32 nodes_failed = 3;
+  double overall_success_rate = 4;
+}
+
+message TestNodeRequest {
+  string design_graph_id = 1;
+  string node_id = 2;
+  ai.pipestream.data.v1.PipeDoc test_document = 3;
+}
+
+message TestNodeResponse {
+  bool success = 1;
+  string message = 2;
+  ai.pipestream.data.v1.PipeDoc result_document = 3;
+  int64 simulated_processing_time_ms = 4;
+  repeated string warnings = 5;
+}
+
+message ValidateGraphRequest {
+  string design_graph_id = 1;
+  bool check_module_availability = 2; // Verify modules are registered
+  bool check_kafka_topics = 3; // Verify topic naming conventions
+}
+
+message ValidateGraphResponse {
+  bool is_valid = 1;
+  repeated ValidationError errors = 2;
+  repeated ValidationWarning warnings = 3;
+  DeploymentReadiness deployment_readiness = 4;
+}
+
+message ValidationError {
+  string error_code = 1;
+  string message = 2;
+  string node_id = 3; // Optional: specific node with error
+  string edge_id = 4; // Optional: specific edge with error
+}
+
+message ValidationWarning {
+  string warning_code = 1;
+  string message = 2;
+  string node_id = 3;
+}
+
+message DeploymentReadiness {
+  bool ready_for_deployment = 1;
+  repeated string missing_modules = 2;
+  repeated string topic_conflicts = 3;
+  repeated string required_permissions = 4;
+}
+
+message DeployGraphRequest {
+  string design_graph_id = 1;
+  string target_cluster_id = 2; // May be different from design cluster
+  bool dry_run = 3; // Just validate, don't actually deploy
+}
+
+message DeployGraphResponse {
+  bool success = 1;
+  string message = 2;
+  string production_graph_id = 3; // ID of deployed graph
+  repeated DeploymentStep deployment_steps = 4;
+}
+
+message DeploymentStep {
+  string step_name = 1;
+  bool success = 2;
+  string message = 3;
+  int64 duration_ms = 4;
+}
+
+message ListDesignGraphsRequest {
+  string user_id = 1; // Optional: filter by user
+  string cluster_id = 2; // Optional: filter by cluster
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListDesignGraphsResponse {
+  repeated DesignGraphSummary graphs = 1;
+  string next_page_token = 2;
+}
+
+message DesignGraphSummary {
+  string graph_id = 1;
+  string name = 2;
+  string description = 3;
+  string user_id = 4;
+  string cluster_id = 5;
+  int32 node_count = 6;
+  int32 edge_count = 7;
+  bool is_valid = 8;
+  bool ready_for_deployment = 9;
+  int64 created_at = 10;
+  int64 modified_at = 11;
+}

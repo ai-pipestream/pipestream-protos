@@ -1,0 +1,120 @@
+plugins {
+    id 'pl.allegro.tech.build.axion-release' version '1.21.0'
+    id 'com.gradleup.nmcp.aggregation' version '1.3.0'
+    id 'maven-publish'
+    id 'signing'
+    id 'java-library'
+}
+
+scmVersion {
+    tag {
+        prefix = 'v'
+    }
+    checks {
+        uncommittedChanges = false
+        aheadOfRemote = false
+        snapshotDependencies = false
+    }
+}
+
+group = 'ai.pipestream'
+version = scmVersion.version
+description = 'Pipeline Protobuf definitions - source of truth for all .proto files'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withJavadocJar()
+    withSourcesJar()
+}
+
+dependencies {
+    // This module only contains proto files, no Java dependencies needed
+    // Proto files are consumed by grpc-stubs for code generation
+}
+
+// Include proto files in the JAR so Quarkus can scan them from dependencies
+// Proto files will be packaged at the root of the JAR (not under proto/ subdirectory)
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources', 'src/main/proto']
+        }
+    }
+}
+
+// Harden Javadoc (offline-safe by default)
+tasks.withType(Javadoc).configureEach { t ->
+    t.classpath = files(sourceSets.main.compileClasspath)
+    def opts = t.options
+    opts.encoding = 'UTF-8'
+    opts.locale = 'en'
+    opts.charSet = 'UTF-8'
+    opts.addStringOption('Xdoclint:-missing', '-quiet')
+    // External links (disabled by default to avoid network in closed environments).
+    // Enable explicitly via: -PenableExternalJavadocLinks
+    if (project.hasProperty('enableExternalJavadocLinks')) {
+        [
+            'https://docs.oracle.com/en/java/javase/21/docs/api/'
+        ].each { link -> opts.addStringOption('link', link) }
+    }
+    t.exclude('**/internal/**', '**/impl/**', '**/test/**')
+}
+
+publishing {
+    publications {
+        create('maven', MavenPublication) {
+            from components.java
+
+            pom {
+                name = project.name
+                description = project.description ?: "Pipeline Protobuf definitions for ai.pipestream"
+                url = 'https://github.com/ai-pipestream/pipestream-protos'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'krickert'
+                        name = 'Krickert'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:https://github.com/ai-pipestream/pipestream-protos.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/ai-pipestream/pipestream-protos.git'
+                    url = 'https://github.com/ai-pipestream/pipestream-protos'
+                }
+            }
+        }
+    }
+
+    repositories {
+        mavenLocal()
+    }
+}
+
+signing {
+    def signingKey = System.getenv("GPG_SIGNING_KEY")
+    def signingPassword = System.getenv("GPG_SIGNING_PASSPHRASE")
+
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications
+    }
+}
+
+nmcpAggregation {
+    publishAllProjectsProbablyBreakingProjectIsolation()
+
+    centralPortal {
+        username = findProperty('mavenCentralUsername') ?: System.getenv('MAVEN_CENTRAL_USERNAME')
+        password = findProperty('mavenCentralPassword') ?: System.getenv('MAVEN_CENTRAL_PASSWORD')
+        publishingType = "AUTOMATIC"
+    }
+}

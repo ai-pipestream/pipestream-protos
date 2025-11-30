@@ -1,0 +1,376 @@
+syntax = "proto3";
+
+package ai.pipestream.parsed.data.image.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "module/parser/tika/tika_base_metadata.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.parsed.data.image.v1";
+option java_outer_classname = "ImageMetadataProto";
+
+/**
+ * Comprehensive image metadata as extracted by Tika from TIFF, EXIF, IPTC, XMP, and GPS.
+ * Based on Tika's TIFF, IPTC, and XMPDM interfaces with complete field coverage.
+ */
+message ImageMetadata {
+  // Basic image properties (TIFF)
+  optional int32 width = 1;                    // tiff:ImageWidth
+  optional int32 height = 2;                   // tiff:ImageLength
+  repeated int32 bits_per_sample = 3;          // tiff:BitsPerSample (can be multiple values)
+  optional int32 samples_per_pixel = 4;        // tiff:SamplesPerPixel
+  optional int32 orientation = 5;              // tiff:Orientation (1-8)
+  optional string orientation_raw = 64;        // Raw string fallback (Tika stores closed-choice strings)
+  optional string compression = 6;             // tiff:Compression
+  optional string color_space = 7;             // Color space information
+  optional int32 bits_per_pixel = 8;           // Calculated from bits_per_sample
+  
+  // Resolution information
+  optional double x_resolution = 9;            // tiff:XResolution (DPI)
+  optional double y_resolution = 10;           // tiff:YResolution (DPI)
+  optional string resolution_unit = 11;        // tiff:ResolutionUnit (Inch/cm)
+  
+  // Device/Camera information
+  optional string make = 12;                   // tiff:Make (camera manufacturer)
+  optional string model = 13;                  // tiff:Model (camera model)
+  optional string software = 14;               // tiff:Software
+  optional string artist = 15;                 // tiff:Artist / dc:creator
+  optional string copyright = 16;              // tiff:Copyright / dc:rights
+  optional string image_description = 17;      // tiff:ImageDescription
+  
+  // Date/time information
+  optional google.protobuf.Timestamp date_time = 18;           // tiff:DateTime
+  optional string date_time_raw = 60;            // Raw string fallback
+  optional google.protobuf.Timestamp date_time_original = 19;  // exif:DateTimeOriginal
+  optional string date_time_original_raw = 61;   // Raw string fallback
+  optional google.protobuf.Timestamp date_time_digitized = 20; // exif:DateTimeDigitized
+  optional string date_time_digitized_raw = 62;  // Raw string fallback
+  
+  // EXIF camera settings
+  ExifMetadata exif = 21;
+  
+  // GPS information
+  GpsMetadata gps = 22;
+  
+  // IPTC metadata
+  IptcMetadata iptc = 23;
+  
+  // Additional image properties
+  optional int32 pixel_x_dimension = 24;       // exif:PixelXDimension
+  optional int32 pixel_y_dimension = 25;       // exif:PixelYDimension
+  optional int32 rating = 26;                  // xmp:Rating
+  optional string rating_raw = 63;             // Raw string fallback
+  repeated string keywords = 27;               // dc:subject / IPTC keywords
+  optional int32 page_count = 28;              // exif:PageCount
+  
+  // === Catch-all for unknown/unmapped fields ===
+  google.protobuf.Struct additional_metadata = 200;
+  
+  /**
+   * Base Tika fields common to all document types
+   */
+  ai.pipestream.parsed.data.tika.base.v1.TikaBaseFields base_fields = 201;
+}
+
+/**
+ * EXIF metadata from camera settings and technical information.
+ */
+message ExifMetadata {
+  // Camera settings
+  optional double exposure_time = 1;           // exif:ExposureTime (seconds)
+  optional string exposure_time_raw = 50;      // Raw string fallback (e.g., "1/125")
+  optional double f_number = 2;                // exif:FNumber (aperture)
+  optional string f_number_raw = 51;           // Raw string fallback
+  optional double focal_length = 3;            // exif:FocalLength (mm)
+  optional string focal_length_raw = 52;       // Raw string fallback
+  optional double focal_length_35mm = 4;       // exif:FocalLengthIn35mmFilm
+  repeated int32 iso_speed_ratings = 5;        // exif:ISOSpeedRatings (can be multiple)
+  optional string flash = 6;                   // exif:Flash
+  optional bool flash_fired = 7;               // exif:Flash (boolean version)
+  optional string white_balance = 8;           // exif:WhiteBalance
+  optional string exposure_mode = 9;           // exif:ExposureMode
+  optional string exposure_program = 10;       // exif:ExposureProgram
+  optional double exposure_bias_value = 11;    // exif:ExposureBiasValue
+  optional string metering_mode = 12;          // exif:MeteringMode
+  optional string light_source = 13;           // exif:LightSource
+  optional string scene_type = 14;             // exif:SceneType
+  optional string sensing_method = 15;         // exif:SensingMethod
+  optional double digital_zoom_ratio = 16;     // exif:DigitalZoomRatio
+  optional string digital_zoom_ratio_raw = 53; // Raw string fallback
+  
+  // Lens information
+  optional string lens_make = 17;              // exif:LensMake
+  optional string lens_model = 18;             // exif:LensModel
+  optional string lens_serial_number = 19;     // exif:LensSerialNumber
+  
+  // Additional technical settings
+  optional string scene_capture_type = 20;     // exif:SceneCaptureType
+  optional string gain_control = 21;           // exif:GainControl
+  optional string contrast = 22;               // exif:Contrast
+  optional string saturation = 23;             // exif:Saturation
+  optional string sharpness = 24;              // exif:Sharpness
+  optional string subject_distance_range = 25; // exif:SubjectDistanceRange
+  optional double subject_distance = 26;       // exif:SubjectDistance
+  optional string subject_distance_raw = 54;   // Raw string fallback
+  optional double max_aperture_value = 27;     // exif:MaxApertureValue
+  optional string max_aperture_value_raw = 55; // Raw string fallback
+  optional double brightness_value = 28;       // exif:BrightnessValue
+  optional string brightness_value_raw = 56;   // Raw string fallback
+  optional string custom_rendered = 29;        // exif:CustomRendered
+  optional string file_source = 30;            // exif:FileSource
+  optional string scene_type_dng = 31;         // exif:SceneType (DNG specific)
+  optional string cfa_pattern = 32;            // exif:CFAPattern
+  optional string color_space_exif = 33;       // exif:ColorSpace
+  optional string components_configuration = 34; // exif:ComponentsConfiguration
+  optional double compressed_bits_per_pixel = 35; // exif:CompressedBitsPerPixel
+  optional string exif_version = 36;           // exif:ExifVersion
+  optional string flashpix_version = 37;       // exif:FlashpixVersion
+  optional string interoperability_index = 38; // exif:InteroperabilityIndex
+  optional string related_sound_file = 39;     // exif:RelatedSoundFile
+  optional string spectral_sensitivity = 40;   // exif:SpectralSensitivity
+  optional string oecf = 41;                   // exif:OECF
+  optional string spatial_frequency_response = 42; // exif:SpatialFrequencyResponse
+  optional string noise_reduction = 43;        // exif:NoiseReduction
+  optional string anti_alias = 44;             // exif:AntiAlias
+  optional string image_unique_id = 45;        // exif:ImageUniqueID
+  optional string camera_owner_name = 46;      // exif:CameraOwnerName
+  optional string body_serial_number = 47;     // exif:BodySerialNumber
+  optional string lens_specification = 48;     // exif:LensSpecification
+  optional string lens_serial_number_exif = 49; // exif:LensSerialNumber (EXIF specific)
+}
+
+/**
+ * GPS metadata from EXIF GPS information.
+ */
+message GpsMetadata {
+  // Coordinates
+  optional double latitude = 1;                // GPS:GPSLatitude (decimal degrees)
+  optional double longitude = 2;               // GPS:GPSLongitude (decimal degrees)
+  optional double altitude = 3;                // GPS:GPSAltitude (meters)
+  
+  // Reference indicators
+  optional string latitude_ref = 4;            // GPS:GPSLatitudeRef (N/S)
+  optional string longitude_ref = 5;           // GPS:GPSLongitudeRef (E/W)
+  optional string altitude_ref = 6;            // GPS:GPSAltitudeRef (above/below sea level)
+  
+  // Timestamp
+  optional google.protobuf.Timestamp timestamp = 7; // GPS:GPSDateStamp + GPSTimeStamp
+  optional string timestamp_raw = 63;         // Raw string fallback
+  
+  // Movement and direction
+  optional double speed = 8;                   // GPS:GPSSpeed
+  optional string speed_ref = 9;               // GPS:GPSSpeedRef (K/M/N for km/h, mph, knots)
+  optional double track = 10;                  // GPS:GPSTrack (direction of movement)
+  optional string track_ref = 11;              // GPS:GPSTrackRef (T/M for true/magnetic)
+  optional double img_direction = 12;          // GPS:GPSImgDirection
+  optional string img_direction_ref = 13;      // GPS:GPSImgDirectionRef (T/M)
+  optional double dest_bearing = 14;           // GPS:GPSDestBearing
+  optional string dest_bearing_ref = 15;       // GPS:GPSDestBearingRef
+  optional double dest_distance = 16;          // GPS:GPSDestDistance
+  optional string dest_distance_ref = 17;      // GPS:GPSDestDistanceRef
+  
+  // Location information
+  optional string map_datum = 18;              // GPS:GPSMapDatum
+  optional string processing_method = 19;      // GPS:GPSProcessingMethod
+  optional string area_information = 20;       // GPS:GPSAreaInformation
+  optional string dest_latitude = 21;          // GPS:GPSDestLatitude
+  optional string dest_latitude_ref = 22;      // GPS:GPSDestLatitudeRef
+  optional string dest_longitude = 23;         // GPS:GPSDestLongitude
+  optional string dest_longitude_ref = 24;     // GPS:GPSDestLongitudeRef
+  
+  // Technical GPS information
+  optional double dop = 25;                    // GPS:GPSDOP (dilution of precision)
+  optional string measure_mode = 26;           // GPS:GPSMeasureMode
+  optional string version_id = 27;             // GPS:GPSVersionID
+  optional string satellites = 28;             // GPS:GPSSatellites
+  optional string status = 29;                 // GPS:GPSStatus
+  optional string differential = 30;           // GPS:GPSDifferential
+}
+
+/**
+ * IPTC (International Press Telecommunications Council) metadata.
+ * Comprehensive coverage of IPTC Core and Extension fields.
+ */
+message IptcMetadata {
+  // Content description
+  optional string headline = 1;                // IPTC:Headline
+  optional string caption = 2;                 // IPTC:Caption-Abstract / dc:description
+  repeated string keywords = 3;                // IPTC:Keywords / dc:subject
+  optional string category = 4;                // IPTC:Category (deprecated but still used)
+  repeated string supplemental_categories = 5; // IPTC:SupplementalCategories (deprecated)
+  optional string intellectual_genre = 6;      // IPTC:IntellectualGenre
+  repeated string scene_code = 7;              // IPTC:Scene (6-digit codes)
+  repeated string subject_code = 8;            // IPTC:SubjectCode (8-digit codes)
+  optional string title = 9;                   // IPTC:Title / dc:title
+  optional string image_description = 10;      // IPTC image description
+  
+  // Credits and rights
+  optional string byline = 11;                 // IPTC:By-line (photographer) / dc:creator
+  optional string byline_title = 12;           // IPTC:By-lineTitle
+  optional string credit = 13;                 // IPTC:Credit
+  optional string source = 14;                 // IPTC:Source
+  optional string copyright_notice = 15;       // IPTC:CopyrightNotice / dc:rights
+  optional string rights_usage_terms = 16;     // Rights usage terms
+  optional string description_writer = 17;     // IPTC:Writer/Editor
+  
+  // Location information (legacy - blurred semantics)
+  optional string city = 18;                   // IPTC:City
+  optional string sublocation = 19;            // IPTC:SubLocation
+  optional string province_state = 20;         // IPTC:Province-State
+  optional string country_name = 21;           // IPTC:Country-PrimaryLocationName
+  optional string country_code = 22;           // IPTC:Country-PrimaryLocationCode
+  
+  // Dates
+  optional google.protobuf.Timestamp date_created = 23;  // IPTC:DateCreated
+  optional google.protobuf.Timestamp release_date = 24;  // IPTC:ReleaseDate
+  optional google.protobuf.Timestamp expiration_date = 25; // IPTC:ExpirationDate
+  
+  // Editorial information
+  optional string special_instructions = 26;   // IPTC:SpecialInstructions
+  optional string action_advised = 27;         // IPTC:ActionAdvised
+  optional string reference_service = 28;      // IPTC:ReferenceService
+  optional string reference_date = 29;         // IPTC:ReferenceDate
+  optional string reference_number = 30;       // IPTC:ReferenceNumber
+  optional string job_id = 31;                 // IPTC:JobID / transmission reference
+  optional string urgency = 32;                // IPTC:Urgency (deprecated)
+  
+  // Technical information
+  optional string originating_program = 33;    // IPTC:OriginatingProgram
+  optional string program_version = 34;        // IPTC:ProgramVersion
+  optional string object_cycle = 35;           // IPTC:ObjectCycle (a/p/b)
+  
+  // Contact information
+  ContactInfo contact_info = 36;
+  
+  // IPTC Extension fields
+  optional string additional_model_info = 37;  // Additional model information
+  repeated string model_age = 38;              // Model ages
+  repeated string person_in_image = 39;        // Person names in image
+  repeated string organisation_name = 40;      // Organisation names in image
+  repeated string organisation_code = 41;      // Organisation codes
+  optional string event = 42;                  // Event name
+  repeated string controlled_vocabulary_term = 43; // CV terms
+  optional string digital_image_guid = 44;     // Unique image identifier
+  optional string digital_source_type = 45;    // Digital source type
+  optional int32 max_avail_width = 46;         // Maximum available width
+  optional int32 max_avail_height = 47;        // Maximum available height
+  
+  // Location Created (precise semantics)
+  LocationInfo location_created = 48;
+  
+  // Location Shown (precise semantics)
+  repeated LocationInfo location_shown = 49;
+  
+  // Artwork/Object information
+  repeated ArtworkInfo artwork_or_object = 50;
+  
+  // Registry information
+  repeated RegistryInfo registry_entry = 51;
+  
+  // PLUS licensing information
+  PlusLicensingInfo plus_licensing = 52;
+  
+  // Timestamps
+  optional google.protobuf.Timestamp iptc_last_edited = 53; // Last edit timestamp
+}
+
+/**
+ * Contact information structure for IPTC.
+ */
+message ContactInfo {
+  repeated string address = 1;                 // Multi-line address
+  optional string city = 2;                    // City
+  optional string country = 3;                 // Country
+  repeated string email = 4;                  // Email addresses
+  repeated string phone = 5;                  // Phone numbers
+  optional string postal_code = 6;             // Postal code
+  optional string state_province = 7;          // State/province
+  repeated string web_url = 8;                // Web URLs
+}
+
+/**
+ * Location information with precise semantics.
+ */
+message LocationInfo {
+  optional string world_region = 1;            // World region (top level)
+  optional string country_name = 2;            // Country name
+  optional string country_code = 3;            // ISO country code
+  optional string province_state = 4;          // Province/state
+  optional string city = 5;                    // City
+  optional string sublocation = 6;             // Sublocation
+  optional double latitude = 7;                // GPS latitude
+  optional double longitude = 8;               // GPS longitude
+}
+
+/**
+ * Artwork or object information.
+ */
+message ArtworkInfo {
+  optional string title = 1;                   // Artwork title
+  optional string creator = 2;                 // Artist/creator
+  optional google.protobuf.Timestamp date_created = 3; // Creation date
+  optional string copyright_notice = 4;        // Copyright
+  optional string source = 5;                  // Holding organization
+  optional string source_inventory_number = 6; // Inventory number
+}
+
+/**
+ * Registry information.
+ */
+message RegistryInfo {
+  optional string item_id = 1;                 // Registry item ID
+  optional string organisation_id = 2;         // Registry organization ID
+}
+
+/**
+ * PLUS licensing information.
+ */
+message PlusLicensingInfo {
+  optional string version = 1;                 // PLUS version
+  
+  // Copyright owners
+  repeated string copyright_owner = 2;
+  repeated string copyright_owner_id = 3;
+  repeated string copyright_owner_name = 4;
+  
+  // Image creators
+  repeated string image_creator = 5;
+  repeated string image_creator_id = 6;
+  repeated string image_creator_name = 7;
+  
+  // Image suppliers
+  optional string image_supplier = 8;
+  optional string image_supplier_id = 9;
+  optional string image_supplier_name = 10;
+  optional string image_supplier_image_id = 11;
+  
+  // Licensors
+  repeated LicensorInfo licensor = 12;
+  
+  // Model and property releases
+  optional string model_release_status = 13;
+  repeated string model_release_id = 14;
+  optional string property_release_status = 15;
+  repeated string property_release_id = 16;
+  optional string minor_model_age_disclosure = 17;
+}
+
+/**
+ * Licensor contact information.
+ */
+message LicensorInfo {
+  optional string licensor = 1;                // Licensor name
+  optional string licensor_id = 2;             // Licensor ID
+  optional string licensor_name = 3;           // Licensor name
+  optional string city = 4;                    // City
+  optional string country = 5;                 // Country
+  optional string email = 6;                   // Email
+  optional string extended_address = 7;        // Extended address
+  optional string postal_code = 8;             // Postal code
+  optional string region = 9;                  // Region
+  optional string street_address = 10;         // Street address
+  optional string telephone_1 = 11;            // Primary phone
+  optional string telephone_2 = 12;            // Secondary phone
+  optional string url = 13;                    // Website URL
+}

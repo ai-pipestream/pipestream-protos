@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.v1;
+
+import "core/pipeline_core_types.proto";
+
+option java_package = "ai.pipestream.engine.v1";
+option java_multiple_files = true;
+
+// V1 Engine - DNS-like routing with clean separation
+service EngineV1Service {
+  // Process document at specific node
+  rpc ProcessNode(ProcessNodeRequest) returns (ProcessNodeResponse);
+  
+  // Stream processing
+  rpc ProcessStream(stream ProcessNodeRequest) returns (stream ProcessNodeResponse);
+  
+  // Cross-cluster routing
+  rpc RouteToCluster(RouteToClusterRequest) returns (RouteToClusterResponse);
+  
+  // Kafka topic subscription management
+  rpc UpdateTopicSubscriptions(UpdateTopicSubscriptionsRequest) returns (UpdateTopicSubscriptionsResponse);
+  rpc GetTopicSubscriptions(GetTopicSubscriptionsRequest) returns (GetTopicSubscriptionsResponse);
+  
+  // Engine health
+  rpc GetHealth(HealthRequest) returns (HealthResponse);
+}
+
+message ProcessNodeRequest {
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  string routing_condition = 2; // Optional condition for next node selection
+}
+
+message ProcessNodeResponse {
+  bool success = 1;
+  string message = 2;
+  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+  ProcessingMetrics metrics = 4;
+}
+
+
+message RouteToClusterRequest {
+  string target_cluster_id = 1;
+  string target_node_id = 2;
+  ai.pipestream.data.v1.PipeStream stream = 3;
+}
+
+message RouteToClusterResponse {
+  bool success = 1;
+  string message = 2;
+  string routing_method = 3; // "messaging", "grpc"
+}
+
+message ProcessingMetrics {
+  int64 processing_time_ms = 1;
+  string node_id = 2;
+  string module_id = 3;
+  bool cache_hit = 4;
+  int64 hop_count = 5;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  EngineHealth health = 1;
+  int64 active_streams = 2;
+  int64 cache_hit_rate = 3;
+  repeated string connected_clusters = 4;
+  int64 uptime_seconds = 5;
+  KafkaSubscriptionStatus kafka_status = 6;
+}
+
+// Kafka topic subscription management
+message UpdateTopicSubscriptionsRequest {
+  string engine_instance_id = 1;
+  repeated string topics_to_subscribe = 2;
+  repeated string topics_to_unsubscribe = 3;
+  SubscriptionStrategy strategy = 4;
+}
+
+message UpdateTopicSubscriptionsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated string active_subscriptions = 3;
+  int32 total_listeners = 4;
+}
+
+message GetTopicSubscriptionsRequest {
+  string engine_instance_id = 1; // Optional: get specific instance
+}
+
+message GetTopicSubscriptionsResponse {
+  repeated EngineTopicSubscription subscriptions = 1;
+  ClusterTopicDistribution distribution = 2;
+}
+
+message EngineTopicSubscription {
+  string engine_instance_id = 1;
+  repeated string subscribed_topics = 2;
+  int32 active_listeners = 3;
+  int64 messages_processed = 4;
+  double cpu_usage_percent = 5;
+  double memory_usage_percent = 6;
+}
+
+message ClusterTopicDistribution {
+  int32 total_topics = 1;
+  int32 total_engine_instances = 2;
+  double average_topics_per_engine = 3;
+  repeated TopicLoadInfo topic_loads = 4;
+}
+
+message TopicLoadInfo {
+  string topic_name = 1;
+  int32 listener_count = 2;
+  int64 message_rate_per_second = 3;
+  repeated string assigned_engines = 4;
+}
+
+message KafkaSubscriptionStatus {
+  int32 active_listeners = 1;
+  repeated string subscribed_topics = 2;
+  int64 total_messages_processed = 3;
+  double average_processing_time_ms = 4;
+}
+
+enum EngineHealth {
+  ENGINE_HEALTH_UNSPECIFIED = 0;
+  ENGINE_HEALTH_HEALTHY = 1;
+  ENGINE_HEALTH_DEGRADED = 2;
+  ENGINE_HEALTH_UNHEALTHY = 3;
+}
+
+enum SubscriptionStrategy {
+  SUBSCRIPTION_STRATEGY_UNSPECIFIED = 0;
+  SUBSCRIPTION_STRATEGY_ALL_TOPICS = 1; // Demo mode - all engines listen to all topics
+  SUBSCRIPTION_STRATEGY_BALANCED = 2; // Distribute topics across engines
+  SUBSCRIPTION_STRATEGY_CAPACITY_BASED = 3; // Assign based on engine capacity
+  SUBSCRIPTION_STRATEGY_TOPIC_AFFINITY = 4; // Sticky assignment for related topics
+}

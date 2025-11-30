@@ -1,0 +1,343 @@
+syntax = "proto3";
+
+package ai.pipestream.config.v1;
+
+import "core/pipeline_config_models.proto";
+import "google/protobuf/struct.proto";
+
+option java_package = "ai.pipestream.config.v1";
+option java_multiple_files = true;
+
+// PipeStream Engine Configuration Service
+// Replaces Consul-based configuration with gRPC streaming
+service PipelineConfigService {
+  // Cluster Management
+  rpc CreateCluster(CreateClusterRequest) returns (CreateClusterResponse);
+  rpc GetCluster(GetClusterRequest) returns (Cluster);
+  rpc ListClusters(ListClustersRequest) returns (ListClustersResponse);
+  rpc UpdateCluster(UpdateClusterRequest) returns (UpdateClusterResponse);
+  rpc DeleteCluster(DeleteClusterRequest) returns (DeleteClusterResponse);
+  
+  // Pipeline Configuration Management
+  rpc CreatePipelineGraph(CreatePipelineGraphRequest) returns (CreatePipelineGraphResponse);
+  rpc GetPipelineConfig(GetPipelineConfigRequest) returns (PipelineGraph);
+  rpc ListPipelineGraphs(ListPipelineGraphsRequest) returns (ListPipelineGraphsResponse);
+  rpc UpdatePipelineGraph(UpdatePipelineGraphRequest) returns (UpdatePipelineGraphResponse);
+  rpc DeletePipelineGraph(DeletePipelineGraphRequest) returns (DeletePipelineGraphResponse);
+  
+  // Pipeline Instance Management
+  rpc CreatePipelineInstance(CreatePipelineInstanceRequest) returns (CreatePipelineInstanceResponse);
+  rpc GetPipelineInstance(GetPipelineInstanceRequest) returns (PipelineInstance);
+  rpc ListPipelineInstances(ListPipelineInstancesRequest) returns (ListPipelineInstancesResponse);
+  rpc UpdatePipelineInstance(UpdatePipelineInstanceRequest) returns (UpdatePipelineInstanceResponse);
+  rpc DeletePipelineInstance(DeletePipelineInstanceRequest) returns (DeletePipelineInstanceResponse);
+  rpc StartPipelineInstance(StartPipelineInstanceRequest) returns (StartPipelineInstanceResponse);
+  rpc StopPipelineInstance(StopPipelineInstanceRequest) returns (StopPipelineInstanceResponse);
+  
+  // Module Registration & Discovery
+  rpc RegisterModule(RegisterModuleRequest) returns (RegisterModuleResponse);
+  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterModuleResponse);
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+  rpc GetModuleHealth(GetModuleHealthRequest) returns (GetModuleHealthResponse);
+  
+  // Real-time Configuration Streaming (replaces Consul watches)
+  rpc WatchClusterConfig(WatchClusterConfigRequest) returns (stream ClusterConfigEvent);
+  rpc WatchPipelineGraph(WatchPipelineGraphRequest) returns (stream PipelineGraphEvent);
+  rpc WatchModuleRegistry(WatchModuleRegistryRequest) returns (stream ModuleRegistryEvent);
+  
+  // Module Whitelisting
+  rpc WhitelistModule(WhitelistModuleRequest) returns (WhitelistModuleResponse);
+  rpc RemoveModuleFromWhitelist(RemoveModuleFromWhitelistRequest) returns (RemoveModuleFromWhitelistResponse);
+  rpc ListWhitelistedModules(ListWhitelistedModulesRequest) returns (ListWhitelistedModulesResponse);
+}
+
+// Cluster Management Messages
+message CreateClusterRequest {
+  string cluster_name = 1;
+  ClusterMetadata metadata = 2;
+}
+
+message CreateClusterResponse {
+  bool success = 1;
+  string message = 2;
+  Cluster cluster = 3;
+}
+
+message GetClusterRequest {
+  string cluster_name = 1;
+}
+
+message ListClustersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListClustersResponse {
+  repeated Cluster clusters = 1;
+  string next_page_token = 2;
+}
+
+message UpdateClusterRequest {
+  string cluster_name = 1;
+  ClusterMetadata metadata = 2;
+}
+
+message UpdateClusterResponse {
+  bool success = 1;
+  string message = 2;
+  Cluster cluster = 3;
+}
+
+message DeleteClusterRequest {
+  string cluster_name = 1;
+}
+
+message DeleteClusterResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Pipeline Graph Messages
+message CreatePipelineGraphRequest {
+  string cluster_name = 1;
+  PipelineGraph pipeline_graph = 2;
+}
+
+message CreatePipelineGraphResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineGraph pipeline_graph = 3;
+}
+
+message GetPipelineGraphRequest {
+  string cluster_name = 1;
+  string graph_name = 2;
+}
+
+message GetPipelineConfigRequest {
+  string cluster_name = 1;
+  string graph_name = 2;
+}
+
+message ListPipelineGraphsRequest {
+  string cluster_name = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListPipelineGraphsResponse {
+  repeated PipelineGraph pipeline_graphs = 1;
+  string next_page_token = 2;
+}
+
+message UpdatePipelineGraphRequest {
+  string cluster_name = 1;
+  PipelineGraph pipeline_graph = 2;
+}
+
+message UpdatePipelineGraphResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineGraph pipeline_graph = 3;
+}
+
+message DeletePipelineGraphRequest {
+  string cluster_name = 1;
+  string graph_name = 2;
+}
+
+message DeletePipelineGraphResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Pipeline Instance Messages
+message CreatePipelineInstanceRequest {
+  PipelineInstance instance = 1;
+}
+
+message CreatePipelineInstanceResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineInstance instance = 3;
+}
+
+message GetPipelineInstanceRequest {
+  string cluster_name = 1;
+  string instance_id = 2;
+}
+
+message ListPipelineInstancesRequest {
+  string cluster_name = 1;
+  string pipeline_definition_id = 2;
+  PipelineInstanceStatus status = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListPipelineInstancesResponse {
+  repeated PipelineInstance instances = 1;
+  string next_page_token = 2;
+}
+
+message UpdatePipelineInstanceRequest {
+  PipelineInstance instance = 1;
+}
+
+message UpdatePipelineInstanceResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineInstance instance = 3;
+}
+
+message DeletePipelineInstanceRequest {
+  string cluster_name = 1;
+  string instance_id = 2;
+}
+
+message DeletePipelineInstanceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StartPipelineInstanceRequest {
+  string cluster_name = 1;
+  string instance_id = 2;
+}
+
+message StartPipelineInstanceResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineInstance instance = 3;
+}
+
+message StopPipelineInstanceRequest {
+  string cluster_name = 1;
+  string instance_id = 2;
+}
+
+message StopPipelineInstanceResponse {
+  bool success = 1;
+  string message = 2;
+  PipelineInstance instance = 3;
+}
+
+// Module Registration Messages
+message RegisterModuleRequest {
+  ModuleRegistration registration = 1;
+}
+
+message RegisterModuleResponse {
+  bool success = 1;
+  string message = 2;
+  ModuleRegistration registration = 3;
+}
+
+message UnregisterModuleRequest {
+  string module_id = 1;
+}
+
+message UnregisterModuleResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListModulesRequest {
+  string cluster_name = 1;
+  ModuleVisibility visibility_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListModulesResponse {
+  repeated ModuleRegistration modules = 1;
+  string next_page_token = 2;
+}
+
+message GetModuleHealthRequest {
+  string module_id = 1;
+}
+
+message GetModuleHealthResponse {
+  ModuleRegistration registration = 1;
+  bool is_healthy = 2;
+  string health_message = 3;
+}
+
+// Streaming Watch Messages (replaces Consul watches)
+message WatchClusterConfigRequest {
+  string cluster_name = 1;
+}
+
+message ClusterConfigEvent {
+  EventType event_type = 1;
+  Cluster cluster = 2;
+  int64 timestamp = 3;
+}
+
+message WatchPipelineGraphRequest {
+  string cluster_name = 1;
+  string graph_name = 2; // Empty for all graphs in cluster
+}
+
+message PipelineGraphEvent {
+  EventType event_type = 1;
+  PipelineGraph pipeline_graph = 2;
+  string cluster_name = 3;
+  int64 timestamp = 4;
+}
+
+message WatchModuleRegistryRequest {
+  string cluster_name = 1;
+  ModuleVisibility visibility_filter = 2;
+}
+
+message ModuleRegistryEvent {
+  EventType event_type = 1;
+  ModuleRegistration registration = 2;
+  int64 timestamp = 3;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_CREATED = 1;
+  EVENT_TYPE_UPDATED = 2;
+  EVENT_TYPE_DELETED = 3;
+}
+
+// Module Whitelisting Messages
+message WhitelistModuleRequest {
+  string cluster_name = 1;
+  string implementation_name = 2;
+  string grpc_service_name = 3;
+  SchemaReference custom_config_schema_reference = 4;
+  google.protobuf.Struct custom_config = 5;
+}
+
+message WhitelistModuleResponse {
+  bool success = 1;
+  string message = 2;
+  repeated string errors = 3;
+  repeated string warnings = 4;
+}
+
+message RemoveModuleFromWhitelistRequest {
+  string cluster_name = 1;
+  string implementation_id = 2;
+}
+
+message RemoveModuleFromWhitelistResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListWhitelistedModulesRequest {
+  string cluster_name = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListWhitelistedModulesResponse {
+  repeated ModuleDefinition modules = 1;
+  string next_page_token = 2;
+}

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package ai.pipestream.repository;
+
+import "core/pipeline_core_types.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option java_package = "ai.pipestream.repository";
+option java_multiple_files = true;
+
+service RepositoryService {
+  rpc SaveDocument(SaveDocumentRequest) returns (SaveDocumentResponse);
+  // Add other repository gRPC methods as needed
+}
+
+message SaveDocumentRequest {
+  string connector_id = 1;
+  string document_id = 2; // Client provided or generated UUID
+  ai.pipestream.data.v1.PipeDoc document = 3;
+  map<string, string> metadata = 4; // Additional metadata
+}
+
+message SaveDocumentResponse {
+  string document_id = 1;
+  string s3_key = 2;
+  string s3_version_id = 3;
+  string message = 4;
+}
