@@ -14,27 +14,39 @@ option java_package = "ai.pipestream.opensearch.v1";
 // system-managed base fields with a flexible container for arbitrary user data.
 message OpenSearchDocument {
   // --- Core Identity & System Fields ---
+  // Original document identifier from source system
   string original_doc_id = 1;
+  // Document type classification
   string doc_type = 2;
+  // User or system that created this document
   string created_by = 3;
+  // When the document was first indexed
   google.protobuf.Timestamp created_at = 4;
+  // When the document was last modified
   google.protobuf.Timestamp last_modified_at = 5;
 
   // --- Fields Derived from PipeDoc Schema ---
+  // Original source URI where document was retrieved
   optional string source_uri = 6;
+  // MIME type of the source document
   optional string source_mime_type = 7;
+  // Document title or headline
   optional string title = 8;
+  // Main document content/body text
   optional string body = 9;
-  repeated string tags = 10; // Renamed from 'keywords' for clarity
+  // Tags/keywords for categorization and search
+  repeated string tags = 10;
+  // Revision identifier for version tracking
   optional string revision_id = 11;
 
   // --- The Nested Embeddings ---
-  // A list of all embeddings (both chunked and non-chunked) for this document.
-  // This will be mapped to a 'nested' field in OpenSearch.
+  // List of all vector embeddings (chunked and non-chunked) for this document
+  // Mapped to a 'nested' field in OpenSearch for vector search
   repeated Embedding embeddings = 12;
 
   // --- User-Defined Flexible Data ---
-  // A flexible container for any arbitrary user-defined fields that are NOT part of the PipeDoc schema.
+  // Flexible JSON container for arbitrary user-defined fields
+  // not part of the core PipeDoc schema
   google.protobuf.Struct custom_fields = 13;
 }
 
