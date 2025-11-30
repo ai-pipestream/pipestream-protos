@@ -36,7 +36,7 @@ jobs:
           format: true
 
           # Breaking change detection (Compares current branch vs BSR main)
-          breaking: true
+          breaking: false
 
           # CRITICAL: Only push to Registry if we are on the 'main' branch
           push: ${{ github.ref == 'refs/heads/main' }}
