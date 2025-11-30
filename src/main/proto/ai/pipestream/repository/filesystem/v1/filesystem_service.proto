@@ -148,7 +148,8 @@ service FilesystemService {
 // Request to list drive bucket access status.
 //
 // Used for administrative monitoring of S3 bucket connectivity.
-message ListDriveBucketStatusRequest {}
+message ListDriveBucketStatusRequest {
+}
 
 // Drive bucket access status information.
 //

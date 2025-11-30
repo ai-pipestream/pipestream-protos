@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package ai.pipestream.config.v1;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/duration.proto";
 
 option java_package = "ai.pipestream.config.v1";
 option java_multiple_files = true;

@@ -2,22 +2,22 @@ syntax = "proto3";
 
 package ai.pipestream.parsed.data.tika.v1;
 
-import "google/protobuf/timestamp.proto";
-import "ai/pipestream/parsed/data/dublin/v1/dublin_core.proto";
-import "ai/pipestream/parsed/data/office/v1/office_metadata.proto";
-import "ai/pipestream/parsed/data/pdf/v1/pdf_metadata.proto";
-import "ai/pipestream/parsed/data/image/v1/image_metadata.proto";
-import "ai/pipestream/parsed/data/email/v1/email_metadata.proto";
-import "ai/pipestream/parsed/data/media/v1/media_metadata.proto";
-import "ai/pipestream/parsed/data/html/v1/html_metadata.proto";
-import "ai/pipestream/parsed/data/rtf/v1/rtf_metadata.proto";
-import "ai/pipestream/parsed/data/database/v1/database_metadata.proto";
-import "ai/pipestream/parsed/data/tika/font/v1/font_metadata.proto";
-import "ai/pipestream/parsed/data/epub/v1/epub_metadata.proto";
-import "ai/pipestream/parsed/data/warc/v1/warc_metadata.proto";
 import "ai/pipestream/parsed/data/climate/v1/climate_forecast_metadata.proto";
 import "ai/pipestream/parsed/data/creative_commons/v1/creative_commons_metadata.proto";
+import "ai/pipestream/parsed/data/database/v1/database_metadata.proto";
+import "ai/pipestream/parsed/data/dublin/v1/dublin_core.proto";
+import "ai/pipestream/parsed/data/email/v1/email_metadata.proto";
+import "ai/pipestream/parsed/data/epub/v1/epub_metadata.proto";
 import "ai/pipestream/parsed/data/generic/v1/generic_metadata.proto";
+import "ai/pipestream/parsed/data/html/v1/html_metadata.proto";
+import "ai/pipestream/parsed/data/image/v1/image_metadata.proto";
+import "ai/pipestream/parsed/data/media/v1/media_metadata.proto";
+import "ai/pipestream/parsed/data/office/v1/office_metadata.proto";
+import "ai/pipestream/parsed/data/pdf/v1/pdf_metadata.proto";
+import "ai/pipestream/parsed/data/rtf/v1/rtf_metadata.proto";
+import "ai/pipestream/parsed/data/tika/font/v1/font_metadata.proto";
+import "ai/pipestream/parsed/data/warc/v1/warc_metadata.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_package = "ai.pipestream.parsed.data.tika.v1";

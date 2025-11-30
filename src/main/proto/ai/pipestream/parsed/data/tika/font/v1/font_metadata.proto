@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.parsed.data.tika.font.v1;
 
-import "google/protobuf/struct.proto";
 import "ai/pipestream/parsed/data/tika/base/v1/tika_base_metadata.proto";
+import "google/protobuf/struct.proto";
 
 option java_package = "ai.pipestream.parsed.data.tika.font.v1";
 option java_multiple_files = true;

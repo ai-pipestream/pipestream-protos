@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.repository.v1;
 
-import "ai/pipestream/repository/v1/repository_service_data.proto";
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "ai/pipestream/repository/v1/repository_service_data.proto";
 
 option java_package = "ai.pipestream.repository.v1";
 option java_multiple_files = true;

@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package ai.pipestream.platform.registration.v1;
 
+import "ai/pipestream/data/module/v1/module_service.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
 option java_package = "ai.pipestream.platform.registration.v1";
 option java_outer_classname = "PlatformRegistrationProto";
 option java_multiple_files = true;
-
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
-import "ai/pipestream/data/module/v1/module_service.proto";
 
 // Unified registration service for all platform services and modules.
 //

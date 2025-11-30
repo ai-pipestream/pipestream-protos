@@ -60,7 +60,8 @@ message ProcessingMetrics {
   int64 hop_count = 5;
 }
 
-message HealthRequest {}
+message HealthRequest {
+}
 
 message HealthResponse {
   EngineHealth health = 1;

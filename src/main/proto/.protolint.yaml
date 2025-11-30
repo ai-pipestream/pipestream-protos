@@ -1,37 +1,27 @@
 # Protolint configuration for AI Pipestream
-# Auto-fixes non-breaking formatting issues
+# Focuses on formatting and auto-fixable style issues
 
 lint:
   rules:
+    # Don't use default rules - explicitly specify what we want
     no_default: true
 
-    # Enable auto-fixable formatting rules
-    INDENT: true
-    ORDER: true
-    IMPORTS_SORTED: true
-    MAX_LINE_LENGTH:
-      max_chars: 120
+    # Add formatting rules
+    add:
+      - INDENT
+      - ORDER
+      - IMPORTS_SORTED
+      - PACKAGE_NAME_LOWER_CASE
+      - FILE_NAMES_LOWER_SNAKE_CASE
+      - ENUM_NAMES_UPPER_CAMEL_CASE
+      - MESSAGE_NAMES_UPPER_CAMEL_CASE
+      - RPC_NAMES_UPPER_CAMEL_CASE
+      - SERVICE_NAMES_UPPER_CAMEL_CASE
+      - FIELD_NAMES_LOWER_SNAKE_CASE
+      - ENUM_FIELD_NAMES_UPPER_SNAKE_CASE
 
-    # Basic naming conventions
-    PACKAGE_NAME_LOWER_CASE: true
-    FILE_NAMES_LOWER_SNAKE_CASE: true
-    ENUM_NAMES_UPPER_CAMEL_CASE: true
-    MESSAGE_NAMES_UPPER_CAMEL_CASE: true
-    RPC_NAMES_UPPER_CAMEL_CASE: true
-    SERVICE_NAMES_UPPER_CAMEL_CASE: true
-
-    # Disable rules we'll handle with buf or that are too strict
-    ENUM_FIELD_NAMES_PREFIX: false
-    ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH: false
-    FIELD_NAMES_LOWER_SNAKE_CASE: false
-    SERVICE_NAMES_END_WITH: false
-    REPEATED_FIELD_NAMES_PLURALIZED: false
-
-    # Disable comment requirements for now
-    FILE_HAS_COMMENT: false
-    MESSAGES_HAVE_COMMENT: false
-    SERVICES_HAVE_COMMENT: false
-    RPCS_HAVE_COMMENT: false
-    FIELDS_HAVE_COMMENT: false
-    ENUMS_HAVE_COMMENT: false
-    ENUM_FIELDS_HAVE_COMMENT: false
+  # Directories to exclude from linting
+  directories:
+    exclude:
+      - build
+      - vendor

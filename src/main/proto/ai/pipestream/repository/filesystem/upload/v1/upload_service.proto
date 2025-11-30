@@ -2,11 +2,11 @@ syntax = "proto3";
 
 package ai.pipestream.repository.filesystem.upload.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
 option java_multiple_files = true;
 option java_package = "ai.pipestream.repository.v1.filesystem.upload";
 option java_outer_classname = "NodeUploadProto";
-
-import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 enum UploadState {
   UPLOAD_STATE_UNSPECIFIED = 0;
