@@ -14,41 +14,34 @@ This repository is the **single source of truth** for all Protocol Buffer (`.pro
 - Schemas are published to [Buf Schema Registry](https://buf.build) for versioning and distribution
 - Comprehensive documentation is embedded directly in the proto files
 
-The proto files are packaged as a JAR artifact for Maven/Gradle consumption and published to BSR for cross-language usage.
+Schemas are published to the [Buf Schema Registry](https://buf.build) for version control and cross-language stub generation.
 
-## Maven Coordinates
+## Using These Schemas
 
-### Releases
-```xml
-<dependency>
-    <groupId>ai.pipestream</groupId>
-    <artifactId>pipestream-protos</artifactId>
-    <version>${version}</version>
-</dependency>
+### Via Buf Schema Registry (Recommended)
+
+The canonical schemas are published to BSR and can be consumed in any language:
+
+```yaml
+# buf.yaml
+version: v1
+deps:
+  - buf.build/pipestreamai/platform
 ```
 
-### Snapshots
-```xml
-<repository>
-    <id>maven-central-snapshots</id>
-    <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-    <snapshots>
-        <enabled>true</enabled>
-    </snapshots>
-</repository>
-
-<dependency>
-    <groupId>ai.pipestream</groupId>
-    <artifactId>pipestream-protos</artifactId>
-    <version>${version}-SNAPSHOT</version>
-</dependency>
+Then generate code:
+```bash
+buf generate buf.build/pipestreamai/platform
 ```
 
-### Gradle
-```groovy
-dependencies {
-    implementation 'ai.pipestream:pipestream-protos:${version}'
-}
+### Direct from Repository
+
+Clone this repository and use the proto files directly:
+
+```bash
+git clone https://github.com/ai-pipestream/pipestream-protos.git
+cd pipestream-protos/proto
+buf generate
 ```
 
 ## Proto File Structure
@@ -101,9 +94,8 @@ This documentation is automatically included in generated code for all languages
 
 ### Prerequisites
 
-- **Java 21 or later** - For building the JAR artifact
-- **Gradle 9.x** - Wrapper included (`./gradlew`)
-- **[Buf CLI](https://buf.build/docs/installation)** - For proto validation and formatting
+- **[Buf CLI](https://buf.build/docs/installation)** - Required for proto validation, formatting, and code generation
+- **Git** - For version control
 
 ### Installing Buf
 
@@ -115,8 +107,8 @@ brew install bufbuild/buf/buf
 curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
 chmod +x /usr/local/bin/buf
 
-# Or use the Buf installer
-curl -sSL https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m).tar.gz | tar -xvzf - -C /usr/local/bin
+# Windows
+# Download from https://github.com/bufbuild/buf/releases
 ```
 
 ### Local Development Workflow
@@ -132,14 +124,11 @@ buf format -w
 # 3. Check for breaking changes (against main branch)
 buf breaking --against '.git#branch=main,subdir=proto'
 
-# 4. Build the JAR artifact
-./gradlew build
+# 4. Generate code locally (optional)
+buf generate
 
-# 5. Publish to Maven Local for testing
-./gradlew publishToMavenLocal
-
-# 6. Check current version
-./gradlew currentVersion
+# 5. Push to BSR (requires BUF_TOKEN)
+buf push
 ```
 
 ### Buf Configuration
@@ -170,33 +159,24 @@ Automated proto validation runs on **every push and pull request**:
 - ✅ Enforces consistent formatting across all proto files
 - ✅ Publishes validated schemas to BSR for versioning
 - ✅ Full git history for accurate breaking change detection
+- ✅ Automatic PR comments with detailed validation feedback
 
-### Maven Publishing
+### Buf Schema Registry (BSR) Publishing
 
-#### Snapshots (main branch)
+Validated schemas are **automatically published to BSR** on every merge to `main`. This provides:
 
-Snapshots are automatically published to Maven Central Snapshots on:
-- Every push to `main` branch
-- Nightly at 3 AM UTC
-- Manual workflow dispatch
+- **Version Control** - Every commit to main creates a new BSR version
+- **Cross-Language Support** - Generate stubs for Go, Python, TypeScript, Java, etc.
+- **Dependency Management** - Other projects can depend on specific versions
+- **API Documentation** - Automatically generated docs from proto comments
+- **Breaking Change History** - Track API evolution over time
 
-#### Releases (version tags)
+**BSR Location**: `buf.build/pipestreamai/platform`
 
-Releases are published to Maven Central when:
-- A version tag (e.g., `v1.0.0`) is pushed
-- Triggered via workflow dispatch with version bump
-
-All Maven publishing workflows include proto validation via buf before building.
-
-### Buf Schema Registry (BSR)
-
-Validated schemas are automatically published to BSR on every merge to main. This enables:
-- Cross-language stub generation
-- Schema versioning and history
-- Dependency management
-- Public API documentation
-
-**Setup**: Add `BUF_TOKEN` secret to GitHub repository settings (generate at [buf.build/settings/user](https://buf.build/settings/user))
+**Setup**: Add `BUF_TOKEN` secret to GitHub repository settings
+- Generate token at: https://buf.build/settings/user
+- Add as repository secret: `Settings → Secrets → Actions → New secret`
+- Name: `BUF_TOKEN`
 
 ## Contributing
 
@@ -265,11 +245,17 @@ Breaking changes include:
 
 ## Versioning
 
-This project uses [Axion Release Plugin](https://github.com/allegro/axion-release-plugin) for semantic versioning based on git tags.
+Schema versions are managed through the Buf Schema Registry (BSR):
 
-- Version tags follow the format `v{major}.{minor}.{patch}` (e.g., `v0.1.0`)
-- The plugin automatically determines the version from the latest git tag
-- SNAPSHOT versions are automatically appended when not on a tag
+- **Commit-based versioning** - Each commit to `main` creates a new BSR version
+- **Package versioning** - Proto packages use explicit versions (`v1`, `v2`, etc.)
+- **Breaking changes** - Require bumping the package version (e.g., `v1` → `v2`)
+- **Git tags** - Optional semantic version tags (e.g., `v1.0.0`) for releases
+
+BSR automatically tracks:
+- All commits and their associated schema snapshots
+- Breaking vs. non-breaking changes
+- Dependency graphs between packages
 
 ## License
 
