@@ -30,13 +30,16 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           token: ${{ secrets.BUF_TOKEN }}
-          input: 'proto'
+          # Note: No 'input' specified - buf.yaml at root defines module path as 'proto'
+          
+          # Run linting
+          lint: true
 
           # Enforce formatting rules
           format: true
 
           # Breaking change detection (Compares current branch vs BSR main)
-          breaking: false
+          breaking: true
 
           # CRITICAL: Only push to Registry if we are on the 'main' branch
           push: ${{ github.ref == 'refs/heads/main' }}
