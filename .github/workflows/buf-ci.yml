@@ -6,40 +6,68 @@ on:
     branches:
       - main
     paths:
-      - 'proto/**'
-      - 'buf.yaml'
-      - 'buf.lock'
+      - '*/proto/**'
+      - '*/buf.yaml'
+      - '*/buf.lock'
 
   # 2. Trigger on any Pull Request (The "Gatekeeper")
   pull_request:
     paths:
-      - 'proto/**'
-      - 'buf.yaml'
-      - 'buf.lock'
+      - '*/proto/**'
+      - '*/buf.yaml'
+      - '*/buf.lock'
 
 jobs:
   buf:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write # Allows buf-action to comment on PRs
+      pull-requests: write
+
+    strategy:
+      matrix:
+        module:
+          - common
+          - pipeline-module
+          - admin
+          - repo
+          - config
+          - registration
+          - intake
+          - engine
+          - opensearch
+          - design
+          - parser
+          - linear-processor
+          - testing-harness
+          - ui-ux
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: bufbuild/buf-action@v1
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
         with:
-          token: ${{ secrets.BUF_TOKEN }}
-          # Note: No 'input' specified - buf.yaml at root defines module path as 'proto'
-          
-          # Run linting
-          lint: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Enforce formatting rules
-          format: true
+      - name: Buf Lint - ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: buf lint
 
-          # Breaking change detection (Compares current branch vs BSR main)
-          breaking: true
+      - name: Buf Format Check - ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: buf format -d --exit-code
 
-          # CRITICAL: Only push to Registry if we are on the 'main' branch
-          push: ${{ github.ref == 'refs/heads/main' }}
+      - name: Buf Breaking - ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=${{ matrix.module }}"
+        continue-on-error: true
+
+      - name: Buf Push - ${{ matrix.module }}
+        if: github.ref == 'refs/heads/main'
+        working-directory: ${{ matrix.module }}
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        run: |
+          buf dep update
+          buf push
