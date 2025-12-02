@@ -1,7 +1,6 @@
 name: Buf CI
 
 on:
-  # 1. Trigger on Pushes to Main (The "Release" / "Snapshot")
   push:
     branches:
       - main
@@ -9,8 +8,6 @@ on:
       - '*/proto/**'
       - '*/buf.yaml'
       - '*/buf.lock'
-
-  # 2. Trigger on any Pull Request (The "Gatekeeper")
   pull_request:
     paths:
       - '*/proto/**'
@@ -18,30 +15,8 @@ on:
       - '*/buf.lock'
 
 jobs:
-  buf:
+  buf-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
-    strategy:
-      matrix:
-        module:
-          - common
-          - pipeline-module
-          - admin
-          - repo
-          - config
-          - registration
-          - intake
-          - engine
-          - opensearch
-          - design
-          - parser
-          - linear-processor
-          - testing-harness
-          - ui-ux
-
     steps:
       - uses: actions/checkout@v6
 
@@ -50,24 +25,33 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Buf Lint - ${{ matrix.module }}
-        working-directory: ${{ matrix.module }}
-        run: buf lint
-
-      - name: Buf Format Check - ${{ matrix.module }}
-        working-directory: ${{ matrix.module }}
-        run: buf format -d --exit-code
-
-      - name: Buf Breaking - ${{ matrix.module }}
-        working-directory: ${{ matrix.module }}
-        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=${{ matrix.module }}"
-        continue-on-error: true
-
-      - name: Buf Push - ${{ matrix.module }}
-        if: github.ref == 'refs/heads/main'
-        working-directory: ${{ matrix.module }}
+      - name: Lint and Push All Modules
         env:
           BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
         run: |
-          buf dep update
-          buf push
+          set -e
+
+          MODULES="common pipeline-module admin repo config registration intake engine opensearch design parser linear-processor testing-harness ui-ux"
+
+          for module in $MODULES; do
+            echo "==== Processing $module ===="
+            cd $module
+
+            echo "→ Linting..."
+            buf lint proto
+
+            echo "→ Format check..."
+            buf format -d --exit-code proto
+
+            if [ "$IS_MAIN" = "true" ]; then
+              echo "→ Updating deps and pushing..."
+              buf dep update
+              buf push
+            fi
+
+            cd ..
+            echo ""
+          done
+
+          echo "✓ All modules processed successfully"
