@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package ai.pipestream.shell;
+
+option java_package = "ai.pipestream.shell";
+option java_outer_classname = "ShellServiceProto";
+option java_multiple_files = true;
+
+import "google/protobuf/empty.proto";
+import "grpc/health/v1/health.proto";
+
+// Aggregated shell-facing service for UI state.
+service ShellService {
+  // Stream health updates for a set of core/base services.
+  // The server sends an initial snapshot (one update per service),
+  // followed by incremental updates as health changes.
+  rpc WatchHealth(google.protobuf.Empty) returns (stream ServiceHealthUpdate);
+}
+
+message ServiceHealthUpdate {
+  string service_name = 1;  // logical name, e.g. "repository-service"
+  string display_name = 2;  // human-friendly label
+  string target = 3;        // resolved endpoint, e.g. host:port or "dynamic"
+  grpc.health.v1.HealthCheckResponse.ServingStatus status = 4; // SERVING / NOT_SERVING / UNKNOWN
+  string observed_at = 5;   // ISO-8601 timestamp for the update
+}

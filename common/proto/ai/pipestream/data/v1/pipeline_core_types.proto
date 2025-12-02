@@ -32,6 +32,31 @@ message PipeDoc {
   // to their actual type. Unknown types fall back to dynamic messages. All data here
   // will be indexed into the search engine unless configured otherwise.
   google.protobuf.Any structured_data = 4;
+  // Immutable parsed metadata from document parsers (Tika, Docling, etc.).
+  //
+  // This field is append-only - parsers can add new entries but should never modify
+  // or delete existing ones. Keys are parser-specific identifiers (e.g., "tika", "docling").
+  // The actual parsed data is stored in ParsedMetadata.data as an Any type containing
+  // parser-specific protobuf messages (e.g., TikaResponse, DoclingResponse).
+  map<string, ParsedMetadata> parsed_metadata = 5;
+}
+
+// Wrapper for parser output metadata.
+//
+// Contains metadata about a parser's execution and the actual parsed data.
+// The data field uses google.protobuf.Any to support any parser-specific protobuf type.
+message ParsedMetadata {
+  // Name of the parser that produced this data (e.g., "tika", "docling").
+  string parser_name = 1;
+  // Version of the parser (e.g., "4.0.0", "1.2.3").
+  string parser_version = 2;
+  // Timestamp when parsing occurred.
+  google.protobuf.Timestamp parsed_at = 3;
+  // Parser-specific output data.
+  //
+  // Contains parser-specific protobuf messages such as TikaResponse, DoclingResponse, etc.
+  // Types registered in the schema registry will deserialize to their actual type.
+  google.protobuf.Any data = 4;
 }
 
 // Standardized search engine metadata for OOTB indexing.

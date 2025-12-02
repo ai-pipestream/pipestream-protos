@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: proto
+    name: buf.build/pipestreamai/pipeline-module
+deps:
+  - buf.build/grpc/grpc
+  - buf.build/googleapis/googleapis
+  - buf.build/pipestreamai/common
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE
