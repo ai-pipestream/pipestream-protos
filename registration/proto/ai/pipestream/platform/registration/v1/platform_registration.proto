@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package ai.pipestream.platform.registration.v1;
 
-import "ai/pipestream/data/module/v1/module_service.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -15,23 +14,15 @@ option java_package = "ai.pipestream.platform.registration.v1";
 // module schema management via Apicurio Registry, and real-time event streaming
 // for registration lifecycle tracking.
 service PlatformRegistrationService {
-  // Register a service with streaming status updates.
+  // Register a service or module with streaming status updates.
   //
   // Returns a stream of RegistrationEvent messages tracking progress through
   // validation, Consul registration, health check configuration, and completion.
-  rpc RegisterService(RegisterServiceRequest) returns (stream RegisterServiceResponse);
+  // For modules, also includes schema validation and Apicurio registration.
+  rpc Register(RegisterRequest) returns (stream RegisterResponse);
 
-  // Register a module (document processor) with streaming status updates.
-  //
-  // Extends service registration by adding schema validation, Apicurio registration,
-  // and module-specific metadata handling.
-  rpc RegisterModule(RegisterModuleRequest) returns (stream RegisterModuleResponse);
-
-  // Unregister a service from Consul and the platform registry.
-  rpc UnregisterService(UnregisterServiceRequest) returns (UnregisterServiceResponse);
-
-  // Unregister a module from Consul and the platform registry.
-  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterModuleResponse);
+  // Unregister a service or module from Consul and the platform registry.
+  rpc Unregister(UnregisterRequest) returns (UnregisterResponse);
 
   // List all registered services with health status and metadata.
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
@@ -78,20 +69,45 @@ service PlatformRegistrationService {
   rpc GetModuleSchemaVersions(GetModuleSchemaVersionsRequest) returns (GetModuleSchemaVersionsResponse);
 }
 
-// Request to register a service with the platform.
+// Type of service being registered.
+enum ServiceType {
+  // Unspecified service type.
+  SERVICE_TYPE_UNSPECIFIED = 0;
+  // Regular platform service (e.g., mapping-service, account-service).
+  SERVICE_TYPE_SERVICE = 1;
+  // Document processing module (implements PipeStepProcessorService).
+  SERVICE_TYPE_MODULE = 2;
+}
+
+// Connection information for reaching a service.
+message Connectivity {
+  // Host that clients should use to connect (advertised address).
+  string advertised_host = 1;
+  // Port that clients should use to connect (advertised port).
+  int32 advertised_port = 2;
+  // Internal host where service actually binds (for health checks from same network).
+  optional string internal_host = 3;
+  // Internal port where service actually binds.
+  optional int32 internal_port = 4;
+  // Whether TLS/SSL is enabled for connections.
+  bool tls_enabled = 5;
+}
+
+// Request to register a service or module with the platform.
 //
-// Provides the information needed to register a service instance with Consul
-// and make it discoverable to other platform components.
-message RegisterServiceRequest {
-  // Logical service name (e.g., "mapping-service").
-  string service_name = 1;
-  // Host where service is running.
-  string host = 2;
-  // gRPC port where service accepts connections.
-  int32 port = 3;
+// Provides the minimal information needed for registration. For modules,
+// the platform-registration-service will callback to GetServiceRegistration
+// to fetch module metadata (schema, capabilities, etc.).
+message RegisterRequest {
+  // Service or module name (e.g., "mapping-service", "tika-parser").
+  string name = 1;
+  // Type of service being registered.
+  ServiceType type = 2;
+  // Connection information for reaching this service.
+  Connectivity connectivity = 3;
   // Service version (e.g., "1.2.3").
   string version = 4;
-  // Additional metadata for service configuration.
+  // Customer-defined metadata tags for custom use.
   map<string, string> metadata = 5;
   // Tags for discovery and filtering (e.g., "production", "us-east-1").
   repeated string tags = 6;
@@ -99,50 +115,43 @@ message RegisterServiceRequest {
   repeated string capabilities = 7;
 }
 
-// Request to register a module (document processor) with the platform.
-//
-// Extends service registration by including module-specific metadata,
-// schema information, and processing capabilities. Triggers schema
-// validation and Apicurio Registry registration.
-message RegisterModuleRequest {
-  // Module name (e.g., "tika-parser", "chunker").
-  string module_name = 1;
-  // Host where module is running.
-  string host = 2;
-  // gRPC port where module accepts connections.
-  int32 port = 3;
-  // Module version (e.g., "1.2.3").
-  string version = 4;
-  // Additional metadata for module configuration.
-  map<string, string> metadata = 5;
-  // Module-specific metadata including schema and capabilities.
-  //
-  // Contains input/output formats, document types supported, and schema definition.
-  ai.pipestream.data.module.v1.GetServiceRegistrationResponse service_registration_metadata = 6;
-}
-
-// Response for RegisterService RPC (streaming).
+// Response for Register RPC (streaming).
 //
 // Tracks registration progress through lifecycle stages including validation,
 // Consul registration, health check configuration, and completion.
-message RegisterServiceResponse {
+message RegisterResponse {
   // Registration event data.
   RegistrationEvent event = 1;
 }
 
-// Response for RegisterModule RPC (streaming).
+// Request to unregister a service or module.
 //
-// Tracks registration progress including schema validation and Apicurio registration.
-message RegisterModuleResponse {
-  // Registration event data.
-  RegistrationEvent event = 1;
+// Uses natural key (name + host + port) to identify the specific
+// instance to unregister from Consul and the platform registry.
+message UnregisterRequest {
+  // Service or module name.
+  string name = 1;
+  // Host where instance is running.
+  string host = 2;
+  // Port where instance accepts connections.
+  int32 port = 3;
+}
+
+// Response from unregistration operation.
+message UnregisterResponse {
+  // Whether unregistration succeeded.
+  bool success = 1;
+  // Status or error message.
+  string message = 2;
+  // Timestamp when unregistration completed.
+  google.protobuf.Timestamp timestamp = 3;
 }
 
 // Streaming registration event tracking registration progress.
 //
-// Sent during RegisterService and RegisterModule RPCs to provide real-time
-// updates on registration lifecycle stages including validation, Consul
-// registration, health check configuration, schema registration, and completion.
+// Sent during Register RPC to provide real-time updates on registration
+// lifecycle stages including validation, Consul registration, health check
+// configuration, schema registration (modules), and completion.
 message RegistrationEvent {
   // Type of event indicating the registration stage.
   EventType event_type = 1;
@@ -199,52 +208,6 @@ enum EventType {
   EVENT_TYPE_DATABASE_SAVED = 10;
   // Schema registered in Apicurio Registry (modules only).
   EVENT_TYPE_APICURIO_REGISTERED = 11;
-}
-
-// Request to unregister a service.
-//
-// Uses natural key (service_name + host + port) to identify the specific
-// instance to unregister from Consul and the platform registry.
-message UnregisterServiceRequest {
-  // Service name.
-  string service_name = 1;
-  // Host where instance is running.
-  string host = 2;
-  // Port where instance accepts connections.
-  int32 port = 3;
-}
-
-// Request to unregister a module.
-//
-// Uses natural key (module_name + host + port) to identify the specific
-// instance to unregister from Consul and the platform registry.
-message UnregisterModuleRequest {
-  // Module name.
-  string module_name = 1;
-  // Host where instance is running.
-  string host = 2;
-  // Port where instance accepts connections.
-  int32 port = 3;
-}
-
-// Response from service unregistration operation.
-message UnregisterServiceResponse {
-  // Whether unregistration succeeded.
-  bool success = 1;
-  // Status or error message.
-  string message = 2;
-  // Timestamp when unregistration completed.
-  google.protobuf.Timestamp timestamp = 3;
-}
-
-// Response from module unregistration operation.
-message UnregisterModuleResponse {
-  // Whether unregistration succeeded.
-  bool success = 1;
-  // Status or error message.
-  string message = 2;
-  // Timestamp when unregistration completed.
-  google.protobuf.Timestamp timestamp = 3;
 }
 
 // Request to look up service details.
