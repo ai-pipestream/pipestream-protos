@@ -29,10 +29,10 @@ enum UploadState {
 service NodeUploadService {
   // Simplified unary upload for full PipeDoc
   // Accepts full payload (up to 2GB) and handles S3 upload internally
-  rpc UploadPipeDoc(UploadFilesystemPipeDocRequest) returns (UploadFilesystemPipeDocResponse);
+  rpc UploadFilesystemPipeDoc(UploadFilesystemPipeDocRequest) returns (UploadFilesystemPipeDocResponse);
 
   // Retrieve document by ID
-  rpc GetDocument(GetUploadedDocumentRequest) returns (GetUploadedDocumentResponse);
+  rpc GetUploadedDocument(GetUploadedDocumentRequest) returns (GetUploadedDocumentResponse);
 }
 
 // Request to upload a PipeDoc

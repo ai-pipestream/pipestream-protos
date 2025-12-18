@@ -54,11 +54,11 @@ message RepoMetadataEvent {
 // Type of metadata update operation
 enum RepoUpdateType {
   // Unspecified update type (default)
-  UPDATE_TYPE_UNSPECIFIED = 0;
+  REPO_UPDATE_TYPE_UNSPECIFIED = 0;
   // Document metadata was newly created
-  UPDATE_TYPE_CREATED = 1;
+  REPO_UPDATE_TYPE_CREATED = 1;
   // Existing document metadata was updated
-  UPDATE_TYPE_UPDATED = 2;
+  REPO_UPDATE_TYPE_UPDATED = 2;
   // Document metadata was deleted
-  UPDATE_TYPE_DELETED = 3;
+  REPO_UPDATE_TYPE_DELETED = 3;
 }

@@ -143,15 +143,15 @@ message EngineLinearProcessingResult {
 // Status of stage processing.
 enum EngineLinearProcessingStatus {
   // Unspecified status.
-  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_UNSPECIFIED = 0;
+  ENGINE_LINEAR_PROCESSING_STATUS_UNSPECIFIED = 0;
   // Processing completed successfully.
-  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SUCCESS = 1;
+  ENGINE_LINEAR_PROCESSING_STATUS_SUCCESS = 1;
   // Processing failed with error.
-  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_FAILED = 2;
+  ENGINE_LINEAR_PROCESSING_STATUS_FAILED = 2;
   // Processing currently in progress.
-  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_IN_PROGRESS = 3;
+  ENGINE_LINEAR_PROCESSING_STATUS_IN_PROGRESS = 3;
   // Processing was skipped.
-  LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_SKIPPED = 4;
+  ENGINE_LINEAR_PROCESSING_STATUS_SKIPPED = 4;
 }
 
 // Linear Pipeline Configuration Service
@@ -159,7 +159,7 @@ service LinearPipelineConfigService {
   // CRUD operations
   rpc CreatePipelineConfig(CreatePipelineConfigRequest) returns (CreatePipelineConfigResponse);
   // Retrieves a pipeline configuration by ID.
-  rpc GetPipelineConfig(GetLinearPipelineConfigRequest) returns (GetLinearPipelineConfigResponse);
+  rpc GetLinearPipelineConfig(GetLinearPipelineConfigRequest) returns (GetLinearPipelineConfigResponse);
   // Updates an existing pipeline configuration.
   rpc UpdatePipelineConfig(UpdatePipelineConfigRequest) returns (UpdatePipelineConfigResponse);
   // Deletes a pipeline configuration.
@@ -175,7 +175,7 @@ service LinearPipelineConfigService {
   rpc GetPipelineConfigsByTag(GetPipelineConfigsByTagRequest) returns (GetPipelineConfigsByTagResponse);
 
   // Execution operations
-  rpc ExecuteLinearPipeline(ExecuteEngineLinearPipelineRequest) returns (stream ExecuteEngineLinearPipelineResponse);
+  rpc ExecuteEngineLinearPipeline(ExecuteEngineLinearPipelineRequest) returns (stream ExecuteEngineLinearPipelineResponse);
   // Validates a pipeline configuration without executing it.
   rpc ValidatePipelineConfig(ValidatePipelineConfigRequest) returns (ValidatePipelineConfigResponse);
 

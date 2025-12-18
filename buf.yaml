@@ -1,0 +1,39 @@
+version: v2
+modules:
+  - path: admin/proto
+    name: buf.build/pipestreamai/admin
+  - path: common/proto
+    name: buf.build/pipestreamai/common
+  - path: config/proto
+    name: buf.build/pipestreamai/config
+  - path: design/proto
+    name: buf.build/pipestreamai/design
+  - path: engine/proto
+    name: buf.build/pipestreamai/engine
+  - path: intake/proto
+    name: buf.build/pipestreamai/intake
+  - path: linear-processor/proto
+    name: buf.build/pipestreamai/linear-processor
+  - path: opensearch/proto
+    name: buf.build/pipestreamai/opensearch
+  - path: parser/proto
+    name: buf.build/pipestreamai/parser
+  - path: pipeline-module/proto
+    name: buf.build/pipestreamai/pipeline-module
+  - path: registration/proto
+    name: buf.build/pipestreamai/registration
+  - path: repo/proto
+    name: buf.build/pipestreamai/repo
+  - path: testing-harness/proto
+    name: buf.build/pipestreamai/testing-harness
+  - path: ui-ux/proto
+    name: buf.build/pipestreamai/ui-ux
+deps:
+  - buf.build/grpc/grpc
+  - buf.build/googleapis/googleapis
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

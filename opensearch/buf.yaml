@@ -6,6 +6,7 @@ deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
   - buf.build/pipestreamai/common
+  - buf.build/pipestreamai/admin
 lint:
   use:
     - STANDARD

@@ -103,15 +103,15 @@ service FilesystemService {
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
 
   // Node CRUD operations
-  rpc CreateNode(CreateFilesystemNodeRequest) returns (CreateFilesystemNodeResponse);
+  rpc CreateFilesystemNode(CreateFilesystemNodeRequest) returns (CreateFilesystemNodeResponse);
   // Retrieves a node by ID.
-  rpc GetNode(GetFilesystemNodeRequest) returns (GetFilesystemNodeResponse);
+  rpc GetFilesystemNode(GetFilesystemNodeRequest) returns (GetFilesystemNodeResponse);
   // Retrieves a node by its filesystem path.
   rpc GetNodeByPath(GetNodeByPathRequest) returns (GetNodeByPathResponse);
   // Updates node metadata.
-  rpc UpdateNode(UpdateFilesystemNodeRequest) returns (UpdateFilesystemNodeResponse);
+  rpc UpdateFilesystemNode(UpdateFilesystemNodeRequest) returns (UpdateFilesystemNodeResponse);
   // Deletes a node and optionally its children.
-  rpc DeleteNode(DeleteFilesystemNodeRequest) returns (DeleteFilesystemNodeResponse);
+  rpc DeleteFilesystemNode(DeleteFilesystemNodeRequest) returns (DeleteFilesystemNodeResponse);
 
   // Navigation operations
   rpc GetChildren(GetChildrenRequest) returns (GetChildrenResponse);

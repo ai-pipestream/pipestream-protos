@@ -20,7 +20,7 @@ service DesignModev1Service {
   rpc TestNode(TestNodeRequest) returns (TestNodeResponse);
 
   // Validate graph before deployment
-  rpc ValidateGraph(ValidateDesignGraphRequest) returns (ValidateGraphResponse);
+  rpc ValidateDesignGraph(ValidateDesignGraphRequest) returns (ValidateDesignGraphResponse);
 
   // Deploy graph from design to production
   rpc DeployGraph(DeployGraphRequest) returns (DeployGraphResponse);
@@ -142,7 +142,7 @@ message ValidateDesignGraphRequest {
 }
 
 // Response from graph validation
-message ValidateGraphResponse {
+message ValidateDesignGraphResponse {
   // Whether the graph passes all validation checks
   bool is_valid = 1;
   // List of validation errors that must be fixed

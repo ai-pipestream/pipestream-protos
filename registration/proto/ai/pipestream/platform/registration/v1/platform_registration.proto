@@ -28,7 +28,7 @@ service PlatformRegistrationService {
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
 
   // List all registered modules with schema and capability information.
-  rpc ListModules(ListPlatformModulesRequest) returns (ListModulesResponse);
+  rpc ListPlatformModules(ListPlatformModulesRequest) returns (ListPlatformModulesResponse);
 
   // Get specific service details by name or Consul service ID.
   rpc GetService(GetServiceRequest) returns (GetServiceResponse);
@@ -185,29 +185,29 @@ message EventMetadata {
 // and final completion or failure.
 enum PlatformEventType {
   // Unspecified event type.
-  EVENT_TYPE_UNSPECIFIED = 0;
+  PLATFORM_EVENT_TYPE_UNSPECIFIED = 0;
   // Registration process started.
-  EVENT_TYPE_STARTED = 1;
+  PLATFORM_EVENT_TYPE_STARTED = 1;
   // Input validated successfully.
-  EVENT_TYPE_VALIDATED = 2;
+  PLATFORM_EVENT_TYPE_VALIDATED = 2;
   // Successfully registered with Consul.
-  EVENT_TYPE_CONSUL_REGISTERED = 3;
+  PLATFORM_EVENT_TYPE_CONSUL_REGISTERED = 3;
   // Health check configured in Consul.
-  EVENT_TYPE_HEALTH_CHECK_CONFIGURED = 4;
+  PLATFORM_EVENT_TYPE_HEALTH_CHECK_CONFIGURED = 4;
   // Service reported healthy to Consul.
-  EVENT_TYPE_CONSUL_HEALTHY = 5;
+  PLATFORM_EVENT_TYPE_CONSUL_HEALTHY = 5;
   // Registration completed successfully.
-  EVENT_TYPE_COMPLETED = 6;
+  PLATFORM_EVENT_TYPE_COMPLETED = 6;
   // Registration failed at any stage.
-  EVENT_TYPE_FAILED = 7;
+  PLATFORM_EVENT_TYPE_FAILED = 7;
   // Module metadata fetched from module callback (modules only).
-  EVENT_TYPE_METADATA_RETRIEVED = 8;
+  PLATFORM_EVENT_TYPE_METADATA_RETRIEVED = 8;
   // Schema validated or synthesized (modules only).
-  EVENT_TYPE_SCHEMA_VALIDATED = 9;
+  PLATFORM_EVENT_TYPE_SCHEMA_VALIDATED = 9;
   // Registration persisted to database.
-  EVENT_TYPE_DATABASE_SAVED = 10;
+  PLATFORM_EVENT_TYPE_DATABASE_SAVED = 10;
   // Schema registered in Apicurio Registry (modules only).
-  EVENT_TYPE_APICURIO_REGISTERED = 11;
+  PLATFORM_EVENT_TYPE_APICURIO_REGISTERED = 11;
 }
 
 // Request to look up service details.
@@ -378,7 +378,7 @@ message WatchServicesResponse {
 }
 
 // Response containing list of all registered modules.
-message ListModulesResponse {
+message ListPlatformModulesResponse {
   // List of all registered module instances with their details.
   repeated GetModuleResponse modules = 1;
   // Timestamp when this snapshot was captured.
