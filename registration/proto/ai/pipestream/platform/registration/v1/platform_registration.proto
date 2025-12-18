@@ -28,7 +28,7 @@ service PlatformRegistrationService {
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
 
   // List all registered modules with schema and capability information.
-  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+  rpc ListModules(ListPlatformModulesRequest) returns (ListModulesResponse);
 
   // Get specific service details by name or Consul service ID.
   rpc GetService(GetServiceRequest) returns (GetServiceResponse);
@@ -154,7 +154,7 @@ message UnregisterResponse {
 // configuration, schema registration (modules), and completion.
 message RegistrationEvent {
   // Type of event indicating the registration stage.
-  EventType event_type = 1;
+  PlatformEventType event_type = 1;
   // Timestamp when this event occurred.
   google.protobuf.Timestamp timestamp = 2;
   // Human-readable message describing the event.
@@ -183,7 +183,7 @@ message EventMetadata {
 // Represents the progression of service or module registration from initial
 // validation through Consul registration, health checks, schema validation,
 // and final completion or failure.
-enum EventType {
+enum PlatformEventType {
   // Unspecified event type.
   EVENT_TYPE_UNSPECIFIED = 0;
   // Registration process started.
@@ -349,7 +349,7 @@ message GetModuleResponse {
 message ListServicesRequest {}
 
 // Request to list all registered modules.
-message ListModulesRequest {}
+message ListPlatformModulesRequest {}
 
 // Request to watch for service registration changes.
 message WatchServicesRequest {}

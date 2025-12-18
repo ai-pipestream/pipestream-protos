@@ -42,7 +42,7 @@ message OpenSearchDocument {
   // --- The Nested Embeddings ---
   // List of all vector embeddings (chunked and non-chunked) for this document
   // Mapped to a 'nested' field in OpenSearch for vector search
-  repeated Embedding embeddings = 12;
+  repeated OpenSearchEmbedding embeddings = 12;
 
   // --- User-Defined Flexible Data ---
   // Flexible JSON container for arbitrary user-defined fields
@@ -52,7 +52,7 @@ message OpenSearchDocument {
 
 // The canonical representation of a single vector embedding and its associated metadata.
 // This is the object that gets stored in the 'nested' field in OpenSearch.
-message Embedding {
+message OpenSearchEmbedding {
   // The vector embedding itself.
   repeated float vector = 1;
 

@@ -93,7 +93,7 @@ enum PipelineStatus {
 }
 
 // Request to execute a linear pipeline.
-message ExecuteLinearPipelineRequest {
+message ExecuteEngineLinearPipelineRequest {
   // Pipeline identifier to execute.
   string pipeline_id = 1;
   // Specific document IDs to process.
@@ -109,7 +109,7 @@ message ExecuteLinearPipelineRequest {
 }
 
 // Streaming response from pipeline execution.
-message ExecuteLinearPipelineResponse {
+message ExecuteEngineLinearPipelineResponse {
   // Execution identifier.
   string execution_id = 1;
   // Document being processed.
@@ -121,7 +121,7 @@ message ExecuteLinearPipelineResponse {
   // Name of current stage.
   string stage_name = 5;
   // Result from current stage processing.
-  LinearProcessingResult stage_result = 6;
+  EngineLinearProcessingResult stage_result = 6;
   // Whether this is the final response for this document.
   bool is_final = 7;
   // Timestamp of this response.
@@ -129,9 +129,9 @@ message ExecuteLinearPipelineResponse {
 }
 
 // Result from processing a single stage.
-message LinearProcessingResult {
+message EngineLinearProcessingResult {
   // Processing status for this stage.
-  LinearProcessingStatus status = 1;
+  EngineLinearProcessingStatus status = 1;
   // Error message if processing failed.
   string error_message = 2;
   // Stage-specific result metadata.
@@ -141,7 +141,7 @@ message LinearProcessingResult {
 }
 
 // Status of stage processing.
-enum LinearProcessingStatus {
+enum EngineLinearProcessingStatus {
   // Unspecified status.
   LINEAR_PROCESSING_STATUS_PROCESSING_STATUS_UNSPECIFIED = 0;
   // Processing completed successfully.
@@ -159,7 +159,7 @@ service LinearPipelineConfigService {
   // CRUD operations
   rpc CreatePipelineConfig(CreatePipelineConfigRequest) returns (CreatePipelineConfigResponse);
   // Retrieves a pipeline configuration by ID.
-  rpc GetPipelineConfig(GetPipelineConfigRequest) returns (GetPipelineConfigResponse);
+  rpc GetPipelineConfig(GetLinearPipelineConfigRequest) returns (GetLinearPipelineConfigResponse);
   // Updates an existing pipeline configuration.
   rpc UpdatePipelineConfig(UpdatePipelineConfigRequest) returns (UpdatePipelineConfigResponse);
   // Deletes a pipeline configuration.
@@ -175,7 +175,7 @@ service LinearPipelineConfigService {
   rpc GetPipelineConfigsByTag(GetPipelineConfigsByTagRequest) returns (GetPipelineConfigsByTagResponse);
 
   // Execution operations
-  rpc ExecuteLinearPipeline(ExecuteLinearPipelineRequest) returns (stream ExecuteLinearPipelineResponse);
+  rpc ExecuteLinearPipeline(ExecuteEngineLinearPipelineRequest) returns (stream ExecuteEngineLinearPipelineResponse);
   // Validates a pipeline configuration without executing it.
   rpc ValidatePipelineConfig(ValidatePipelineConfigRequest) returns (ValidatePipelineConfigResponse);
 
@@ -204,13 +204,13 @@ message CreatePipelineConfigResponse {
 }
 
 // Request to retrieve a pipeline configuration.
-message GetPipelineConfigRequest {
+message GetLinearPipelineConfigRequest {
   // Pipeline identifier to retrieve.
   string pipeline_id = 1;
 }
 
 // Response containing pipeline configuration.
-message GetPipelineConfigResponse {
+message GetLinearPipelineConfigResponse {
   // Pipeline configuration if found.
   LinearPipelineConfig config = 1;
   // Whether the pipeline was found.

@@ -44,7 +44,7 @@ message RepoMetadataEvent {
   google.protobuf.Struct metadata = 13;
 
   // Type of metadata update (created/updated/deleted)
-  UpdateType update_type = 14;
+  RepoUpdateType update_type = 14;
 
   // Optional error message if persistence partially failed
   // (event should ideally only be emitted on success)
@@ -52,7 +52,7 @@ message RepoMetadataEvent {
 }
 
 // Type of metadata update operation
-enum UpdateType {
+enum RepoUpdateType {
   // Unspecified update type (default)
   UPDATE_TYPE_UNSPECIFIED = 0;
   // Document metadata was newly created

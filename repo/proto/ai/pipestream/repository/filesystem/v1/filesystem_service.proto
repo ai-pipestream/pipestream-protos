@@ -103,15 +103,15 @@ service FilesystemService {
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
 
   // Node CRUD operations
-  rpc CreateNode(CreateNodeRequest) returns (CreateNodeResponse);
+  rpc CreateNode(CreateFilesystemNodeRequest) returns (CreateFilesystemNodeResponse);
   // Retrieves a node by ID.
-  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+  rpc GetNode(GetFilesystemNodeRequest) returns (GetFilesystemNodeResponse);
   // Retrieves a node by its filesystem path.
   rpc GetNodeByPath(GetNodeByPathRequest) returns (GetNodeByPathResponse);
   // Updates node metadata.
-  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
+  rpc UpdateNode(UpdateFilesystemNodeRequest) returns (UpdateFilesystemNodeResponse);
   // Deletes a node and optionally its children.
-  rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
+  rpc DeleteNode(DeleteFilesystemNodeRequest) returns (DeleteFilesystemNodeResponse);
 
   // Navigation operations
   rpc GetChildren(GetChildrenRequest) returns (GetChildrenResponse);
@@ -179,7 +179,7 @@ message ListDriveBucketStatusResponse {
 }
 
 // Request to create a new node (file or folder).
-message CreateNodeRequest {
+message CreateFilesystemNodeRequest {
   // Drive name (required, no default drive).
   string drive = 1;
   // Client-provided stable document ID (required, UUID format).
@@ -213,13 +213,13 @@ message CreateNodeRequest {
 }
 
 // Response from creating a node.
-message CreateNodeResponse {
+message CreateFilesystemNodeResponse {
   // The newly created node.
   Node node = 1;
 }
 
 // Request to retrieve a node by its document ID.
-message GetNodeRequest {
+message GetFilesystemNodeRequest {
   // Drive name (required).
   string drive = 1;
   // Document ID (UUID) to retrieve.
@@ -229,7 +229,7 @@ message GetNodeRequest {
 }
 
 // Response from retrieving a node.
-message GetNodeResponse {
+message GetFilesystemNodeResponse {
   // The requested node.
   Node node = 1;
 }
@@ -253,7 +253,7 @@ message GetNodeByPathResponse {
 }
 
 // Request to update node metadata.
-message UpdateNodeRequest {
+message UpdateFilesystemNodeRequest {
   // Drive name (required).
   string drive = 1;
   // Document ID (UUID) of node to update.
@@ -275,13 +275,13 @@ message UpdateNodeRequest {
 }
 
 // Response from updating a node.
-message UpdateNodeResponse {
+message UpdateFilesystemNodeResponse {
   // The updated node.
   Node node = 1;
 }
 
 // Request to delete a node.
-message DeleteNodeRequest {
+message DeleteFilesystemNodeRequest {
   // Drive name (required).
   string drive = 1;
   // Document ID (UUID) of node to delete.
@@ -291,7 +291,7 @@ message DeleteNodeRequest {
 }
 
 // Response from node deletion operation.
-message DeleteNodeResponse {
+message DeleteFilesystemNodeResponse {
   // Whether the deletion was successful.
   bool success = 1;
   // Number of nodes deleted (including children if recursive).

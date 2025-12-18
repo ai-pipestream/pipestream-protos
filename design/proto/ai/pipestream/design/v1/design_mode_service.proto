@@ -20,7 +20,7 @@ service DesignModev1Service {
   rpc TestNode(TestNodeRequest) returns (TestNodeResponse);
 
   // Validate graph before deployment
-  rpc ValidateGraph(ValidateGraphRequest) returns (ValidateGraphResponse);
+  rpc ValidateGraph(ValidateDesignGraphRequest) returns (ValidateGraphResponse);
 
   // Deploy graph from design to production
   rpc DeployGraph(DeployGraphRequest) returns (DeployGraphResponse);
@@ -132,7 +132,7 @@ message TestNodeResponse {
 }
 
 // Request to validate a graph before deployment
-message ValidateGraphRequest {
+message ValidateDesignGraphRequest {
   // Design graph ID to validate
   string design_graph_id = 1;
   // Whether to verify that all required modules are registered
@@ -146,7 +146,7 @@ message ValidateGraphResponse {
   // Whether the graph passes all validation checks
   bool is_valid = 1;
   // List of validation errors that must be fixed
-  repeated ValidationError errors = 2;
+  repeated DesignValidationError errors = 2;
   // List of validation warnings (non-blocking)
   repeated ValidationWarning warnings = 3;
   // Deployment readiness assessment
@@ -154,7 +154,7 @@ message ValidateGraphResponse {
 }
 
 // Validation error that prevents deployment
-message ValidationError {
+message DesignValidationError {
   // Machine-readable error code
   string error_code = 1;
   // Human-readable error message

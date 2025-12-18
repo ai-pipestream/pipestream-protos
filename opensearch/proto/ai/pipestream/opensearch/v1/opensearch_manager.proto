@@ -3,6 +3,7 @@ syntax = "proto3";
 package ai.pipestream.opensearch.v1;
 
 import "ai/pipestream/opensearch/v1/opensearch_document.proto";
+import "ai/pipestream/schemamanager/v1/schema_manager.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/wrappers.proto";
@@ -14,7 +15,7 @@ option java_package = "ai.pipestream.opensearch.v1";
 // and administrative operations for OpenSearch indices.
 service OpenSearchManagerService {
   // Schema Management (from schema_manager.proto)
-  rpc EnsureNestedEmbeddingsFieldExists(EnsureNestedEmbeddingsFieldExistsRequest) returns (EnsureNestedEmbeddingsFieldExistsResponse);
+  rpc EnsureNestedEmbeddingsFieldExists(ai.pipestream.schemamanager.v1.EnsureNestedEmbeddingsFieldExistsRequest) returns (ai.pipestream.schemamanager.v1.EnsureNestedEmbeddingsFieldExistsResponse);
 
   // Index Lifecycle Operations
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse);
@@ -30,7 +31,7 @@ service OpenSearchManagerService {
   // Deletes a document from an index.
   rpc DeleteDocument(DeleteDocumentRequest) returns (DeleteDocumentResponse);
   // Retrieves a document by ID from an index.
-  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+  rpc GetDocument(GetOpenSearchDocumentRequest) returns (GetOpenSearchDocumentResponse);
 
   // Admin Operations
   rpc GetIndexStats(GetIndexStatsRequest) returns (GetIndexStatsResponse);
@@ -43,68 +44,6 @@ service OpenSearchManagerService {
 
 // === Schema Management Messages (from schema_manager.proto) ===
 
-// Request to ensure a nested embeddings field exists in an OpenSearch index.
-// Creates or updates the index mapping to support vector search on nested documents.
-message EnsureNestedEmbeddingsFieldExistsRequest {
-  // Name of the OpenSearch index to modify
-  string index_name = 1;
-  // Name of the nested field that will contain embeddings (e.g., "embeddings")
-  string nested_field_name = 2;
-  // Vector field configuration including dimensions and k-NN parameters
-  VectorFieldDefinition vector_field_definition = 3;
-}
-
-// Defines the structure and parameters for a vector embedding field.
-message VectorFieldDefinition {
-  // Number of dimensions in the vector (e.g., 768 for many BERT models, 1536 for OpenAI)
-  int32 dimension = 1;
-  // k-NN search method configuration for this vector field
-  KnnMethodDefinition knn_method = 2;
-}
-
-// Configuration for k-NN (k-nearest neighbors) vector search method.
-message KnnMethodDefinition {
-  // Supported k-NN engines for vector similarity search
-  enum KnnEngine {
-    // Unspecified engine (default to OpenSearch's default)
-    KNN_ENGINE_UNSPECIFIED = 0;
-  }
-
-  // Distance metrics for vector similarity calculation
-  enum SpaceType {
-    // Unspecified space type
-    SPACE_TYPE_UNSPECIFIED = 0;
-    // Cosine similarity: measures angle between vectors (normalized dot product)
-    SPACE_TYPE_COSINESIMIL = 1;
-    // Inner product: raw dot product similarity
-    SPACE_TYPE_INNERPRODUCT = 2;
-  }
-
-  // k-NN engine to use for indexing and search
-  KnnEngine engine = 1;
-  // Distance metric to use for vector similarity
-  SpaceType space_type = 2;
-  // Algorithm-specific tuning parameters
-  KnnParametersDefinition parameters = 3;
-}
-
-// Fine-tuning parameters for HNSW (Hierarchical Navigable Small World) algorithm.
-// These control the tradeoff between search accuracy, speed, and index size.
-message KnnParametersDefinition {
-  // Number of bi-directional links per node (higher = more accurate but larger index)
-  google.protobuf.Int32Value m = 1;
-  // Size of dynamic candidate list during index construction (higher = better quality)
-  google.protobuf.Int32Value ef_construction = 2;
-  // Size of dynamic candidate list during search (higher = more accurate but slower)
-  google.protobuf.Int32Value ef_search = 3;
-}
-
-// Response indicating whether the nested embeddings schema was created or already existed.
-message EnsureNestedEmbeddingsFieldExistsResponse {
-  // True if the schema already existed, false if it was newly created
-  bool schema_existed = 1;
-}
-
 // === Index Lifecycle Messages ===
 
 // Request to create a new OpenSearch index with vector search capabilities.
@@ -112,7 +51,7 @@ message CreateIndexRequest {
   // Name of the index to create (must be lowercase, no spaces)
   string index_name = 1;
   // Vector field configuration for embedding search
-  VectorFieldDefinition vector_field_definition = 2;
+  ai.pipestream.schemamanager.v1.VectorFieldDefinition vector_field_definition = 2;
   // Optional document type hint for schema generation
   optional string document_type = 3;
   // Optional custom OpenSearch index settings (shards, replicas, etc.)
@@ -221,7 +160,7 @@ message DeleteDocumentResponse {
 }
 
 // Request to retrieve a document from an index by ID.
-message GetDocumentRequest {
+message GetOpenSearchDocumentRequest {
   // Name of the index containing the document
   string index_name = 1;
   // ID of the document to retrieve
@@ -231,7 +170,7 @@ message GetDocumentRequest {
 }
 
 // Response containing the retrieved document if found.
-message GetDocumentResponse {
+message GetOpenSearchDocumentResponse {
   // Whether the document was found
   bool found = 1;
   // The retrieved document (only present if found=true)
@@ -271,11 +210,11 @@ message ListIndicesRequest {
 // Response containing a list of indices and their basic information.
 message ListIndicesResponse {
   // List of index information objects
-  repeated IndexInfo indices = 1;
+  repeated OpenSearchIndexInfo indices = 1;
 }
 
 // Basic information about a single OpenSearch index.
-message IndexInfo {
+message OpenSearchIndexInfo {
   // Name of the index
   string name = 1;
   // Total number of documents in the index
