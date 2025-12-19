@@ -24,6 +24,8 @@ modules:
     name: buf.build/pipestreamai/registration
   - path: repo/proto
     name: buf.build/pipestreamai/repo
+  - path: schemamanager/proto
+    name: buf.build/pipestreamai/schema-manager
   - path: testing-harness/proto
     name: buf.build/pipestreamai/testing-harness
   - path: ui-ux/proto

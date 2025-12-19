@@ -1,15 +1,15 @@
 version: v2
 modules:
   - path: proto
-    name: buf.build/pipestreamai/opensearch
+    name: buf.build/pipestreamai/schema-manager
 deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
   - buf.build/pipestreamai/common
-  - buf.build/pipestreamai/schema-manager
 lint:
   use:
     - STANDARD
 breaking:
   use:
     - FILE
+

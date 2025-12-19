@@ -4,9 +4,9 @@
 
 ## Overview
 
-The **admin** module provides administrative services for platform management, including multi-tenant account management, field mapping transformations, schema management for OpenSearch indices, and validation services for pipeline components.
+The **admin** module provides administrative services for platform management, including multi-tenant account management, field mapping transformations, and validation services for pipeline components.
 
-This module centralizes the administrative control plane, enabling operators to manage accounts, configure field transformations, ensure proper index schemas, and validate configurations before deployment.
+This module centralizes the administrative control plane, enabling operators to manage accounts, configure field transformations, and validate configurations before deployment.
 
 ## Published Location
 
@@ -19,7 +19,6 @@ This module centralizes the administrative control plane, enabling operators to 
 | `ai/pipestream/repository/account/v1/account_service.proto` | Multi-tenant account lifecycle management |
 | `ai/pipestream/repository/account/v1/account_events.proto` | Account change events |
 | `ai/pipestream/mapping/v1/mapping_service.proto` | Declarative field mapping and transformation |
-| `ai/pipestream/schemamanager/v1/schema_manager.proto` | OpenSearch index schema management |
 | `ai/pipestream/validation/v1/validation_service.proto` | Node, graph, and module validation |
 
 ## Architecture
@@ -41,13 +40,6 @@ graph TD
         RULES --> DIRECT[DIRECT copy]
         RULES --> TRANSFORM[TRANSFORM<br/>uppercase, trim, etc.]
         RULES --> AGGREGATE[AGGREGATE<br/>concatenate, sum]
-    end
-
-    subgraph "Schema Management"
-        SMS[SchemaManagerService]
-        SMS --> ENSURE[EnsureNestedEmbeddingsFieldExists]
-        ENSURE --> VEC[VectorFieldDefinition]
-        VEC --> KNN[k-NN Parameters<br/>dimension, engine, space]
     end
 
     subgraph "Validation"
@@ -97,8 +89,6 @@ dependencies {
 | `Account` | Account entity with ID, name, status, timestamps |
 | `MappingService` | Apply field transformation rules to documents |
 | `MappingRule` | Rule with fallback candidate mappings |
-| `SchemaManagerService` | Ensure OpenSearch index schemas are properly configured |
-| `VectorFieldDefinition` | k-NN vector field configuration (dimension, engine, space type) |
 | `ValidationService` | Validate nodes, graphs, and modules |
 | `ValidationError` / `ValidationWarning` | Structured validation feedback |
 
