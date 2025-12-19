@@ -148,7 +148,7 @@ message ValidateDesignGraphResponse {
   // List of validation errors that must be fixed
   repeated DesignValidationError errors = 2;
   // List of validation warnings (non-blocking)
-  repeated ValidationWarning warnings = 3;
+  repeated DesignValidationWarning warnings = 3;
   // Deployment readiness assessment
   DeploymentReadiness deployment_readiness = 4;
 }
@@ -166,7 +166,7 @@ message DesignValidationError {
 }
 
 // Validation warning (non-blocking)
-message ValidationWarning {
+message DesignValidationWarning {
   // Machine-readable warning code
   string warning_code = 1;
   // Human-readable warning message
