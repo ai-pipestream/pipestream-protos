@@ -43,7 +43,7 @@ service NodeUploadService {
   rpc UploadChunks(stream UploadChunksRequest) returns (UploadChunksResponse);
 
   // Get real-time progress updates (server streaming)
-  rpc StreamUploadProgress(StreamUploadProgressRequest) returns (stream StreamUploadProgressResponse);
+  rpc StreamUploadProgress(NodeUploadServiceStreamUploadProgressRequest) returns (stream NodeUploadServiceStreamUploadProgressResponse);
 
   // Check upload status
   rpc GetUploadStatus(GetUploadStatusRequest) returns (GetUploadStatusResponse);
@@ -135,13 +135,13 @@ message UploadChunksResponse {
 }
 
 // Request to stream upload progress
-message StreamUploadProgressRequest {
+message NodeUploadServiceStreamUploadProgressRequest {
   // Upload session ID to monitor
   string upload_id = 1;
 }
 
 // Progress update message (server streaming)
-message StreamUploadProgressResponse {
+message NodeUploadServiceStreamUploadProgressResponse {
   // Upload session ID
   string upload_id = 1;
   // Current upload state
