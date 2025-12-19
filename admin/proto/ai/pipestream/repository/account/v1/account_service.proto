@@ -18,11 +18,42 @@ message Account {
   google.protobuf.Timestamp updated_at = 6; // Last update timestamp
 }
 
+// Default drive configuration for account creation.
+//
+// Used to optionally create a default drive when creating an account.
+// Useful for testing and onboarding scenarios.
+message DefaultDriveConfig {
+  // Drive name (auto-generated if empty, using account_id-based naming).
+  string drive_name = 1;
+  
+  // S3 bucket name (auto-generated if empty, using account_id-based naming).
+  string bucket_name = 2;
+  
+  // Whether to create the S3 bucket in our account.
+  bool create_bucket = 3;
+  
+  // Optional: S3 region (uses default if not specified).
+  string region = 4;
+  
+  // Optional: Bucket configuration (only used if create_bucket=true).
+  // Note: BucketConfig is defined in filesystem_service.proto
+  // For now, we use a simple approach - bucket config can be set via
+  // CreateDriveRequest when the drive is actually created.
+}
+
 // Request to create account
 message CreateAccountRequest {
   string account_id = 1; // Unique account identifier
   string name = 2; // Account display name
   string description = 3; // Account description
+  
+  // Optional: Auto-create default drive for testing/onboarding.
+  // If true, creates a default drive for the account.
+  // The drive will be created via FilesystemService.CreateDrive after account creation.
+  bool create_default_drive = 4;
+  
+  // Optional: Default drive configuration (only used if create_default_drive=true).
+  DefaultDriveConfig default_drive_config = 5;
 }
 
 // Response from creating account

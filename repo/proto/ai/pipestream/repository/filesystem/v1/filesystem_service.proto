@@ -95,12 +95,16 @@ message Node {
 service FilesystemService {
   // Drive management operations
   rpc CreateDrive(CreateDriveRequest) returns (CreateDriveResponse);
+  // Updates drive configuration (credentials, encryption, metadata).
+  rpc UpdateDrive(UpdateDriveRequest) returns (UpdateDriveResponse);
   // Retrieves a drive by ID.
   rpc GetDrive(GetDriveRequest) returns (GetDriveResponse);
   // Lists all drives for an account.
   rpc ListDrives(ListDrivesRequest) returns (ListDrivesResponse);
   // Deletes a drive and all associated nodes.
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
+  // Creates an S3 bucket in our account (admin operation).
+  rpc CreateBucket(CreateBucketRequest) returns (CreateBucketResponse);
 
   // Node CRUD operations
   rpc CreateFilesystemNode(CreateFilesystemNodeRequest) returns (CreateFilesystemNodeResponse);
@@ -513,6 +517,105 @@ message FormatFilesystemResponse {
   repeated string deleted_paths = 6;
 }
 
+// Encryption type for S3 objects.
+enum EncryptionType {
+  // Unspecified encryption type.
+  ENCRYPTION_TYPE_UNSPECIFIED = 0;
+  // Server-Side Encryption with Customer-Provided Keys (SSE-C).
+  ENCRYPTION_TYPE_SSE_C = 1;
+  // Server-Side Encryption with KMS (SSE-KMS).
+  ENCRYPTION_TYPE_SSE_KMS = 2;
+  // No encryption.
+  ENCRYPTION_TYPE_NONE = 3;
+}
+
+// KMS encryption configuration for drive.
+//
+// Supports multiple encryption strategies:
+// - SSE-KMS with explicit key ID
+// - SSE-KMS with IAM role
+// - SSE-C with customer-provided key
+message KmsEncryptionConfig {
+  // KMS key ID for SSE-KMS (explicit key).
+  // If set, uses this specific KMS key for encryption.
+  string kms_key_id = 1;
+  
+  // IAM role ARN for SSE-KMS (role-based access).
+  // If kms_key_id is empty and iam_role_arn is set, uses IAM role to access KMS.
+  string iam_role_arn = 2;
+  
+  // Customer-provided encryption key for SSE-C.
+  // If both kms_key_id and iam_role_arn are empty and sse_c_key is set, uses SSE-C.
+  // This key will be stored in Infisical, never in the database or gRPC responses.
+  string sse_c_key = 3;
+  
+  // Encryption type preference.
+  EncryptionType encryption_type = 4;
+}
+
+// S3 bucket configuration for bucket creation.
+message BucketConfig {
+  // Enable versioning on the bucket.
+  bool versioning_enabled = 1;
+  
+  // Default encryption type for objects in the bucket.
+  EncryptionType default_encryption = 2;
+  
+  // KMS key ID for default encryption (if default_encryption is SSE_KMS).
+  string kms_key_id = 3;
+  
+  // Lifecycle rules for automatic object management.
+  repeated LifecycleRule lifecycle_rules = 4;
+  
+  // CORS configuration for cross-origin access.
+  repeated CorsRule cors_rules = 5;
+}
+
+// Lifecycle rule for S3 bucket.
+message LifecycleRule {
+  // Rule identifier.
+  string id = 1;
+  // Prefix to apply rule to (empty for all objects).
+  string prefix = 2;
+  // Days until objects transition to Glacier.
+  int32 days_to_glacier = 3;
+  // Days until objects expire and are deleted.
+  int32 days_to_expire = 4;
+}
+
+// CORS rule for S3 bucket.
+message CorsRule {
+  // Allowed origins (e.g., "https://example.com").
+  repeated string allowed_origins = 1;
+  // Allowed HTTP methods.
+  repeated string allowed_methods = 2;
+  // Allowed headers.
+  repeated string allowed_headers = 3;
+  // Max age for preflight requests in seconds.
+  int32 max_age_seconds = 4;
+}
+
+// S3 credentials configuration for drive.
+//
+// Used when updating drive credentials. Credentials are stored in Infisical,
+// never transmitted in gRPC responses.
+message S3CredentialsConfig {
+  // S3 endpoint URL (e.g., "http://localhost:9000" for MinIO, or AWS S3 endpoint).
+  string endpoint = 1;
+  
+  // S3 access key ID.
+  string access_key_id = 2;
+  
+  // S3 secret access key.
+  string secret_access_key = 3;
+  
+  // S3 region.
+  string region = 4;
+  
+  // Whether to use path-style access (required for MinIO).
+  bool path_style_access = 5;
+}
+
 // Request to create a new drive.
 message CreateDriveRequest {
   // Drive name (no colons allowed).
@@ -523,22 +626,88 @@ message CreateDriveRequest {
   string account_id = 3;
   // S3 region (optional, uses default if not specified).
   string region = 4;
-  // Reference to external secret management for credentials.
-  string credentials_ref = 5;
   // Foreign key to drive_status lookup table.
-  int64 status_id = 6;
+  int64 status_id = 5;
   // Optional human-readable description.
-  string description = 7;
+  string description = 6;
   // JSON metadata for unstructured data.
-  string metadata = 8;
-  // Whether to create the S3 bucket if it doesn't exist.
-  bool create_bucket = 9;
+  string metadata = 7;
+  // Whether to create the S3 bucket if it doesn't exist (in our account only).
+  bool create_bucket = 8;
+  
+  // Optional: KMS encryption configuration.
+  // If provided, credentials and encryption keys are stored in Infisical.
+  // credentials_ref is generated by the backend after storing in Infisical.
+  KmsEncryptionConfig kms_encryption = 9;
+  
+  // Optional: S3 credentials configuration.
+  // If provided, credentials are stored in Infisical.
+  // If omitted, assumes default credentials from environment/IAM role.
+  S3CredentialsConfig s3_credentials = 10;
+  
+  // Optional: Bucket configuration (only used if create_bucket=true).
+  BucketConfig bucket_config = 11;
 }
 
 // Response from creating a drive.
 message CreateDriveResponse {
   // The newly created drive.
+  // Contains credentials_ref (path to Infisical), but never contains encryption keys.
   Drive drive = 1;
+}
+
+// Request to update drive configuration.
+message UpdateDriveRequest {
+  // Drive name to update.
+  string drive_name = 1;
+  
+  // Optional: Update S3 credentials.
+  // If provided, updates credentials in Infisical at the drive's credentials_ref path.
+  S3CredentialsConfig s3_credentials = 2;
+  
+  // Optional: Update KMS encryption configuration.
+  // If provided, updates encryption keys in Infisical.
+  KmsEncryptionConfig kms_encryption = 3;
+  
+  // Optional: Update description.
+  string description = 4;
+  
+  // Optional: Update metadata.
+  string metadata = 5;
+}
+
+// Response from updating a drive.
+message UpdateDriveResponse {
+  // The updated drive.
+  // Contains credentials_ref, but never contains encryption keys.
+  Drive drive = 1;
+}
+
+// Request to create an S3 bucket in our account (admin operation).
+message CreateBucketRequest {
+  // Bucket name (will be prefixed with account_id for isolation if needed).
+  string bucket_name = 1;
+  
+  // Account that will own this bucket.
+  string account_id = 2;
+  
+  // Region for bucket creation.
+  string region = 3;
+  
+  // Optional: Bucket configuration.
+  BucketConfig config = 4;
+}
+
+// Response from creating a bucket.
+message CreateBucketResponse {
+  // Whether the operation was successful.
+  bool success = 1;
+  
+  // Actual bucket name (may be prefixed for isolation).
+  string bucket_name = 2;
+  
+  // Status or error message.
+  string message = 3;
 }
 
 // Request to retrieve a drive by name.
