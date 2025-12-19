@@ -1,0 +1,14 @@
+{
+  "name": "@pipestream/protos",
+  "version": "1.0.0",
+  "description": "Canonical Protocol Buffer definitions for the AI Pipestream platform",
+  "scripts": {
+    "proto:build": "buf build",
+    "proto:lint": "buf lint",
+    "proto:format": "buf format -w",
+    "proto:breaking": "buf breaking --against '.git#branch=main'"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.61.0"
+  }
+}
