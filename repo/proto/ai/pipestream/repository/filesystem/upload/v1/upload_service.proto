@@ -24,8 +24,9 @@ enum UploadState {
 
 // S3/MinIO document storage service.
 //
-// Handles efficient unary uploads of PipeDoc objects to object storage (up to 2GB per document).
-// Provides simple upload and retrieval operations without streaming complexity.
+// Handles efficient uploads of PipeDoc objects to object storage.
+// Supports both simple unary uploads (up to 2GB) and chunked uploads for large files
+// with progress tracking and resumability.
 service NodeUploadService {
   // Simplified unary upload for full PipeDoc
   // Accepts full payload (up to 2GB) and handles S3 upload internally
@@ -33,6 +34,22 @@ service NodeUploadService {
 
   // Retrieve document by ID
   rpc GetUploadedDocument(GetUploadedDocumentRequest) returns (GetUploadedDocumentResponse);
+
+  // Chunked upload flow (for large files with progress/resumability)
+  // Initiate a chunked upload session
+  rpc InitiateUpload(InitiateUploadRequest) returns (InitiateUploadResponse);
+
+  // Stream chunks to the server (client streaming)
+  rpc UploadChunks(stream UploadChunksRequest) returns (UploadChunksResponse);
+
+  // Get real-time progress updates (server streaming)
+  rpc StreamUploadProgress(NodeUploadServiceStreamUploadProgressRequest) returns (stream NodeUploadServiceStreamUploadProgressResponse);
+
+  // Check upload status
+  rpc GetUploadStatus(GetUploadStatusRequest) returns (GetUploadStatusResponse);
+
+  // Cancel an in-progress upload
+  rpc CancelUpload(CancelUploadRequest) returns (CancelUploadResponse);
 }
 
 // Request to upload a PipeDoc
@@ -63,4 +80,112 @@ message GetUploadedDocumentRequest {
 message GetUploadedDocumentResponse {
   // The retrieved document
   ai.pipestream.data.v1.PipeDoc document = 1;
+}
+
+// ============================================
+// CHUNKED UPLOAD MESSAGES
+// ============================================
+
+// Request to initiate a chunked upload session
+message InitiateUploadRequest {
+  // Optional document ID (will be generated if not provided)
+  string document_id = 1;
+  // Original filename
+  string filename = 2;
+  // MIME content type
+  string content_type = 3;
+  // Total file size in bytes
+  int64 total_size_bytes = 4;
+  // Optional metadata key-value pairs
+  map<string, string> metadata = 5;
+}
+
+// Response from initiating an upload
+message InitiateUploadResponse {
+  // Whether initialization succeeded
+  bool success = 1;
+  // Upload session ID for subsequent chunk uploads
+  string upload_id = 2;
+  // Status or error message
+  string message = 3;
+}
+
+// Request to upload a chunk of data (client streaming)
+message UploadChunksRequest {
+  // Upload session ID from InitiateUpload
+  string upload_id = 1;
+  // Zero-based chunk number
+  int32 chunk_number = 2;
+  // Chunk data
+  bytes data = 3;
+  // Whether this is the final chunk
+  bool is_last_chunk = 4;
+}
+
+// Response after all chunks are uploaded
+message UploadChunksResponse {
+  // Whether the upload completed successfully
+  bool success = 1;
+  // Document ID of the uploaded file
+  string document_id = 2;
+  // S3 key where the file was stored
+  string s3_key = 3;
+  // Status or error message
+  string message = 4;
+}
+
+// Request to stream upload progress
+message NodeUploadServiceStreamUploadProgressRequest {
+  // Upload session ID to monitor
+  string upload_id = 1;
+}
+
+// Progress update message (server streaming)
+message NodeUploadServiceStreamUploadProgressResponse {
+  // Upload session ID
+  string upload_id = 1;
+  // Current upload state
+  UploadState state = 2;
+  // Bytes uploaded so far
+  int64 bytes_uploaded = 3;
+  // Total bytes expected
+  int64 total_bytes = 4;
+  // Progress percentage (0.0 to 100.0)
+  double progress_percent = 5;
+  // Status or error message
+  string message = 6;
+}
+
+// Request to check upload status
+message GetUploadStatusRequest {
+  // Upload session ID to check
+  string upload_id = 1;
+}
+
+// Response with current upload status
+message GetUploadStatusResponse {
+  // Upload session ID
+  string upload_id = 1;
+  // Current upload state
+  UploadState state = 2;
+  // Bytes uploaded so far
+  int64 bytes_uploaded = 3;
+  // Total bytes expected
+  int64 total_bytes = 4;
+  // Status or error message
+  string message = 5;
+}
+
+// Request to cancel an upload
+message CancelUploadRequest {
+  // Upload session ID to cancel
+  string upload_id = 1;
+}
+
+// Response from cancelling an upload
+message CancelUploadResponse {
+  // Whether cancellation succeeded
+  bool success = 1;
+  // Status or error message
+  string message = 2;
 }
