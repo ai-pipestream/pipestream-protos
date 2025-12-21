@@ -6,7 +6,7 @@ import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "AccountEventsProto";
-option java_package = "ai.pipestream.repository.v1.account";
+option java_package = "ai.pipestream.repository.account.v1";
 
 // Account lifecycle events for Kafka
 message AccountEvent {

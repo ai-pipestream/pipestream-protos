@@ -4,7 +4,7 @@ package ai.pipestream.repository.crawler.v1;
 
 option java_multiple_files = true;
 option java_outer_classname = "FilesystemCrawlerProto";
-option java_package = "ai.pipestream.repository.v1.crawler";
+option java_package = "ai.pipestream.repository.crawler.v1";
 
 // Request to crawl a filesystem directory and ingest all files into the repository.
 // The crawler will discover files, create metadata, and prepare them for processing.

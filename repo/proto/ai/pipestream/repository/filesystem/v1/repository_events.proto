@@ -6,7 +6,7 @@ import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "RepositoryEventsV2";
-option java_package = "ai.pipestream.repository.v1.filesystem";
+option java_package = "ai.pipestream.repository.filesystem.v1";
 
 // Minimal source context for audit trail
 message SourceContext {

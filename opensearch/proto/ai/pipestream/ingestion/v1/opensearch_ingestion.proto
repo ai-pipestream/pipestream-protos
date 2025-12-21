@@ -6,7 +6,7 @@ import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "OpenSearchIngestionProto";
-option java_package = "ai.pipestream.ingestion.v1.proto";
+option java_package = "ai.pipestream.ingestion.v1";
 
 // The new, dedicated service for high-throughput document ingestion.
 service OpenSearchIngestionService {
