@@ -10,12 +10,28 @@ option java_multiple_files = true;
 option java_outer_classname = "PipelineCoreTypesV1Proto";
 option java_package = "ai.pipestream.data.v1";
 
+// Ownership context for a document.
+//
+// Tracks which account and datasource created or owns this document.
+// Essential for security auditing, access control, and traceability.
+message OwnershipContext {
+  // Account that owns this document.
+  string account_id = 1;
+  // DataSource (account + connector type binding) that produced this document.
+  // Deterministic: hash(account_id + connector_id)
+  string datasource_id = 2;
+  // Connector type that created this document (e.g., "s3", "file-crawler").
+  // Optional since it's derivable from datasource, but useful for filtering.
+  optional string connector_id = 3;
+}
+
 // Core document container for the pipeline processing system.
 //
 // PipeDoc is the primary data structure flowing through the pipeline. It contains standardized
 // search metadata, binary content (blobs), and flexible structured data for custom use cases.
 message PipeDoc {
   // Unique identifier for this document across the entire system.
+  // Deterministic: hash(datasource_id + source_doc_id)
   string doc_id = 1;
   // Standardized search engine metadata for OOTB indexing and querying.
   //
@@ -39,6 +55,10 @@ message PipeDoc {
   // The actual parsed data is stored in ParsedMetadata.data as an Any type containing
   // parser-specific protobuf messages (e.g., TikaResponse, DoclingResponse).
   map<string, ParsedMetadata> parsed_metadata = 5;
+  // Ownership tracking for security, auditing, and access control.
+  //
+  // Captures which account and datasource produced this document.
+  optional OwnershipContext ownership = 6;
 }
 
 // Wrapper for parser output metadata.
