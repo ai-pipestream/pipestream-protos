@@ -37,4 +37,5 @@ lint:
   use:
     - STANDARD
 breaking:
-  use: []
+  use:
+    - FILE
