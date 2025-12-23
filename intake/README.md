@@ -46,8 +46,8 @@ graph TD
     end
 
     subgraph "Administration"
-        ADMIN[ConnectorAdminService]
-        ADMIN --> REG[RegisterConnector]
+        ADMIN[DataSourceAdminService]
+        ADMIN --> CREATE[CreateDataSource]
         ADMIN --> ROTATE[RotateApiKey]
         ADMIN --> HIST[GetCrawlHistory]
     end
@@ -89,10 +89,11 @@ dependencies {
 | Message/Service | Description |
 |-----------------|-------------|
 | `ConnectorIntakeService` | Document ingestion: `UploadPipeDoc`, `UploadBlob`, crawl sessions |
-| `ConnectorAdminService` | Connector lifecycle: registration, API keys, status |
-| `UploadPipeDocRequest` | Full document upload with connector auth |
+| `DataSourceAdminService` | DataSource lifecycle: creation, API keys, status |
+| `UploadPipeDocRequest` | Full document upload with datasource auth |
 | `UploadBlobRequest` | Simple file upload with auto-wrapping |
-| `ConnectorRegistration` | Connector metadata, API key, S3 config |
+| `DataSource` | DataSource metadata, API key, drive config |
+| `Connector` | Connector type template (pre-seeded) |
 | `CrawlMetadata` / `CrawlSummary` | Crawl session tracking |
 | `ControlCommand` | Server-to-crawler commands (PAUSE, STOP, THROTTLE) |
 
