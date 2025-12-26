@@ -61,6 +61,12 @@ message PipelineGraph {
   google.protobuf.Timestamp created_at = 8;
   // Timestamp of last modification.
   google.protobuf.Timestamp modified_at = 9;
+  // Version number for optimistic locking.
+  //
+  // Incremented on each update to detect concurrent modifications.
+  // Clients should read the current version before updates and include it
+  // in update requests. Updates fail if the version doesn't match.
+  int64 version = 10;
 }
 
 // Graph node representing an individual processing step.
@@ -101,6 +107,48 @@ message GraphNode {
   google.protobuf.Timestamp created_at = 14;
   // Timestamp of last modification.
   google.protobuf.Timestamp modified_at = 15;
+  // Dead Letter Queue configuration for failed message handling.
+  //
+  // When enabled, messages that fail processing are routed to a DLQ topic
+  // for later inspection and reprocessing.
+  DlqConfig dlq_config = 16;
+}
+
+// Dead Letter Queue configuration for handling failed messages.
+//
+// Configures how failed messages are handled at a node, including retry behavior
+// and topic routing for messages that exhaust all retry attempts.
+message DlqConfig {
+  // Whether DLQ handling is enabled for this node.
+  //
+  // When false, failed messages are logged but not routed to a DLQ.
+  bool enabled = 1;
+  // Custom DLQ topic name override.
+  //
+  // If not set, defaults to "{node_id}.dlq" naming convention.
+  string topic_override = 2;
+  // Maximum number of retry attempts before sending to DLQ.
+  //
+  // A value of 0 means no retries (immediate DLQ on failure).
+  int32 max_retries = 3;
+  // Initial backoff duration between retry attempts.
+  //
+  // Subsequent retries use exponential backoff based on this value.
+  google.protobuf.Duration initial_backoff = 4;
+  // Maximum backoff duration cap.
+  //
+  // Exponential backoff will not exceed this duration.
+  google.protobuf.Duration max_backoff = 5;
+  // Backoff multiplier for exponential backoff.
+  //
+  // Each retry waits (initial_backoff * multiplier^attempt) up to max_backoff.
+  // Default is 2.0 if not specified.
+  double backoff_multiplier = 6;
+  // Whether to include the original message payload in DLQ records.
+  //
+  // When true, the full PipeStream is preserved for debugging.
+  // When false, only metadata and error info are stored.
+  bool include_payload = 7;
 }
 
 // Graph edge defining a connection between two nodes.
@@ -116,12 +164,40 @@ message GraphEdge {
   string to_node_id = 3;
   // Target cluster ID (optional, for cross-cluster edges).
   string to_cluster_id = 4;
-  // Optional routing condition expression.
+  // CEL (Common Expression Language) condition for routing decisions.
+  //
+  // Evaluated at runtime to determine if this edge should be taken.
+  // Uses org.projectnessie.cel:cel-tools for Java/Quarkus implementation.
+  // Available context variables:
+  //   - document: The PipeDoc being processed
+  //   - metadata: StreamMetadata with processing history
+  //   - context_params: Map of context parameters
+  // Example expressions:
+  //   - "document.search_metadata.language == 'en'"
+  //   - "metadata.context_params['priority'] == 'high'"
+  //   - "document.search_metadata.content_length > 1000"
   string condition = 5;
   // Priority for edge selection when multiple edges exist from the same node.
+  //
+  // Lower values indicate higher priority. When multiple edges have conditions
+  // that evaluate to true, the edge with the lowest priority value is selected.
   int32 priority = 6;
   // Flag indicating whether this edge crosses cluster boundaries.
   bool is_cross_cluster = 7;
+  // Transport mechanism for this edge.
+  //
+  // Specifies how data flows across this edge. Defaults to TRANSPORT_TYPE_MESSAGING.
+  TransportType transport_type = 8;
+  // Kafka topic override for this edge.
+  //
+  // When set, messages are routed through this topic instead of the default
+  // node-based topic naming. Useful for custom routing patterns.
+  string kafka_topic = 9;
+  // Maximum number of hops allowed through this edge.
+  //
+  // Prevents infinite loops in cyclic graph configurations.
+  // A value of 0 means unlimited (use with caution).
+  int32 max_hops = 10;
 }
 
 // Module definition containing metadata and configuration schema.
