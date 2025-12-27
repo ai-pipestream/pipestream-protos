@@ -388,15 +388,6 @@ message ProcessingMapping {
   }
 }
 
-// Configuration for CEL-based mappings.
-message CelConfig {
-  // The CEL expression to evaluate.
-  //
-  // The expression has access to the document context (e.g., 'document').
-  // Example: "document.search_metadata.relevance_score * 100"
-  string expression = 1;
-}
-
 // Type of field mapping operation.
 enum MappingType {
   // Unspecified mapping type.
@@ -415,36 +406,35 @@ enum MappingType {
 
 // Configuration for field transformation mappings.
 //
-// Supports both legacy rule-based transformations (deprecated) and modern CEL expressions.
-// For new implementations, use cel_expression instead of rule_name/params.
+// Supports various transformation rules, including the high-performance "proto_rules"
+// imperative script syntax for in-place protobuf manipulation.
 message TransformConfig {
   // Name of the transformation rule to apply.
   //
-  // Examples: "uppercase", "trim", "substring", "date_format"
-  // Deprecated: Use cel_expression for new transformations.
-  string rule_name = 1 [deprecated = true];
+  // Examples: "uppercase", "trim", "substring", "proto_rules"
+  string rule_name = 1;
   // Optional parameters for the transformation rule.
   //
   // Example: for "substring", params could be {"start": 0, "end": 10}
-  // Deprecated: Use cel_expression for new transformations.
-  optional google.protobuf.Struct params = 2 [deprecated = true];
-  // CEL expression for field transformation.
+  // For "proto_rules", use params {"rules": ["target = source", "-to_clear"]}
+  optional google.protobuf.Struct params = 2;
+}
+
+// Configuration for CEL-based mappings.
+message CelConfig {
+  // The CEL expression to evaluate.
   //
-  // Modern alternative to rule_name/params that provides more flexibility.
-  // Uses org.projectnessie.cel:cel-tools for Java/Quarkus implementation.
+  // The expression has access to the document and stream context.
   //
   // Available context variables:
-  //   - value: The current field value being transformed
-  //   - document: The full PipeDoc for cross-field references
-  //   - metadata: StreamMetadata for processing context
+  //   - document: The full PipeDoc object
+  //   - stream: The PipeStream object (metadata, history, etc.)
   //
   // Example expressions:
-  //   - "value.upperAscii()" - Convert to uppercase
-  //   - "value.trim()" - Remove leading/trailing whitespace
-  //   - "value.substring(0, 100)" - Take first 100 characters
-  //   - "document.search_metadata.title + ' - ' + value" - Concatenate fields
-  //   - "value.matches('^[A-Z].*') ? value : 'N/A'" - Conditional transformation
-  string cel_expression = 3;
+  //   - "document.search_metadata.relevance_score * 100"
+  //   - "document.search_metadata.title + ' - ' + document.search_metadata.author"
+  //   - "stream.metadata.context_params['priority'] == 'high'"
+  string expression = 1;
 }
 
 // Configuration for field aggregation mappings.
@@ -490,18 +480,15 @@ message NodeProcessingConfig {
   //
   // When this expression evaluates to false, the document skips this node
   // and proceeds to the next node in the pipeline without processing.
-  // Uses org.projectnessie.cel:cel-tools for Java/Quarkus implementation.
   //
   // Available context variables:
   //   - document: The PipeDoc being processed
-  //   - metadata: StreamMetadata with processing history
-  //   - context_params: Map of context parameters
+  //   - stream: The PipeStream object (metadata, history, etc.)
   //
   // Example expressions:
-  //   - "document.search_metadata.language == 'en'" - Only process English docs
-  //   - "document.search_metadata.content_length > 100" - Skip very short docs
-  //   - "has(document.blob_bag)" - Only process docs with binary content
-  //   - "!('skip_ocr' in metadata.context_params)" - Skip if flag is set
+  //   - "document.search_metadata.language == 'en'"
+  //   - "stream.metadata.context_params['skip_ocr'] == 'true'"
+  //   - "document.search_metadata.content_length > 100"
   string filter_condition = 6;
 }
 
