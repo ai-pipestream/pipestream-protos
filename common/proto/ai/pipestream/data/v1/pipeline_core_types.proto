@@ -291,7 +291,8 @@ enum ChecksumType {
 
 // Metadata for tracking stream processing history and context.
 //
-// Contains execution records, tracing information, and error tracking for a stream.
+// Contains execution records, tracing information, error tracking, and datasource
+// context for a stream.
 message StreamMetadata {
   // Source identifier for validation and tracking.
   string source_id = 2;
@@ -307,6 +308,20 @@ message StreamMetadata {
   optional ErrorData stream_error = 7;
   // Stream-level context parameters for processing.
   map<string, string> context_params = 8;
+  // DataSource identifier for tracking document origin.
+  //
+  // Deterministically derived from account_id and connector type.
+  // Used to route documents to the correct pipeline graph entry point.
+  string datasource_id = 9;
+  // Account identifier for ownership and access control.
+  //
+  // Links this stream to a specific tenant/customer account.
+  string account_id = 10;
+  // Entry node identifier where this stream entered the pipeline.
+  //
+  // Useful for tracking which connector/datasource initiated processing
+  // and for routing decisions in multi-entry-point graphs.
+  string entry_node_id = 11;
 }
 
 // TCP-like packet header for node-to-node document processing.
@@ -386,15 +401,37 @@ enum MappingType {
 }
 
 // Configuration for field transformation mappings.
+//
+// Supports both legacy rule-based transformations (deprecated) and modern CEL expressions.
+// For new implementations, use cel_expression instead of rule_name/params.
 message TransformConfig {
   // Name of the transformation rule to apply.
   //
   // Examples: "uppercase", "trim", "substring", "date_format"
-  string rule_name = 1;
+  // Deprecated: Use cel_expression for new transformations.
+  string rule_name = 1 [deprecated = true];
   // Optional parameters for the transformation rule.
   //
   // Example: for "substring", params could be {"start": 0, "end": 10}
-  optional google.protobuf.Struct params = 2;
+  // Deprecated: Use cel_expression for new transformations.
+  optional google.protobuf.Struct params = 2 [deprecated = true];
+  // CEL expression for field transformation.
+  //
+  // Modern alternative to rule_name/params that provides more flexibility.
+  // Uses org.projectnessie.cel:cel-tools for Java/Quarkus implementation.
+  //
+  // Available context variables:
+  //   - value: The current field value being transformed
+  //   - document: The full PipeDoc for cross-field references
+  //   - metadata: StreamMetadata for processing context
+  //
+  // Example expressions:
+  //   - "value.upperAscii()" - Convert to uppercase
+  //   - "value.trim()" - Remove leading/trailing whitespace
+  //   - "value.substring(0, 100)" - Take first 100 characters
+  //   - "document.search_metadata.title + ' - ' + value" - Concatenate fields
+  //   - "value.matches('^[A-Z].*') ? value : 'N/A'" - Conditional transformation
+  string cel_expression = 3;
 }
 
 // Configuration for field aggregation mappings.
@@ -424,7 +461,7 @@ message SplitConfig {
 
 // Node-specific processing configuration.
 //
-// Defines pre/post mappings and custom configuration for a processing node.
+// Defines pre/post mappings, filtering, and custom configuration for a processing node.
 message NodeProcessingConfig {
   // Node identifier for this configuration.
   string node_id = 1;
@@ -436,6 +473,23 @@ message NodeProcessingConfig {
   Intent intent = 4;
   // Node-specific custom configuration.
   google.protobuf.Any node_config = 5;
+  // CEL expression to filter documents before node processing.
+  //
+  // When this expression evaluates to false, the document skips this node
+  // and proceeds to the next node in the pipeline without processing.
+  // Uses org.projectnessie.cel:cel-tools for Java/Quarkus implementation.
+  //
+  // Available context variables:
+  //   - document: The PipeDoc being processed
+  //   - metadata: StreamMetadata with processing history
+  //   - context_params: Map of context parameters
+  //
+  // Example expressions:
+  //   - "document.search_metadata.language == 'en'" - Only process English docs
+  //   - "document.search_metadata.content_length > 100" - Skip very short docs
+  //   - "has(document.blob_bag)" - Only process docs with binary content
+  //   - "!('skip_ocr' in metadata.context_params)" - Skip if flag is set
+  string filter_condition = 6;
 }
 
 // Vector embedding for a document or document segment.
