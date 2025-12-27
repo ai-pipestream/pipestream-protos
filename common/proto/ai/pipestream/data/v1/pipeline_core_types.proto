@@ -324,6 +324,29 @@ message StreamMetadata {
   string entry_node_id = 11;
 }
 
+// Reference to a document stored in the repository (S3 offload).
+//
+// Used when the full PipeDoc is stored in S3/repository and only a reference
+// is needed in the stream for efficient message passing.
+// Engine uses this to hydrate the document via repo-service.
+message DocumentReference {
+  // Document identifier.
+  //
+  // The logical document identifier that persists across all versions/hops.
+  // Deterministic: hash(datasource_id + source_doc_id)
+  string doc_id = 1;
+  // Node that produced this version (determines storage location).
+  //
+  // Identifies exactly which node produced the version of the document being referenced.
+  // This is critical for fetching the correct state from the Repository.
+  string source_node_id = 2;
+  // Account context for multi-tenant lookup.
+  //
+  // Ensures that hydration requests are scoped to the correct tenant,
+  // preventing cross-account data access.
+  string account_id = 3;
+}
+
 // TCP-like packet header for node-to-node document processing.
 //
 // Contains the document payload, routing information, processing history,
@@ -333,8 +356,16 @@ message PipeStream {
   string stream_id = 1;
   // Stream metadata including history and tracing.
   StreamMetadata metadata = 2;
-  // The document being processed.
-  PipeDoc document = 3;
+  // Document payload - either inline or stored in repository.
+  //
+  // For small documents or when full content is needed, use document.
+  // For large documents or when offloaded to S3, use document_ref.
+  oneof document_payload {
+    // Inline document (typically for gRPC direct path or small documents).
+    PipeDoc document = 3;
+    // Reference to document stored in repository (typically for Kafka path or large documents).
+    DocumentReference document_ref = 9;
+  }
   // Cluster where processing is occurring.
   string cluster_id = 4;
   // Current node processing this stream.
@@ -490,6 +521,12 @@ message NodeProcessingConfig {
   //   - "stream.metadata.context_params['skip_ocr'] == 'true'"
   //   - "document.search_metadata.content_length > 100"
   string filter_condition = 6;
+  // Whether to save the document to the repository even if processing fails.
+  //
+  // When true, the document is persisted to the repository (S3) even if the node
+  // processing encounters an error. This is useful for debugging and reprocessing
+  // failed documents later.
+  bool save_on_error = 7;
 }
 
 // Vector embedding for a document or document segment.
@@ -622,4 +659,31 @@ message FailedStepInputState {
   optional google.protobuf.Struct custom_config_struct = 3;
   // Configuration parameters provided to the failed step.
   map<string, string> config_params = 4;
+}
+
+// Dead Letter Queue message for failed processing attempts.
+//
+// Published by Sidecar when Engine returns error after retry exhaustion.
+// Contains the failed stream, error context, and Kafka offset information for replay.
+message DlqMessage {
+  // The failed stream (contains document reference).
+  PipeStream stream = 1;
+  // Error classification.
+  //
+  // Examples: "TIMEOUT", "CONNECTION_REFUSED", "UNAVAILABLE", "MODULE_UNAVAILABLE"
+  string error_type = 2;
+  // Human-readable error message.
+  string error_message = 3;
+  // Timestamp when the failure occurred.
+  google.protobuf.Timestamp failed_at = 4;
+  // Number of retry attempts that were made before sending to DLQ.
+  int32 retry_count = 5;
+  // Node ID where the failure occurred.
+  string failed_node_id = 6;
+  // Original Kafka topic for replay correlation.
+  string original_topic = 7;
+  // Original Kafka partition for replay correlation.
+  int32 original_partition = 8;
+  // Original Kafka offset for replay correlation.
+  int64 original_offset = 9;
 }

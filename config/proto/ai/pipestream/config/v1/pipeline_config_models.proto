@@ -41,7 +41,8 @@ message ClusterMetadata {
 // Pipeline graph defining node topology and data flow.
 //
 // Represents a complete pipeline as a directed acyclic graph (DAG) of processing nodes.
-// Nodes are referenced by ID and connected via edges to define data flow paths.
+// Nodes are embedded within the graph to create self-contained snapshots for versioning.
+// Each graph version is a complete, immutable state that includes all node definitions.
 message PipelineGraph {
   // Unique identifier for this graph.
   string graph_id = 1;
@@ -51,8 +52,12 @@ message PipelineGraph {
   string name = 3;
   // Optional description of the graph's purpose.
   string description = 4;
-  // References to GraphNode IDs that comprise this graph.
-  repeated string node_ids = 5;
+  // Full GraphNode definitions that comprise this graph.
+  //
+  // Nodes are embedded rather than referenced to ensure graph versions are
+  // self-contained snapshots. This simplifies versioning, rollback, and
+  // distribution via Kafka (single message contains complete graph state).
+  repeated GraphNode nodes = 5;
   // Edges defining connections between nodes.
   repeated GraphEdge edges = 6;
   // Operating mode (design or production).
