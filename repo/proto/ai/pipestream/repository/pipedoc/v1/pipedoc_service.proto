@@ -17,8 +17,18 @@ message SavePipeDocRequest {
   string drive = 2;
   // Connector ID that ingested this document (for tracking and attribution)
   string connector_id = 3;
+
+  // Graph address identifier - exactly one must be set
+  // - use_datasource_id: If set, use datasource_id from pipedoc.ownership.datasource_id (for initial intake)
+  // - graph_location_id: Graph location ID where document was processed (for engine saves after processing)
+  //   Must be validated against graph service to ensure it exists for the account
+  oneof graph_address {
+    bool use_datasource_id = 4;
+    string graph_location_id = 5;
+  }
+
   // Additional key-value metadata to associate with this document
-  map<string, string> metadata = 4;
+  map<string, string> metadata = 6;
 }
 
 // Response containing details about the saved PipeDoc and its storage location.
