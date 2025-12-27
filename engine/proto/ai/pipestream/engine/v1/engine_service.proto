@@ -25,6 +25,13 @@ service EngineV1Service {
 
   // Engine health
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+
+  // Intake-to-engine stream handoff for datasource routing.
+  //
+  // Called by intake connectors to transfer a document stream to the engine
+  // for processing. Routes to the appropriate entry node based on datasource
+  // configuration.
+  rpc IntakeHandoff(IntakeHandoffRequest) returns (IntakeHandoffResponse);
 }
 
 // Request to process a document at a specific node
@@ -233,4 +240,48 @@ enum SubscriptionStrategy {
   SUBSCRIPTION_STRATEGY_CAPACITY_BASED = 3;
   // Use sticky assignment to keep related topics on the same engine
   SUBSCRIPTION_STRATEGY_TOPIC_AFFINITY = 4;
+}
+
+// Request for intake-to-engine stream handoff.
+//
+// Sent by intake connectors when a document is ready for pipeline processing.
+message IntakeHandoffRequest {
+  // The pipeline stream containing the document to process.
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  // DataSource identifier for routing to the correct entry node.
+  //
+  // Used to determine which pipeline graph and entry node should
+  // receive this document based on datasource configuration.
+  string datasource_id = 2;
+  // Account identifier for ownership context.
+  string account_id = 3;
+  // Optional target entry node override.
+  //
+  // When set, routes directly to this node instead of using
+  // datasource-based routing. Useful for testing and debugging.
+  string target_entry_node_id = 4;
+  // Priority level for this handoff.
+  //
+  // Higher values indicate higher priority. Used for queue ordering
+  // when the engine is under load.
+  int32 priority = 5;
+}
+
+// Response from intake-to-engine stream handoff.
+message IntakeHandoffResponse {
+  // Whether the handoff was accepted.
+  bool accepted = 1;
+  // Status or error message.
+  string message = 2;
+  // Assigned stream ID for tracking.
+  //
+  // May differ from the request stream_id if the engine assigns
+  // a new ID for tracking purposes.
+  string assigned_stream_id = 3;
+  // Entry node ID that will process this document.
+  string entry_node_id = 4;
+  // Estimated queue depth at the entry node.
+  //
+  // Provides feedback to intake connectors for backpressure decisions.
+  int64 queue_depth = 5;
 }

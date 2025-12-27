@@ -1,0 +1,767 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.v1;
+
+import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.engine.v1";
+
+// ============================================================================
+// PIPELINE GRAPH SERVICE
+// ============================================================================
+//
+// The PipelineGraphService is the authoritative gRPC API for managing pipeline
+// graph definitions in the Pipestream engine. It serves as the system of record
+// for all graph topology data, providing versioned storage, activation control,
+// and real-time update notifications.
+//
+// ## Architecture Overview
+//
+// ```
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │                          Frontend / Admin UI                             │
+// └─────────────────────────────────────────────────────────────────────────┘
+//                                     │
+//                                     ▼ gRPC
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │                      PipelineGraphService (gRPC)                         │
+// │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐  │
+// │  │ CreateGraph │  │  GetGraph   │  │ Activate    │  │ Subscribe      │  │
+// │  │ CRUD Ops    │  │  Queries    │  │ Management  │  │ Real-time      │  │
+// │  └─────────────┘  └─────────────┘  └─────────────┘  └────────────────┘  │
+// └─────────────────────────────────────────────────────────────────────────┘
+//                                     │
+//                                     ▼
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │                    PipelineGraphService (Internal)                       │
+// │                    Hibernate Reactive + Panache                          │
+// └─────────────────────────────────────────────────────────────────────────┘
+//                                     │
+//                                     ▼
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │                         PostgreSQL (JSONB)                               │
+// │     ┌─────────────────────────────────────────────────────────────┐     │
+// │     │ pipeline_graphs                                              │     │
+// │     │ - id (UUID, PK)                                              │     │
+// │     │ - graph_id (logical ID)                                      │     │
+// │     │ - version (int64)                                            │     │
+// │     │ - cluster_id                                                 │     │
+// │     │ - is_active (boolean)                                        │     │
+// │     │ - graph_snapshot (JSONB - PipelineGraph protobuf)            │     │
+// │     │ - UNIQUE(graph_id, version)                                  │     │
+// │     └─────────────────────────────────────────────────────────────┘     │
+// └─────────────────────────────────────────────────────────────────────────┘
+// ```
+//
+// ## Key Concepts
+//
+// ### Graph Versioning
+// Each PipelineGraph is stored with an immutable version number. Multiple versions
+// of the same graph_id can exist, but only ONE version can be active at a time
+// per graph_id + cluster_id combination. This enables:
+// - Safe rollback to previous versions
+// - Audit trail of graph changes
+// - Blue-green deployment patterns
+//
+// ### Activation Model
+// - Graphs are created in an INACTIVE state by default
+// - Use `ActivateGraph` to make a specific version the active one
+// - `CreateAndActivateGraph` combines creation + activation atomically
+// - Only active graphs are used by the engine for document routing
+//
+// ### Multi-Tenancy
+// All operations include `account_id` for tenant isolation. The engine enforces
+// that operations only affect graphs belonging to the authenticated account.
+//
+// ## Usage Examples
+//
+// ### Creating and Activating a Graph
+// ```
+// // 1. Create a graph (inactive by default)
+// CreateGraphRequest {
+//   graph: PipelineGraph { graph_id: "my-pipeline", version: 1, ... },
+//   account_id: "acct-123",
+//   created_by: "user@example.com"
+// }
+//
+// // 2. Activate when ready for production
+// ActivateGraphRequest { graph_id: "my-pipeline", version: 1 }
+// ```
+//
+// ### Updating a Graph (New Version)
+// ```
+// // Create version 2 (doesn't affect running version 1)
+// CreateGraphRequest {
+//   graph: PipelineGraph { graph_id: "my-pipeline", version: 2, ... },
+//   ...
+// }
+//
+// // Atomically switch to version 2
+// ActivateGraphRequest { graph_id: "my-pipeline", version: 2 }
+// ```
+//
+// ### Real-Time Frontend Updates
+// ```
+// // Subscribe to all graph changes in a cluster
+// SubscribeToGraphUpdatesRequest { cluster_id: "prod-cluster" }
+//
+// // Receive streaming events:
+// // - GRAPH_UPDATE_TYPE_CREATED when new versions are added
+// // - GRAPH_UPDATE_TYPE_ACTIVATED when active version changes
+// // - GRAPH_UPDATE_TYPE_DELETED when versions are removed
+// ```
+//
+// ## Error Handling
+//
+// All RPCs return standard gRPC status codes:
+// - NOT_FOUND: Requested graph/version doesn't exist
+// - ALREADY_EXISTS: Attempting to create duplicate graph_id + version
+// - PERMISSION_DENIED: Account doesn't have access to the graph
+// - INVALID_ARGUMENT: Malformed request (missing required fields, invalid version)
+// - INTERNAL: Database or server errors
+//
+// ## Related Types
+//
+// See `ai.pipestream.config.v1.PipelineGraph` for the graph structure containing:
+// - GraphNode definitions (processors, connectors, sinks)
+// - GraphEdge connections with CEL routing conditions
+// - Cluster assignment and metadata
+//
+service PipelineGraphService {
+  // ===========================================================================
+  // GRAPH CRUD OPERATIONS
+  // ===========================================================================
+
+  // Creates a new graph version in an inactive state.
+  //
+  // The graph is persisted but not used for document routing until activated.
+  // Use this for staging new graph versions before switching production traffic.
+  //
+  // The version number in the PipelineGraph must be unique for the graph_id.
+  // Typically, call GetMaxVersion first and increment to determine the next version.
+  //
+  // Returns:
+  //   - The created graph with server-populated timestamps
+  //   - Database UUID for direct lookups
+  //   - is_active = false (graph is inactive)
+  //
+  // Errors:
+  //   - ALREADY_EXISTS: graph_id + version combination already exists
+  //   - INVALID_ARGUMENT: missing required fields or invalid graph structure
+  rpc CreateGraph(CreateGraphRequest) returns (CreateGraphResponse);
+
+  // Creates and immediately activates a new graph version.
+  //
+  // This atomic operation:
+  // 1. Creates the new graph version
+  // 2. Deactivates any currently active version for this graph_id
+  // 3. Activates the new version
+  //
+  // Use this for simple deployments where you want the new version live immediately.
+  // For staged rollouts, use CreateGraph followed by ActivateGraph.
+  //
+  // Returns:
+  //   - The created graph with server-populated timestamps
+  //   - Database UUID for direct lookups
+  //   - is_active = true (graph is now active)
+  //
+  // Errors:
+  //   - ALREADY_EXISTS: graph_id + version combination already exists
+  //   - INVALID_ARGUMENT: missing required fields or invalid graph structure
+  rpc CreateAndActivateGraph(CreateAndActivateGraphRequest) returns (CreateAndActivateGraphResponse);
+
+  // Retrieves a graph by its unique database ID (UUID).
+  //
+  // Use this when you have the exact database ID from a previous response.
+  // For lookups by logical graph_id, use GetGraphByVersion or GetActiveGraph.
+  //
+  // Returns:
+  //   - found = true with full graph data if exists
+  //   - found = false with empty graph if not found
+  rpc GetGraphById(GetGraphByIdRequest) returns (GetGraphByIdResponse);
+
+  // Retrieves a specific graph version by graph_id and version number.
+  //
+  // Use this to fetch a known version, such as for comparing versions
+  // or reviewing historical configurations.
+  //
+  // Returns:
+  //   - found = true with full graph data if exists
+  //   - found = false with empty graph if not found
+  rpc GetGraphByVersion(GetGraphByVersionRequest) returns (GetGraphByVersionResponse);
+
+  // Retrieves the currently active graph for a graph_id and cluster.
+  //
+  // This is the primary query for determining which graph version the engine
+  // should use for document routing. Only one version can be active per
+  // graph_id + cluster_id combination.
+  //
+  // Returns:
+  //   - found = true with the active graph if one exists
+  //   - found = false if no active version exists
+  rpc GetActiveGraph(GetActiveGraphRequest) returns (GetActiveGraphResponse);
+
+  // Lists all versions of a graph, ordered by version descending (newest first).
+  //
+  // Use this to display version history in the UI or to find versions for
+  // rollback operations. Returns all versions regardless of active status.
+  //
+  // Returns:
+  //   - List of all versions with metadata
+  //   - total_count for pagination planning
+  rpc ListGraphVersions(ListGraphVersionsRequest) returns (ListGraphVersionsResponse);
+
+  // Lists all active graphs for a cluster.
+  //
+  // Use this to get an overview of all pipelines running in a cluster.
+  // Returns only the currently active version of each graph.
+  //
+  // Returns:
+  //   - List of active graphs with metadata
+  //   - total_count for the cluster
+  rpc ListActiveGraphsByCluster(ListActiveGraphsByClusterRequest) returns (ListActiveGraphsByClusterResponse);
+
+  // ===========================================================================
+  // ACTIVATION MANAGEMENT
+  // ===========================================================================
+
+  // Activates a specific graph version, making it the active version.
+  //
+  // This operation:
+  // 1. Deactivates all other versions for this graph_id
+  // 2. Activates the specified version
+  //
+  // The engine will begin using this version for new document routing
+  // immediately. In-flight documents continue with their current routing.
+  //
+  // Use this for:
+  // - Promoting a staged version to production
+  // - Rolling back to a previous version
+  //
+  // Errors:
+  //   - NOT_FOUND: specified graph_id + version doesn't exist
+  rpc ActivateGraph(ActivateGraphRequest) returns (ActivateGraphResponse);
+
+  // Deactivates all versions of a graph in a cluster.
+  //
+  // After deactivation, no version of this graph is active. The engine will
+  // stop routing documents through this pipeline until a version is reactivated.
+  //
+  // Use this to temporarily disable a pipeline without deleting it.
+  //
+  // Returns:
+  //   - deactivated_count: number of versions that were deactivated (0 or 1)
+  rpc DeactivateGraph(DeactivateGraphRequest) returns (DeactivateGraphResponse);
+
+  // ===========================================================================
+  // DELETE OPERATIONS
+  // ===========================================================================
+
+  // Deletes a specific graph version.
+  //
+  // Permanently removes the specified version from storage. If this was the
+  // active version, no version will be active afterward.
+  //
+  // This operation is irreversible. Consider deactivating instead for
+  // temporary removal.
+  //
+  // Returns:
+  //   - deleted = true if a version was removed
+  //   - deleted = false if the version didn't exist
+  rpc DeleteGraphVersion(DeleteGraphVersionRequest) returns (DeleteGraphVersionResponse);
+
+  // Deletes all versions of a graph.
+  //
+  // Permanently removes all versions of the specified graph_id from storage.
+  // Use with caution - this removes all version history.
+  //
+  // Returns:
+  //   - deleted_count: total number of versions removed
+  rpc DeleteAllGraphVersions(DeleteAllGraphVersionsRequest) returns (DeleteAllGraphVersionsResponse);
+
+  // ===========================================================================
+  // VERSION UTILITIES
+  // ===========================================================================
+
+  // Gets the maximum version number for a graph.
+  //
+  // Use this before creating a new version to determine the next version number:
+  //   next_version = GetMaxVersion(graph_id).max_version + 1
+  //
+  // Returns:
+  //   - max_version: highest version number, or 0 if no versions exist
+  rpc GetMaxVersion(GetMaxVersionRequest) returns (GetMaxVersionResponse);
+
+  // ===========================================================================
+  // REAL-TIME SUBSCRIPTIONS
+  // ===========================================================================
+
+  // Subscribes to real-time graph update notifications.
+  //
+  // Opens a server-streaming connection that pushes events whenever graphs
+  // are created, activated, deactivated, or deleted. Ideal for:
+  // - Frontend live updates without polling
+  // - Cross-service graph change notifications
+  // - Audit logging of graph operations
+  //
+  // Filter options:
+  // - cluster_id: only receive events for a specific cluster
+  // - graph_id: only receive events for a specific graph
+  // - update_types: only receive specific event types
+  //
+  // The stream remains open until the client disconnects or the server
+  // terminates it due to errors or shutdown.
+  rpc SubscribeToGraphUpdates(SubscribeToGraphUpdatesRequest) returns (stream SubscribeToGraphUpdatesResponse);
+}
+
+// ============================================================================
+// CREATE GRAPH MESSAGES
+// ============================================================================
+
+// Request to create a new pipeline graph version.
+message CreateGraphRequest {
+  // The pipeline graph to create.
+  //
+  // Required fields in the graph:
+  // - graph_id: logical identifier for this pipeline
+  // - cluster_id: cluster where this graph will operate
+  // - version: version number (must be unique for graph_id)
+  // - node_ids: list of node identifiers in this graph
+  // - edges: connections between nodes
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Account identifier for multi-tenant isolation.
+  //
+  // All subsequent operations on this graph require the same account_id.
+  string account_id = 2;
+
+  // User or service identifier creating this version.
+  //
+  // Recorded for audit purposes. Examples: "user@example.com", "ci-pipeline"
+  string created_by = 3;
+}
+
+// Response from creating a pipeline graph.
+message CreateGraphResponse {
+  // The created graph with server-generated fields populated.
+  //
+  // Includes created_at and modified_at timestamps set by the server.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier (UUID) for this graph entity.
+  //
+  // Use this ID for GetGraphById lookups. Different from graph_id which
+  // is the logical identifier shared across versions.
+  string id = 2;
+
+  // Whether the graph is currently active.
+  //
+  // For CreateGraph, this is always false. Use CreateAndActivateGraph
+  // or ActivateGraph to make it active.
+  bool is_active = 3;
+
+  // Server timestamp when the graph was created.
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// Request to create and immediately activate a new graph version.
+message CreateAndActivateGraphRequest {
+  // The pipeline graph to create. See CreateGraphRequest.graph for details.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Account identifier for multi-tenant isolation.
+  string account_id = 2;
+
+  // User or service identifier creating this version.
+  string created_by = 3;
+}
+
+// Response from creating and activating a pipeline graph.
+message CreateAndActivateGraphResponse {
+  // The created graph with server-generated fields populated.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier (UUID) for this graph entity.
+  string id = 2;
+
+  // Whether the graph is currently active.
+  //
+  // For CreateAndActivateGraph, this is always true.
+  bool is_active = 3;
+
+  // Server timestamp when the graph was created.
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// ============================================================================
+// GET GRAPH MESSAGES
+// ============================================================================
+
+// Request to retrieve a graph by its database UUID.
+message GetGraphByIdRequest {
+  // Unique database identifier (UUID).
+  //
+  // This is the `id` field returned in create/get responses, not the
+  // logical `graph_id`.
+  string id = 1;
+}
+
+// Response from retrieving a graph by database ID.
+message GetGraphByIdResponse {
+  // The requested pipeline graph.
+  //
+  // Empty if found = false.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier for this entity.
+  string id = 2;
+
+  // Whether this version is currently active for its graph_id.
+  bool is_active = 3;
+
+  // Account identifier that owns this graph.
+  string account_id = 4;
+
+  // User or service that created this version.
+  string created_by = 5;
+
+  // Timestamp when this version was created.
+  google.protobuf.Timestamp created_at = 6;
+
+  // Whether the graph was found.
+  //
+  // Check this field before accessing other fields. If false, the graph
+  // doesn't exist and other fields are empty/default.
+  bool found = 7;
+}
+
+// Request to retrieve a specific graph version.
+message GetGraphByVersionRequest {
+  // Logical graph identifier.
+  //
+  // This is the `graph_id` field in PipelineGraph, shared across all versions.
+  string graph_id = 1;
+
+  // Version number to retrieve.
+  //
+  // Must be a valid version that was previously created.
+  int64 version = 2;
+}
+
+// Response from retrieving a graph by version.
+message GetGraphByVersionResponse {
+  // The requested pipeline graph. Empty if found = false.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier for this entity.
+  string id = 2;
+
+  // Whether this version is currently active.
+  bool is_active = 3;
+
+  // Account identifier that owns this graph.
+  string account_id = 4;
+
+  // User or service that created this version.
+  string created_by = 5;
+
+  // Timestamp when this version was created.
+  google.protobuf.Timestamp created_at = 6;
+
+  // Whether the graph was found.
+  bool found = 7;
+}
+
+// Request to retrieve the active graph for a graph_id and cluster.
+message GetActiveGraphRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+
+  // Cluster identifier.
+  //
+  // Each graph can have different active versions in different clusters,
+  // enabling staged rollouts across environments.
+  string cluster_id = 2;
+}
+
+// Response from retrieving the active graph.
+message GetActiveGraphResponse {
+  // The active pipeline graph. Empty if found = false.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier for this entity.
+  string id = 2;
+
+  // Whether the graph is active.
+  //
+  // Always true if found = true (only active graphs are returned).
+  bool is_active = 3;
+
+  // Account identifier that owns this graph.
+  string account_id = 4;
+
+  // User or service that created this version.
+  string created_by = 5;
+
+  // Timestamp when this version was created.
+  google.protobuf.Timestamp created_at = 6;
+
+  // Whether an active graph was found.
+  //
+  // False if no version of this graph is currently active.
+  bool found = 7;
+}
+
+// ============================================================================
+// LIST GRAPHS MESSAGES
+// ============================================================================
+
+// Request to list all versions of a graph.
+message ListGraphVersionsRequest {
+  // Logical graph identifier.
+  //
+  // Returns all versions of this graph, regardless of active status.
+  string graph_id = 1;
+}
+
+// Response containing all versions of a graph.
+message ListGraphVersionsResponse {
+  // List of graph versions, ordered by version number descending (newest first).
+  repeated GraphVersionInfo versions = 1;
+
+  // Total count of versions.
+  int32 total_count = 2;
+}
+
+// Summary information about a graph version.
+//
+// Used in list responses to provide version details without the full graph.
+message GraphVersionInfo {
+  // The complete pipeline graph for this version.
+  ai.pipestream.config.v1.PipelineGraph graph = 1;
+
+  // Unique database identifier.
+  string id = 2;
+
+  // Whether this version is currently active.
+  bool is_active = 3;
+
+  // Timestamp when this version was created.
+  google.protobuf.Timestamp created_at = 4;
+
+  // User or service that created this version.
+  string created_by = 5;
+}
+
+// Request to list all active graphs in a cluster.
+message ListActiveGraphsByClusterRequest {
+  // Cluster identifier.
+  //
+  // Returns only the active version of each graph in this cluster.
+  string cluster_id = 1;
+}
+
+// Response containing all active graphs in a cluster.
+message ListActiveGraphsByClusterResponse {
+  // List of active graphs in the cluster.
+  //
+  // Each entry is the currently active version of a distinct graph_id.
+  repeated GraphVersionInfo graphs = 1;
+
+  // Total count of active graphs.
+  int32 total_count = 2;
+}
+
+// ============================================================================
+// ACTIVATION MESSAGES
+// ============================================================================
+
+// Request to activate a specific graph version.
+message ActivateGraphRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+
+  // Version number to activate.
+  //
+  // This version must exist. Any currently active version of the same
+  // graph_id will be deactivated.
+  int64 version = 2;
+}
+
+// Response from activating a graph version.
+message ActivateGraphResponse {
+  // Whether the activation succeeded.
+  //
+  // True if the version was found and activated. False typically indicates
+  // the version doesn't exist.
+  bool success = 1;
+
+  // Human-readable status message.
+  //
+  // Provides additional context on success or failure reason.
+  string message = 2;
+}
+
+// Request to deactivate all versions of a graph in a cluster.
+message DeactivateGraphRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+
+  // Cluster identifier.
+  //
+  // Deactivation is scoped to a specific cluster.
+  string cluster_id = 2;
+}
+
+// Response from deactivating a graph.
+message DeactivateGraphResponse {
+  // Whether the deactivation operation completed successfully.
+  bool success = 1;
+
+  // Number of versions that were deactivated.
+  //
+  // Typically 0 (nothing was active) or 1 (the active version was deactivated).
+  int32 deactivated_count = 2;
+}
+
+// ============================================================================
+// DELETE MESSAGES
+// ============================================================================
+
+// Request to delete a specific graph version.
+message DeleteGraphVersionRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+
+  // Version number to delete.
+  //
+  // The specified version will be permanently removed.
+  int64 version = 2;
+}
+
+// Response from deleting a graph version.
+message DeleteGraphVersionResponse {
+  // Whether the delete operation completed successfully.
+  bool success = 1;
+
+  // Whether a version was actually deleted.
+  //
+  // False if the version didn't exist (idempotent delete).
+  bool deleted = 2;
+}
+
+// Request to delete all versions of a graph.
+message DeleteAllGraphVersionsRequest {
+  // Logical graph identifier.
+  //
+  // All versions of this graph will be permanently removed.
+  string graph_id = 1;
+}
+
+// Response from deleting all graph versions.
+message DeleteAllGraphVersionsResponse {
+  // Whether the delete operation completed successfully.
+  bool success = 1;
+
+  // Number of versions that were deleted.
+  int64 deleted_count = 2;
+}
+
+// ============================================================================
+// VERSION UTILITY MESSAGES
+// ============================================================================
+
+// Request to get the maximum version number for a graph.
+message GetMaxVersionRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+}
+
+// Response containing the maximum version number.
+message GetMaxVersionResponse {
+  // Highest version number that exists for this graph_id.
+  //
+  // Returns 0 if no versions exist. To create the first version, use
+  // version = 1. To create subsequent versions, use max_version + 1.
+  int64 max_version = 1;
+}
+
+// ============================================================================
+// REAL-TIME SUBSCRIPTION MESSAGES
+// ============================================================================
+
+// Request to subscribe to graph update events.
+message SubscribeToGraphUpdatesRequest {
+  // Optional filter: only receive events for this cluster.
+  //
+  // If empty, receives events for all clusters (within account scope).
+  string cluster_id = 1;
+
+  // Optional filter: only receive events for this specific graph.
+  //
+  // If empty, receives events for all graphs in the scope.
+  string graph_id = 2;
+
+  // Optional filter: only receive specific event types.
+  //
+  // If empty, receives all event types.
+  repeated GraphUpdateType update_types = 3;
+}
+
+// Server-streamed event for graph updates.
+//
+// Sent whenever a graph is created, activated, deactivated, or deleted.
+message SubscribeToGraphUpdatesResponse {
+  // Type of update that occurred.
+  GraphUpdateType update_type = 1;
+
+  // Server timestamp when the update occurred.
+  google.protobuf.Timestamp timestamp = 2;
+
+  // The affected pipeline graph.
+  //
+  // For DELETE events, this may contain only minimal identification fields.
+  ai.pipestream.config.v1.PipelineGraph graph = 3;
+
+  // Unique database identifier of the affected entity.
+  string id = 4;
+
+  // Logical graph identifier.
+  string graph_id = 5;
+
+  // Version number of the affected graph.
+  int64 version = 6;
+
+  // Current active status after the update.
+  bool is_active = 7;
+}
+
+// Types of graph update events for real-time subscriptions.
+enum GraphUpdateType {
+  // Unspecified/unknown update type.
+  GRAPH_UPDATE_TYPE_UNSPECIFIED = 0;
+
+  // A new graph version was created.
+  //
+  // The graph field contains the newly created version.
+  GRAPH_UPDATE_TYPE_CREATED = 1;
+
+  // A graph version was activated.
+  //
+  // The graph field contains the now-active version. is_active = true.
+  GRAPH_UPDATE_TYPE_ACTIVATED = 2;
+
+  // A graph version was deactivated.
+  //
+  // The graph field contains the deactivated version. is_active = false.
+  // This event fires when another version is activated OR when DeactivateGraph is called.
+  GRAPH_UPDATE_TYPE_DEACTIVATED = 3;
+
+  // A graph version was deleted.
+  //
+  // The graph field may only contain identifying information (graph_id, version).
+  // Full graph data may not be available as it has been removed.
+  GRAPH_UPDATE_TYPE_DELETED = 4;
+}
