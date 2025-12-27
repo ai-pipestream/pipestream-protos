@@ -368,7 +368,18 @@ message ProcessingMapping {
     AggregateConfig aggregate_config = 6;
     // Configuration for SPLIT mappings.
     SplitConfig split_config = 7;
+    // Configuration for CEL mappings.
+    CelConfig cel_config = 8;
   }
+}
+
+// Configuration for CEL-based mappings.
+message CelConfig {
+  // The CEL expression to evaluate.
+  //
+  // The expression has access to the document context (e.g., 'document').
+  // Example: "document.search_metadata.relevance_score * 100"
+  string expression = 1;
 }
 
 // Type of field mapping operation.
@@ -383,6 +394,8 @@ enum MappingType {
   MAPPING_TYPE_AGGREGATE = 3;
   // Split one source field into multiple targets.
   MAPPING_TYPE_SPLIT = 4;
+  // Calculate value using CEL expression.
+  MAPPING_TYPE_CEL = 5;
 }
 
 // Configuration for field transformation mappings.
