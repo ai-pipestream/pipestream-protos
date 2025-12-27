@@ -43,6 +43,27 @@ message GetPipeDocRequest {
   string node_id = 1;
 }
 
+// Request to retrieve a PipeDoc from the repository using a DocumentReference.
+// This is the preferred method for Engine hydration when receiving document references.
+message GetPipeDocByReferenceRequest {
+  // Document reference containing logical identifiers for lookup
+  ai.pipestream.data.v1.DocumentReference document_ref = 1;
+}
+
+// Response containing the retrieved PipeDoc and associated metadata from a reference lookup.
+message GetPipeDocByReferenceResponse {
+  // The retrieved PipeDoc with all its content and metadata
+  ai.pipestream.data.v1.PipeDoc pipedoc = 1;
+  // Repository node ID of the retrieved document
+  string node_id = 2;
+  // Drive identifier where this document is stored
+  string drive = 3;
+  // Size of the document in bytes
+  int64 size_bytes = 4;
+  // Timestamp when the document was retrieved (milliseconds since epoch)
+  int64 retrieved_at_epoch_ms = 5;
+}
+
 // Response containing the retrieved PipeDoc and associated metadata.
 message GetPipeDocResponse {
   // The retrieved PipeDoc with all its content and metadata
@@ -112,6 +133,12 @@ service PipeDocService {
   // Retrieve a complete PipeDoc by its unique node ID.
   // Loads the full document content from S3.
   rpc GetPipeDoc(GetPipeDocRequest) returns (GetPipeDocResponse);
+
+  // Retrieve a complete PipeDoc using a DocumentReference.
+  // This is the preferred method for Engine hydration when documents are referenced
+  // via doc_id, source_node_id, and account_id rather than repository node ID.
+  // Loads the full document content from S3 based on logical identifiers.
+  rpc GetPipeDocByReference(GetPipeDocByReferenceRequest) returns (GetPipeDocByReferenceResponse);
 
   // List PipeDocs with optional filtering by drive and connector.
   // Returns lightweight metadata without full document content. Supports pagination.
