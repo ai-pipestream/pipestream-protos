@@ -27,6 +27,14 @@ message SavePipeDocRequest {
     string graph_location_id = 5;
   }
 
+  // Cluster identifier where this document was processed (optional).
+  //
+  // - For intake (use_datasource_id = true): cluster_id should be omitted/null (intake documents don't belong to a cluster)
+  // - For engine saves (graph_location_id set): cluster_id should be the cluster where processing occurred
+  // This determines the S3 path structure: intake documents go to {docId}/intake/{uuid}.pb,
+  // while cluster-processed documents go to {docId}/{clusterId}/{uuid}.pb
+  optional string cluster_id = 7;
+
   // Additional key-value metadata to associate with this document
   map<string, string> metadata = 6;
 }
@@ -110,6 +118,25 @@ message ListPipeDocsResponse {
   int32 total_count = 3;
 }
 
+// Request to retrieve blob binary content using a FileStorageReference.
+// This is used for Level 2 hydration when modules need the raw binary data.
+message GetBlobRequest {
+  // Storage reference containing drive name, object key, and optional version ID
+  ai.pipestream.data.v1.FileStorageReference storage_ref = 1;
+}
+
+// Response containing the blob binary content.
+message GetBlobResponse {
+  // The raw binary content of the blob
+  bytes data = 1;
+  // Size of the blob in bytes
+  int64 size_bytes = 2;
+  // MIME type of the blob content (if available)
+  optional string mime_type = 3;
+  // Timestamp when the blob was retrieved (milliseconds since epoch)
+  int64 retrieved_at_epoch_ms = 4;
+}
+
 // Lightweight metadata about a saved PipeDoc without loading the full content.
 // Used for listing and browsing documents efficiently.
 message PipeDocMetadata {
@@ -153,4 +180,9 @@ service PipeDocService {
   // List PipeDocs with optional filtering by drive and connector.
   // Returns lightweight metadata without full document content. Supports pagination.
   rpc ListPipeDocs(ListPipeDocsRequest) returns (ListPipeDocsResponse);
+
+  // Retrieve blob binary content using a FileStorageReference.
+  // This is used for Level 2 hydration when modules need raw binary data (e.g., parsers).
+  // The FileStorageReference is typically obtained from a PipeDoc's BlobBag after Level 1 hydration.
+  rpc GetBlob(GetBlobRequest) returns (GetBlobResponse);
 }
