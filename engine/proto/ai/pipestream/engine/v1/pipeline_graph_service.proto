@@ -71,9 +71,10 @@ option java_package = "ai.pipestream.engine.v1";
 // - `CreateAndActivateGraph` combines creation + activation atomically
 // - Only active graphs are used by the engine for document routing
 //
-// ### Multi-Tenancy
-// All operations include `account_id` for tenant isolation. The engine enforces
-// that operations only affect graphs belonging to the authenticated account.
+// ### Graph Ownership
+// Graphs are owned by the platform/app, not by accounts. Accounts are data owners
+// (tied to datasources), not graph owners. Multiple accounts' data can traverse
+// through the same graph nodes.
 //
 // ## Usage Examples
 //
@@ -82,7 +83,6 @@ option java_package = "ai.pipestream.engine.v1";
 // // 1. Create a graph (inactive by default)
 // CreateGraphRequest {
 //   graph: PipelineGraph { graph_id: "my-pipeline", version: 1, ... },
-//   account_id: "acct-123",
 //   created_by: "user@example.com"
 // }
 //
@@ -118,7 +118,6 @@ option java_package = "ai.pipestream.engine.v1";
 // All RPCs return standard gRPC status codes:
 // - NOT_FOUND: Requested graph/version doesn't exist
 // - ALREADY_EXISTS: Attempting to create duplicate graph_id + version
-// - PERMISSION_DENIED: Account doesn't have access to the graph
 // - INVALID_ARGUMENT: Malformed request (missing required fields, invalid version)
 // - INTERNAL: Database or server errors
 //
@@ -328,14 +327,9 @@ message CreateGraphRequest {
   // - graph_id: logical identifier for this pipeline
   // - cluster_id: cluster where this graph will operate
   // - version: version number (must be unique for graph_id)
-  // - node_ids: list of node identifiers in this graph
+  // - nodes: list of node definitions in this graph
   // - edges: connections between nodes
   ai.pipestream.config.v1.PipelineGraph graph = 1;
-
-  // Account identifier for multi-tenant isolation.
-  //
-  // All subsequent operations on this graph require the same account_id.
-  string account_id = 2;
 
   // User or service identifier creating this version.
   //
@@ -371,11 +365,8 @@ message CreateAndActivateGraphRequest {
   // The pipeline graph to create. See CreateGraphRequest.graph for details.
   ai.pipestream.config.v1.PipelineGraph graph = 1;
 
-  // Account identifier for multi-tenant isolation.
-  string account_id = 2;
-
   // User or service identifier creating this version.
-  string created_by = 3;
+  string created_by = 2;
 }
 
 // Response from creating and activating a pipeline graph.
@@ -421,20 +412,17 @@ message GetGraphByIdResponse {
   // Whether this version is currently active for its graph_id.
   bool is_active = 3;
 
-  // Account identifier that owns this graph.
-  string account_id = 4;
-
   // User or service that created this version.
-  string created_by = 5;
+  string created_by = 4;
 
   // Timestamp when this version was created.
-  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp created_at = 5;
 
   // Whether the graph was found.
   //
   // Check this field before accessing other fields. If false, the graph
   // doesn't exist and other fields are empty/default.
-  bool found = 7;
+  bool found = 6;
 }
 
 // Request to retrieve a specific graph version.
@@ -461,17 +449,14 @@ message GetGraphByVersionResponse {
   // Whether this version is currently active.
   bool is_active = 3;
 
-  // Account identifier that owns this graph.
-  string account_id = 4;
-
   // User or service that created this version.
-  string created_by = 5;
+  string created_by = 4;
 
   // Timestamp when this version was created.
-  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp created_at = 5;
 
   // Whether the graph was found.
-  bool found = 7;
+  bool found = 6;
 }
 
 // Request to retrieve the active graph for a graph_id and cluster.
@@ -499,19 +484,16 @@ message GetActiveGraphResponse {
   // Always true if found = true (only active graphs are returned).
   bool is_active = 3;
 
-  // Account identifier that owns this graph.
-  string account_id = 4;
-
   // User or service that created this version.
-  string created_by = 5;
+  string created_by = 4;
 
   // Timestamp when this version was created.
-  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp created_at = 5;
 
   // Whether an active graph was found.
   //
   // False if no version of this graph is currently active.
-  bool found = 7;
+  bool found = 6;
 }
 
 // ============================================================================
@@ -696,7 +678,7 @@ message GetMaxVersionResponse {
 message SubscribeToGraphUpdatesRequest {
   // Optional filter: only receive events for this cluster.
   //
-  // If empty, receives events for all clusters (within account scope).
+  // If empty, receives events for all clusters.
   string cluster_id = 1;
 
   // Optional filter: only receive events for this specific graph.
