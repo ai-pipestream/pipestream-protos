@@ -118,6 +118,35 @@ message GraphNode {
   // When enabled, messages that fail processing are routed to a DLQ topic
   // for later inspection and reprocessing.
   DlqConfig dlq_config = 16;
+
+  // Field mappings applied before module processing.
+  //
+  // These mappings transform the document before it is sent to the module.
+  // Use cases include field renaming, data extraction, and format conversion.
+  repeated ai.pipestream.data.v1.ProcessingMapping pre_mappings = 17;
+  // Field mappings applied after module processing.
+  //
+  // These mappings transform the document after the module returns.
+  // Use cases include output normalization and field consolidation.
+  repeated ai.pipestream.data.v1.ProcessingMapping post_mappings = 18;
+  // CEL expressions to filter documents before processing.
+  //
+  // All conditions must evaluate to true for the document to be processed.
+  // If any condition evaluates to false, the document skips this node
+  // and proceeds to the next node in the pipeline without processing.
+  // Available context variables:
+  //   - document: The PipeDoc being processed
+  //   - stream: The PipeStream object (metadata, history, etc.)
+  // Example expressions:
+  //   - "document.search_metadata.language == 'en'"
+  //   - "stream.metadata.context_params['skip_ocr'] != 'true'"
+  //   - "document.search_metadata.content_length > 100"
+  repeated string filter_conditions = 19;
+  // Whether to save the document to the repository even if processing fails.
+  //
+  // When true, the document is persisted to the repository even if the module
+  // processing encounters an error. Useful for debugging and reprocessing.
+  bool save_on_error = 20;
 }
 
 // Dead Letter Queue configuration for handling failed messages.
