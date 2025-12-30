@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.config.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
@@ -90,7 +91,7 @@ message GraphNode {
   // Reference to the ModuleDefinition that implements this node.
   string module_id = 5;
   // Custom configuration for this node instance.
-  JsonConfigOptions custom_config = 6;
+  ai.pipestream.data.v1.ProcessConfiguration custom_config = 6;
   // Transport configuration for node communication.
   TransportConfig transport = 7;
   // Visibility scope across clusters.
@@ -247,13 +248,8 @@ message TransportConfig {
   google.protobuf.Duration step_timeout = 6;
 }
 
-// JSON configuration options for flexible module configuration.
-message JsonConfigOptions {
-  // Structured JSON configuration.
-  google.protobuf.Struct json_config = 1;
-  // Simple key-value configuration parameters.
-  map<string, string> config_params = 2;
-}
+// JsonConfigOptions is deprecated - use ai.pipestream.data.v1.ProcessConfiguration instead.
+// Keeping this comment for migration reference.
 
 // gRPC transport configuration.
 message GrpcConfig {
@@ -446,7 +442,7 @@ message StepConfigOverride {
   // Whether this step is enabled.
   bool enabled = 1;
   // Custom configuration for this step.
-  JsonConfigOptions custom_config = 2;
+  ai.pipestream.data.v1.ProcessConfiguration custom_config = 2;
   // Maximum retry attempts for this step.
   int32 max_retries = 3;
   // Timeout duration for this step.

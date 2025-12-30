@@ -132,15 +132,8 @@ message ServiceMetadata {
   map<string, string> context_params = 7;
 }
 
-// Contains configuration specific to this instance of the pipeline step.
-message ProcessConfiguration {
-  // The specific, validated custom JSON configuration for this step,
-  // converted by the engine from PipelineStepConfig.customConfig.jsonConfig.
-  google.protobuf.Struct custom_json_config = 1;
-
-  // The 'configParams' map from PipelineStepConfig for this step.
-  map<string, string> config_params = 2;
-}
+// ProcessConfiguration is now defined in pipeline_core_types.proto
+// Import: ai.pipestream.data.v1.ProcessConfiguration
 
 // Request message for the ProcessData RPC.
 message ProcessDataRequest {
@@ -149,7 +142,7 @@ message ProcessDataRequest {
   ai.pipestream.data.v1.PipeDoc document = 1;
 
   // Configuration for this specific processing step.
-  ProcessConfiguration config = 2;
+  ai.pipestream.data.v1.ProcessConfiguration config = 2;
 
   // Engine-provided metadata for context and observability.
   ServiceMetadata metadata = 3;

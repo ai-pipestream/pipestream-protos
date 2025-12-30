@@ -3,6 +3,7 @@ syntax = "proto3";
 package ai.pipestream.repository.v1;
 
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "ai/pipestream/repository/v1/repository_service_data.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -80,8 +81,8 @@ message CreateNodeRequest {
   ai.pipestream.config.v1.NodeType node_type = 3;
   // ID of the module implementing this node
   string module_id = 4;
-  // Custom JSON configuration for the node
-  ai.pipestream.config.v1.JsonConfigOptions custom_config = 5;
+  // Custom configuration for the node
+  ai.pipestream.data.v1.ProcessConfiguration custom_config = 5;
   // Transport configuration (Kafka/gRPC settings)
   ai.pipestream.config.v1.TransportConfig transport = 6;
 }
@@ -98,8 +99,8 @@ message UpdateNodeRequest {
   string node_id = 1;
   // Updated display name
   string name = 2;
-  // Updated custom JSON configuration
-  ai.pipestream.config.v1.JsonConfigOptions custom_config = 3;
+  // Updated custom configuration
+  ai.pipestream.data.v1.ProcessConfiguration custom_config = 3;
   // Updated transport configuration
   ai.pipestream.config.v1.TransportConfig transport = 4;
 }

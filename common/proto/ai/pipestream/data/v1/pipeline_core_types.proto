@@ -661,6 +661,23 @@ message FailedStepInputState {
   map<string, string> config_params = 4;
 }
 
+// Configuration for a processing step instance.
+//
+// Contains the custom JSON configuration and key-value parameters for a module.
+// Used by both graph nodes (in config) and module requests (in module service).
+message ProcessConfiguration {
+  // Structured JSON configuration for the module.
+  //
+  // This is the primary configuration mechanism for complex module settings.
+  // Frontend uses JSONForms with the module's json_config_schema to generate UI.
+  google.protobuf.Struct json_config = 1;
+  // Simple key-value configuration parameters.
+  //
+  // Used for simple overrides, environment-specific values, or when no schema exists.
+  // Can be used alongside json_config for runtime parameters.
+  map<string, string> config_params = 2;
+}
+
 // Dead Letter Queue message for failed processing attempts.
 //
 // Published by Sidecar when Engine returns error after retry exhaustion.
