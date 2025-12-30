@@ -703,4 +703,18 @@ message DlqMessage {
   int32 original_partition = 8;
   // Original Kafka offset for replay correlation.
   int64 original_offset = 9;
+  // Number of times this message has been reprocessed from the DLQ.
+  //
+  // Incremented each time the message is replayed from DLQ and fails again.
+  // Used to prevent infinite retry loops for poison messages.
+  // When this exceeds the configured max_dlq_reprocess_count, the message
+  // should be quarantined or logged for manual review.
+  int32 dlq_reprocess_count = 10;
+  // Whether this message has been quarantined (exceeded max reprocess attempts).
+  //
+  // Quarantined messages should not be automatically reprocessed.
+  // Requires manual intervention to investigate and fix the root cause.
+  bool quarantined = 11;
+  // Timestamp when the message was quarantined (if applicable).
+  google.protobuf.Timestamp quarantined_at = 12;
 }
