@@ -3,7 +3,6 @@ syntax = "proto3";
 package ai.pipestream.engine.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
-import "ai/pipestream/connector/intake/v1/connector_intake_service.proto";
 import "google/protobuf/struct.proto";
 
 option java_multiple_files = true;
@@ -342,8 +341,9 @@ message DatasourceInstance {
   // Contains optional overrides of Tier 1 config and node-specific hints.
   message NodeConfig {
     // Strongly typed configuration overrides (optional - overrides Tier 1 if present).
-    optional ai.pipestream.connector.intake.v1.DataSourceConfig.PersistenceConfig persistence_config = 1;
-    optional ai.pipestream.connector.intake.v1.DataSourceConfig.RetentionConfig retention_config = 2;
+    // Uses shared types from pipeline_core_types.proto.
+    optional ai.pipestream.data.v1.PersistenceConfig persistence_config = 1;
+    optional ai.pipestream.data.v1.RetentionConfig retention_config = 2;
     // Hydration config override - uses shared type from core types.
     optional ai.pipestream.data.v1.HydrationConfig hydration_config = 3;
 

@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.connector.intake.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_package = "ai.pipestream.connector.intake.v1";
@@ -175,7 +175,7 @@ message DataSourceConfig {
   map<string, string> metadata = 7;
   // Tier 1: Global configuration (merged from Connector defaults + DataSource overrides).
   ConnectorGlobalConfig global_config = 8;
-  
+
   // Global configuration for connector/datasource (Tier 1).
   //
   // Contains strongly typed configuration fields (persistence, retention, encryption, hydration)
@@ -198,73 +198,72 @@ message DataSourceConfig {
     // This is the only JSON Schema-validated configuration.
     google.protobuf.Struct custom_config = 5;
   }
-  
+
   // Configuration for document persistence decisions.
   message PersistenceConfig {
     // For HTTP uploads: always persisted (streaming requirement).
     // For gRPC PipeDoc uploads: configurable.
     // Default: true (safe default - always persist unless explicitly disabled).
     bool persist_pipedoc = 1;
-    
+
     // Conditional persistence rules.
-    int32 max_inline_size_bytes = 2;  // Max size before forcing persistence (e.g., 1MB).
-    
+    int32 max_inline_size_bytes = 2; // Max size before forcing persistence (e.g., 1MB).
+
     // Future: Document type-based persistence rules.
     // map<string, bool> persist_by_document_type = 3;
   }
-  
+
   // Configuration for document retention policies.
   message RetentionConfig {
     // Retention policy settings (strongly typed).
     RetentionPolicy policy = 1;
-    int64 retention_days = 2;  // -1 = indefinite, 0 = no retention, >0 = days.
-    
+    int64 retention_days = 2; // -1 = indefinite, 0 = no retention, >0 = days.
+
     enum RetentionPolicy {
       RETENTION_POLICY_UNSPECIFIED = 0;
-      RETENTION_POLICY_INDEFINITE = 1;    // Keep forever.
-      RETENTION_POLICY_TIME_BASED = 2;    // Delete after retention_days.
+      RETENTION_POLICY_INDEFINITE = 1; // Keep forever.
+      RETENTION_POLICY_TIME_BASED = 2; // Delete after retention_days.
       RETENTION_POLICY_VERSION_BASED = 3; // Keep N versions.
-      RETENTION_POLICY_NO_RETENTION = 4;  // Ephemeral (no archival).
+      RETENTION_POLICY_NO_RETENTION = 4; // Ephemeral (no archival).
     }
-    
+
     // Version-based retention (if policy is VERSION_BASED).
     int32 max_versions = 3;
   }
-  
+
   // Configuration for document encryption settings.
   message EncryptionConfig {
     // Encryption policy settings (strongly typed).
     EncryptionType encryption_type = 1;
-    
+
     // Server-side encryption with KMS (SSE-KMS).
     // KMS key identifier - references key stored in KMS (or dev equivalent like localstack).
     // The actual key is stored/managed by KMS, not in this config.
     string kms_key_id = 2;
-    
+
     // Client-provided encryption key (for SSE-C: Server-Side Encryption with Customer-Provided Keys).
     // Client provides the key, AWS/S3 uses it for encryption.
     // We store the key reference/identifier in KMS (or dev equivalent), not the key itself.
     ClientProvidedKeyConfig client_provided_key = 3;
-    
+
     enum EncryptionType {
       ENCRYPTION_TYPE_UNSPECIFIED = 0;
-      ENCRYPTION_TYPE_NONE = 1;           // No encryption.
-      ENCRYPTION_TYPE_SERVER_SIDE = 2;    // Server-side encryption (SSE-S3).
-      ENCRYPTION_TYPE_KMS = 3;            // KMS-managed keys (SSE-KMS).
+      ENCRYPTION_TYPE_NONE = 1; // No encryption.
+      ENCRYPTION_TYPE_SERVER_SIDE = 2; // Server-side encryption (SSE-S3).
+      ENCRYPTION_TYPE_KMS = 3; // KMS-managed keys (SSE-KMS).
       ENCRYPTION_TYPE_CLIENT_PROVIDED = 4; // SSE-C: Client-provided keys (AWS uses for encryption).
     }
-    
+
     message ClientProvidedKeyConfig {
       // Key identifier/reference stored in KMS (or dev equivalent like localstack).
       // The actual encryption key is provided by the client and managed by the storage provider.
       // We store only the key reference/identifier here.
-      string key_reference_id = 1;  // Reference to key stored in KMS/local KMS.
-      
+      string key_reference_id = 1; // Reference to key stored in KMS/local KMS.
+
       // Algorithm used (e.g., "AES256").
       string algorithm = 2;
     }
   }
-  
 }
 
 // ============================================

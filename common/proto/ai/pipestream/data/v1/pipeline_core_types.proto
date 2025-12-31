@@ -313,22 +313,62 @@ message HydrationConfig {
   HydrationPolicy default_hydration_policy = 1;
 
   // Blob handling after parsing.
-  bool drop_blobs_after_parse = 2;  // Remove inline blobs after parsing (keep storage_ref).
-  bool keep_blobs_as_ref = 3;       // Keep original blob reference even after parsing.
+  bool drop_blobs_after_parse = 2; // Remove inline blobs after parsing (keep storage_ref).
+  bool keep_blobs_as_ref = 3; // Keep original blob reference even after parsing.
 
   // Inline blob size limits.
-  int32 max_inline_blob_size_bytes = 4;  // Max size for inline blobs (larger → storage_ref).
+  int32 max_inline_blob_size_bytes = 4; // Max size for inline blobs (larger → storage_ref).
 
   // Hydration behavior for multi-hop processing.
-  bool allow_inline_blobs_for_parser_chains = 5;  // Allow inline blobs between parsers.
+  bool allow_inline_blobs_for_parser_chains = 5; // Allow inline blobs between parsers.
 
   // Hydration policy options.
   enum HydrationPolicy {
     HYDRATION_POLICY_UNSPECIFIED = 0;
-    HYDRATION_POLICY_ALWAYS_INLINE = 1;     // Always keep blobs inline (for small docs).
-    HYDRATION_POLICY_ALWAYS_REF = 2;        // Always use storage_ref (for large docs).
-    HYDRATION_POLICY_AUTO = 3;              // Auto-select based on size.
-    HYDRATION_POLICY_ON_DEMAND = 4;         // Hydrate only when needed by module.
+    HYDRATION_POLICY_ALWAYS_INLINE = 1; // Always keep blobs inline (for small docs).
+    HYDRATION_POLICY_ALWAYS_REF = 2; // Always use storage_ref (for large docs).
+    HYDRATION_POLICY_AUTO = 3; // Auto-select based on size.
+    HYDRATION_POLICY_ON_DEMAND = 4; // Hydrate only when needed by module.
+  }
+}
+
+// Configuration for document persistence decisions.
+//
+// Controls whether documents are persisted to storage and under what conditions.
+// Used by both datasource-admin (Tier 1) and engine (Tier 2) configurations.
+message PersistenceConfig {
+  // For HTTP uploads: always persisted (streaming requirement).
+  // For gRPC PipeDoc uploads: configurable.
+  // Default: true (safe default - always persist unless explicitly disabled).
+  bool persist_pipedoc = 1;
+
+  // Maximum size (in bytes) for inline documents before forcing persistence.
+  // Documents larger than this are always persisted to storage.
+  int32 max_inline_size_bytes = 2;
+}
+
+// Configuration for document retention policies.
+//
+// Controls how long documents are retained in storage and how many versions to keep.
+// Used by both datasource-admin (Tier 1) and engine (Tier 2) configurations.
+message RetentionConfig {
+  // Retention policy type.
+  RetentionPolicy policy = 1;
+
+  // Retention period in days.
+  // -1 = indefinite, 0 = no retention, >0 = number of days.
+  int64 retention_days = 2;
+
+  // Maximum versions to keep (if policy is VERSION_BASED).
+  int32 max_versions = 3;
+
+  // Retention policy options.
+  enum RetentionPolicy {
+    RETENTION_POLICY_UNSPECIFIED = 0;
+    RETENTION_POLICY_INDEFINITE = 1; // Keep forever.
+    RETENTION_POLICY_TIME_BASED = 2; // Delete after retention_days.
+    RETENTION_POLICY_VERSION_BASED = 3; // Keep N versions.
+    RETENTION_POLICY_NO_RETENTION = 4; // Ephemeral (no archival).
   }
 }
 
