@@ -432,6 +432,22 @@ message Connector {
   google.protobuf.Timestamp created_at = 6;
   // Timestamp when connector type was last updated.
   google.protobuf.Timestamp updated_at = 7;
+
+  // References connector_config_schemas.schema_id for JSON Schema validation of custom config.
+  string custom_config_schema_id = 8;
+
+  // Tier 1 defaults (strongly typed, NOT JSON schema).
+  bool default_persist_pipedoc = 9;
+  int32 default_max_inline_size_bytes = 10;
+
+  // Default values for connector-specific custom config (JSON Schema-validated).
+  google.protobuf.Struct default_custom_config = 11;
+
+  // UI/admin metadata.
+  string display_name = 12;
+  string owner = 13;
+  string documentation_url = 14;
+  repeated string tags = 15;
 }
 
 // ============================================
