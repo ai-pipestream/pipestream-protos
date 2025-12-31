@@ -36,11 +36,12 @@ service EngineV1Service {
 
   // Get DatasourceInstance configuration for a datasource.
   //
-  // Used by connector-intake-service to retrieve Tier 2 (per-node) configuration
-  // for a datasource. Engine searches all active graphs to find DatasourceInstances
-  // with the specified datasource_id. If multiple exist, returns the first one found
-  // (for config resolution purposes). The engine will route documents to ALL matching
-  // DatasourceInstances during IntakeHandoff.
+  // Intended for debugging, tooling, and admin UIs - NOT for intake runtime use.
+  // Intake is graph-agnostic and does not query engine for Tier 2 config.
+  //
+  // Engine searches all active graphs to find DatasourceInstances with the specified
+  // datasource_id. If multiple exist, returns the first one found. Actual routing
+  // during IntakeHandoff will route to ALL matching DatasourceInstances.
   rpc GetDatasourceInstance(GetDatasourceInstanceRequest) returns (GetDatasourceInstanceResponse);
 }
 
