@@ -37,8 +37,11 @@ graph TD
     subgraph "Pipeline Flow"
         PS[PipeStream<br/>Processing envelope]
         PS --> PD
-        PS --> META[StreamMetadata<br/>History & tracing]
+        PS --> META[StreamMetadata<br/>History, tracing, IngestionConfig]
         PS --> NPC[NodeProcessingConfig<br/>Step configuration]
+        META --> IC[IngestionConfig<br/>Resolved 2-tier config]
+        IC --> HC[HydrationConfig<br/>Blob handling]
+        IC --> OH[OutputHints<br/>Routing hints]
     end
 
     subgraph "Parsed Metadata Types"
@@ -87,18 +90,50 @@ dependencies {
 |---------|-------------|
 | `PipeDoc` | Central document container with search/parsed metadata separation |
 | `PipeStream` | TCP-like packet header for node-to-node processing with history tracking |
+| `StreamMetadata` | Stream metadata with history, tracing, and `IngestionConfig` |
+| `IngestionConfig` | Resolved 2-tier configuration from intake (ingress mode, hydration, output hints) |
+| `HydrationConfig` | Hydration/dehydration policies for blob handling during processing |
+| `OutputHints` | Routing hints for downstream modules (collection, routing hints) |
+| `IngressMode` | Enum: how document entered pipeline (HTTP_STAGED vs GRPC_INLINE) |
 | `SearchMetadata` | Standardized search fields: title, body, keywords, semantic chunks, doc outline |
 | `ParsedMetadata` | Wrapper for immutable parser output (Tika, Docling) |
 | `Blob` | Binary content with inline data or S3 storage reference |
 | `SemanticProcessingResult` | Vector embeddings and chunked text for semantic search |
 | `TikaResponse` | Comprehensive Tika parser output with format-specific metadata |
 
+## Ingestion Configuration Types
+
+This module provides shared configuration types used across the ingestion pipeline:
+
+### IngestionConfig
+- **Purpose**: Contains resolved 2-tier configuration (Tier 1 + Tier 2 merged)
+- **Built by**: `connector-intake-service` after merging datasource config
+- **Passed via**: `StreamMetadata.ingestion_config`
+- **Contains**:
+  - `IngressMode` - How document entered (HTTP_STAGED vs GRPC_INLINE)
+  - `HydrationConfig` - Blob handling policies (resolved from Tier 1 + Tier 2)
+  - `OutputHints` - Routing hints for downstream modules (from Tier 2)
+  - `custom_config` - Merged connector-specific config (from Tier 1 + Tier 2)
+
+### HydrationConfig
+- **Purpose**: Controls blob hydration/dehydration during pipeline processing
+- **Used in**: `ConnectorGlobalConfig` (Tier 1), `NodeConfig` (Tier 2), `IngestionConfig`
+- **Policies**: ALWAYS_INLINE, ALWAYS_REF, AUTO (size-based), ON_DEMAND
+
+### OutputHints
+- **Purpose**: Provides routing hints for downstream modules
+- **Used in**: `NodeConfig` (Tier 2), `IngestionConfig`
+- **Contains**: `desired_collection` (OpenSearch index), `routing_hints` (key-value map)
+
+These types are shared to avoid duplication and ensure consistency across services. See the [2-tier configuration architecture](../intake/README.md#2-tier-configuration-architecture) for details.
+
 ## Related Modules
 
 All platform modules depend on common:
 - [`pipeline-module`](../pipeline-module/) - Module service interface using `PipeDoc`
 - [`repo`](../repo/) - Document storage and retrieval
-- [`engine`](../engine/) - Pipeline orchestration with `PipeStream`
+- [`engine`](../engine/) - Pipeline orchestration with `PipeStream`, uses `HydrationConfig` and `OutputHints`
+- [`intake`](../intake/) - Uses `HydrationConfig` in Tier 1 config, builds `IngestionConfig`
 - [`parser`](../parser/) - Document parsing definitions
 
 ## Related Repositories

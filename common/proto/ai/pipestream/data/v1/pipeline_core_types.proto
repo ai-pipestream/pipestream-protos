@@ -289,6 +289,92 @@ enum ChecksumType {
   CHECKSUM_TYPE_SHA512 = 4;
 }
 
+// ============================================
+// INGESTION CONFIGURATION TYPES
+// Used by connector-intake-service and engine for per-stream config
+// ============================================
+
+// Mode indicating how a document entered the ingestion pipeline.
+enum IngressMode {
+  // Unspecified ingress mode.
+  INGRESS_MODE_UNSPECIFIED = 0;
+  // Document was persisted to S3 via HTTP upload or gRPC with persistence enabled.
+  INGRESS_MODE_HTTP_STAGED = 1;
+  // Document was passed inline via gRPC without persistence.
+  INGRESS_MODE_GRPC_INLINE = 2;
+}
+
+// Configuration for hydration/dehydration policies for blob handling.
+//
+// Controls how blobs are handled during pipeline processing - whether to keep
+// them inline, use storage references, or hydrate on-demand.
+message HydrationConfig {
+  // Default hydration policy for processing nodes.
+  HydrationPolicy default_hydration_policy = 1;
+
+  // Blob handling after parsing.
+  bool drop_blobs_after_parse = 2;  // Remove inline blobs after parsing (keep storage_ref).
+  bool keep_blobs_as_ref = 3;       // Keep original blob reference even after parsing.
+
+  // Inline blob size limits.
+  int32 max_inline_blob_size_bytes = 4;  // Max size for inline blobs (larger → storage_ref).
+
+  // Hydration behavior for multi-hop processing.
+  bool allow_inline_blobs_for_parser_chains = 5;  // Allow inline blobs between parsers.
+
+  // Hydration policy options.
+  enum HydrationPolicy {
+    HYDRATION_POLICY_UNSPECIFIED = 0;
+    HYDRATION_POLICY_ALWAYS_INLINE = 1;     // Always keep blobs inline (for small docs).
+    HYDRATION_POLICY_ALWAYS_REF = 2;        // Always use storage_ref (for large docs).
+    HYDRATION_POLICY_AUTO = 3;              // Auto-select based on size.
+    HYDRATION_POLICY_ON_DEMAND = 4;         // Hydrate only when needed by module.
+  }
+}
+
+// Output hints for downstream processing and routing.
+//
+// Contains routing information and hints for how the document should be
+// processed by downstream modules and where it should ultimately be stored/indexed.
+message OutputHints {
+  // OpenSearch collection/index hint.
+  //
+  // Specifies the target collection or index where this document should be indexed.
+  string desired_collection = 1;
+
+  // Routing hints for downstream modules.
+  //
+  // Key-value pairs that modules can use to make routing or processing decisions.
+  map<string, string> routing_hints = 2;
+}
+
+// Ingestion configuration from connector-intake-service.
+//
+// Contains the resolved 2-tier configuration (Tier 1 + Tier 2 merged) that
+// controls how a document is processed through the pipeline. Built by
+// connector-intake-service and passed to the engine via StreamMetadata.
+message IngestionConfig {
+  // How the document entered the pipeline.
+  IngressMode ingress_mode = 1;
+
+  // Hydration policy for blob handling during processing.
+  //
+  // Resolved from Tier 1 (DataSource) + Tier 2 (DatasourceInstance) config.
+  HydrationConfig hydration_config = 2;
+
+  // Routing hints for downstream processing.
+  //
+  // From Tier 2 (DatasourceInstance) config - specifies target collection
+  // and other routing hints for modules.
+  OutputHints output_hints = 3;
+
+  // Connector-specific custom configuration.
+  //
+  // Merged from Tier 1 + Tier 2 custom_config fields. This is the only
+  // configuration that uses JSON Schema validation (connector-specific).
+  google.protobuf.Struct custom_config = 4;
+}
+
 // Metadata for tracking stream processing history and context.
 //
 // Contains execution records, tracing information, error tracking, and datasource
@@ -322,6 +408,12 @@ message StreamMetadata {
   // Useful for tracking which connector/datasource initiated processing
   // and for routing decisions in multi-entry-point graphs.
   string entry_node_id = 11;
+  // Ingestion configuration from connector-intake-service.
+  //
+  // Contains the resolved 2-tier configuration (Tier 1 + Tier 2 merged)
+  // for hydration, routing, and custom connector settings.
+  // Only present for streams that entered via intake connectors.
+  optional IngestionConfig ingestion_config = 12;
 }
 
 // Reference to a document stored in the repository (S3 offload).

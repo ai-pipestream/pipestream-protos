@@ -94,8 +94,54 @@ dependencies {
 | `UploadBlobRequest` | Simple file upload with auto-wrapping |
 | `DataSource` | DataSource metadata, API key, drive config |
 | `Connector` | Connector type template (pre-seeded) |
+| `DataSourceConfig` | Runtime config with Tier 1 (global) configuration |
+| `ConnectorGlobalConfig` | Tier 1 config: persistence, retention, encryption, hydration, custom |
+| `PersistenceConfig` | Document persistence rules (`persist_pipedoc`, size limits) |
+| `RetentionConfig` | Document retention policies (time-based, version-based) |
+| `EncryptionConfig` | Encryption settings (SSE-S3, SSE-KMS, client-provided keys) |
 | `CrawlMetadata` / `CrawlSummary` | Crawl session tracking |
 | `ControlCommand` | Server-to-crawler commands (PAUSE, STOP, THROTTLE) |
+
+## 2-Tier Configuration Architecture
+
+The intake service uses a **2-tier configuration model** for datasource configuration:
+
+### Tier 1: Global/Default Configuration (Service-Level)
+- **Owned by**: `datasource-admin` service
+- **Location**: `DataSourceConfig.global_config`
+- **Contains**:
+  - **Strongly typed fields**: `PersistenceConfig`, `RetentionConfig`, `EncryptionConfig`
+  - **Shared types**: `HydrationConfig` (from `common` module)
+  - **Custom config**: Connector-specific JSON Schema-validated configuration
+- **Merged from**: Connector defaults + DataSource instance overrides
+- **Purpose**: Service-level defaults that apply to all uses of a datasource
+
+### Tier 2: Per-Node/Instance Configuration (Graph-Level)
+- **Owned by**: `pipestream-engine` service
+- **Location**: `DatasourceInstance.node_config` (in engine service)
+- **Contains**:
+  - Optional overrides of Tier 1 config fields
+  - `OutputHints` (shared type from `common` module) - collection hints, routing hints
+  - Node-specific custom config
+- **Purpose**: Graph-specific overrides and routing hints for how a datasource is used in a specific pipeline
+
+### Configuration Resolution Flow
+
+```mermaid
+graph TD
+    INTAKE[Intake Service]
+    ADMIN[datasource-admin]
+    ENGINE[pipestream-engine]
+    
+    INTAKE -->|Get Tier 1| ADMIN
+    ADMIN -->|DataSourceConfig| INTAKE
+    INTAKE -->|Get Tier 2| ENGINE
+    ENGINE -->|DatasourceInstance| INTAKE
+    INTAKE -->|Merge Config| MERGE[Resolved Config]
+    MERGE -->|IngestionConfig| STREAM[PipeStream]
+```
+
+The intake service merges Tier 1 + Tier 2 configurations to build `IngestionConfig` (from `common` module), which is passed to the engine via `StreamMetadata.ingestion_config`.
 
 ## Upload Paths
 
@@ -129,11 +175,18 @@ sequenceDiagram
     Intake-->>Crawler: orphans_found, orphans_deleted
 ```
 
+## Configuration Dependencies
+
+This module depends on shared types from `common`:
+- `HydrationConfig` - Used in `ConnectorGlobalConfig.hydration_config`
+
+See [`common`](../common/) module for shared configuration types.
+
 ## Related Modules
 
-- [`common`](../common/) - Core `PipeDoc` and `Blob` types
+- [`common`](../common/) - Core `PipeDoc`, `Blob`, `HydrationConfig`, and `IngestionConfig` types
 - [`repo`](../repo/) - Repository service for document storage
-- [`engine`](../engine/) - Pipeline orchestration after ingestion
+- [`engine`](../engine/) - Pipeline orchestration, `DatasourceInstance` (Tier 2 config)
 
 ## Related Repositories
 

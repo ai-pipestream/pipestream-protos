@@ -3,6 +3,8 @@ syntax = "proto3";
 package ai.pipestream.engine.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "ai/pipestream/connector/intake/v1/connector_intake_service.proto";
+import "google/protobuf/struct.proto";
 
 option java_multiple_files = true;
 option java_package = "ai.pipestream.engine.v1";
@@ -32,6 +34,15 @@ service EngineV1Service {
   // for processing. Routes to the appropriate entry node based on datasource
   // configuration.
   rpc IntakeHandoff(IntakeHandoffRequest) returns (IntakeHandoffResponse);
+
+  // Get DatasourceInstance configuration for a datasource.
+  //
+  // Used by connector-intake-service to retrieve Tier 2 (per-node) configuration
+  // for a datasource. Engine searches all active graphs to find DatasourceInstances
+  // with the specified datasource_id. If multiple exist, returns the first one found
+  // (for config resolution purposes). The engine will route documents to ALL matching
+  // DatasourceInstances during IntakeHandoff.
+  rpc GetDatasourceInstance(GetDatasourceInstanceRequest) returns (GetDatasourceInstanceResponse);
 }
 
 // Request to process a document at a specific node
@@ -245,13 +256,17 @@ enum SubscriptionStrategy {
 // Request for intake-to-engine stream handoff.
 //
 // Sent by intake connectors when a document is ready for pipeline processing.
+// Intake is graph-agnostic - it only knows datasource_id. Engine handles all
+// graph resolution and routing. If multiple DatasourceInstances exist for the
+// datasource_id, engine routes to ALL matching entry nodes (multicast).
 message IntakeHandoffRequest {
   // The pipeline stream containing the document to process.
   ai.pipestream.data.v1.PipeStream stream = 1;
-  // DataSource identifier for routing to the correct entry node.
+  // DataSource identifier for routing to entry nodes.
   //
-  // Used to determine which pipeline graph and entry node should
-  // receive this document based on datasource configuration.
+  // Engine searches all active graphs to find DatasourceInstances with this datasource_id.
+  // Routes document to ALL matching entry nodes. If no DatasourceInstance exists,
+  // document is dropped (acceptable for gRPC inline path - may be going to external systems).
   string datasource_id = 2;
   // Account identifier for ownership context.
   string account_id = 3;
@@ -284,4 +299,59 @@ message IntakeHandoffResponse {
   //
   // Provides feedback to intake connectors for backpressure decisions.
   int64 queue_depth = 5;
+}
+
+// Request to get DatasourceInstance configuration.
+message GetDatasourceInstanceRequest {
+  // DataSource identifier (from datasource-admin).
+  // Engine searches all active graphs to find DatasourceInstances with this datasource_id.
+  // If multiple exist, returns the first one found (for config resolution).
+  // During IntakeHandoff, engine routes to ALL matching DatasourceInstances.
+  string datasource_id = 1;
+}
+
+// Response containing DatasourceInstance configuration.
+message GetDatasourceInstanceResponse {
+  // Whether the DatasourceInstance was found.
+  bool found = 1;
+  // The DatasourceInstance configuration (if found).
+  DatasourceInstance instance = 2;
+  // Status or error message.
+  string message = 3;
+}
+
+// DatasourceInstance represents a datasource's usage within a pipeline graph.
+//
+// This is graph-versioned and contains Tier 2 (per-node) configuration.
+// Tier 1 (service-level) configuration is owned by datasource-admin.
+message DatasourceInstance {
+  // Graph-versioned identifier for this datasource instance.
+  string datasource_instance_id = 1;
+
+  // References datasource from datasource-admin (Tier 1 config owner).
+  string datasource_id = 2;
+
+  // Engine entry node where documents from this datasource enter the pipeline.
+  string entry_node_id = 3;
+
+  // Tier 2: Per-node configuration.
+  NodeConfig node_config = 4;
+
+  // Per-node configuration for datasource instance (Tier 2).
+  //
+  // Contains optional overrides of Tier 1 config and node-specific hints.
+  message NodeConfig {
+    // Strongly typed configuration overrides (optional - overrides Tier 1 if present).
+    optional ai.pipestream.connector.intake.v1.DataSourceConfig.PersistenceConfig persistence_config = 1;
+    optional ai.pipestream.connector.intake.v1.DataSourceConfig.RetentionConfig retention_config = 2;
+    // Hydration config override - uses shared type from core types.
+    optional ai.pipestream.data.v1.HydrationConfig hydration_config = 3;
+
+    // Output hints for downstream processing - uses shared type from core types.
+    ai.pipestream.data.v1.OutputHints output_hints = 4;
+
+    // Node-specific custom config (ONLY field validated against JSON Schema).
+    // Examples: Node-specific connector options (e.g., "parse_images" for Wikipedia).
+    google.protobuf.Struct custom_config = 5;
+  }
 }

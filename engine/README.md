@@ -92,6 +92,10 @@ dependencies {
 | `EngineV1Service` | Core engine with routing, streaming, and health |
 | `ProcessNodeRequest/Response` | Route document to specific node |
 | `ProcessStreamRequest/Response` | Bidirectional streaming for high throughput |
+| `IntakeHandoffRequest/Response` | Intake-to-engine document handoff for datasource routing |
+| `GetDatasourceInstanceRequest/Response` | Lookup DatasourceInstance configuration (Tier 2) |
+| `DatasourceInstance` | Graph-level datasource configuration (Tier 2) |
+| `NodeConfig` | Per-node configuration with output hints and overrides |
 | `RouteToClusterRequest/Response` | Cross-cluster document routing |
 | `ProcessingMetrics` | Timing, cache hits, hop count |
 | `UpdateTopicSubscriptionsRequest` | Dynamic Kafka subscription management |
@@ -126,6 +130,44 @@ graph LR
     end
 ```
 
+## Intake Handoff & Datasource Routing
+
+The engine provides `IntakeHandoff` RPC for connector-intake-service to route documents into pipelines:
+
+```mermaid
+sequenceDiagram
+    participant Intake
+    participant Engine
+    participant Graph1[Graph 1]
+    participant Graph2[Graph 2]
+    
+    Intake->>Engine: IntakeHandoff(datasource_id)
+    Engine->>Engine: Search active graphs for DatasourceInstance
+    alt Multiple DatasourceInstances found
+        Engine->>Graph1: Route to entry_node_id (multicast)
+        Engine->>Graph2: Route to entry_node_id
+    else No DatasourceInstance found
+        Engine->>Intake: Drop document (for gRPC inline)
+    end
+```
+
+**Key Principles**:
+- **Intake is graph-agnostic**: Only knows `datasource_id`, doesn't need cluster/graph knowledge
+- **Engine multicasts**: Routes to ALL DatasourceInstances matching the `datasource_id` (one datasource can feed multiple graphs)
+- **Tier 2 Configuration**: `DatasourceInstance` contains per-node config (output hints, overrides) - graph-versioned
+- **IngestionConfig**: Engine receives resolved config via `StreamMetadata.ingestion_config` from intake
+
+## DatasourceInstance (Tier 2 Configuration)
+
+`DatasourceInstance` represents how a datasource is used within a specific pipeline graph:
+
+- **Graph-versioned**: Each graph version has its own `DatasourceInstance`
+- **Contains Tier 2 config only**: Per-node overrides and output hints
+- **References Tier 1**: References `datasource_id` from datasource-admin (doesn't duplicate Tier 1 config)
+- **Entry node binding**: Maps `datasource_id` → `entry_node_id` for routing
+
+See the [2-tier configuration architecture](../intake/README.md#2-tier-configuration-architecture) for details.
+
 ## Health Monitoring
 
 The engine exposes health status including:
@@ -135,9 +177,17 @@ The engine exposes health status including:
 - Uptime
 - Kafka subscription status
 
+## Configuration Dependencies
+
+This module depends on shared types from `common` and `intake`:
+- `HydrationConfig` (from `common`) - Used in `NodeConfig.hydration_config`
+- `OutputHints` (from `common`) - Used in `NodeConfig.output_hints`
+- `PersistenceConfig`, `RetentionConfig` (from `intake`) - Used in `NodeConfig` overrides
+
 ## Related Modules
 
-- [`common`](../common/) - Core `PipeStream` and `PipeDoc` types
+- [`common`](../common/) - Core `PipeStream`, `PipeDoc`, `IngestionConfig`, `HydrationConfig`, `OutputHints`
+- [`intake`](../intake/) - Tier 1 configuration types (`PersistenceConfig`, `RetentionConfig`, `EncryptionConfig`)
 - [`pipeline-module`](../pipeline-module/) - Module interface the engine invokes
 - [`config`](../config/) - Pipeline graph configuration
 - [`linear-processor`](../linear-processor/) - Alternative linear execution model
