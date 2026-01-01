@@ -95,6 +95,8 @@ dependencies {
 | `HydrationConfig` | Hydration/dehydration policies for blob handling during processing |
 | `OutputHints` | Routing hints for downstream modules (collection, routing hints) |
 | `IngressMode` | Enum: how document entered pipeline (HTTP_STAGED vs GRPC_INLINE) |
+| `DocIdDerivation` | Records how `doc_id` was determined (auditability, idempotency semantics) |
+| `DocIdDerivationMethod` | Enum: CLIENT_PROVIDED, SOURCE_DOC_ID, SOURCE_URI, SOURCE_PATH, SERVER_GENERATED |
 | `SearchMetadata` | Standardized search fields: title, body, keywords, semantic chunks, doc outline |
 | `ParsedMetadata` | Wrapper for immutable parser output (Tika, Docling) |
 | `Blob` | Binary content with inline data or S3 storage reference |
@@ -126,6 +128,22 @@ This module provides shared configuration types used across the ingestion pipeli
 - **Contains**: `desired_collection` (OpenSearch index), `routing_hints` (key-value map)
 
 These types are shared to avoid duplication and ensure consistency across services. See the [2-tier configuration architecture](../intake/README.md#2-tier-configuration-architecture) for details.
+
+## Document ID Derivation Types
+
+The `DocIdDerivation` message and `DocIdDerivationMethod` enum provide auditability and debugging support for understanding how document IDs were determined:
+
+### DocIdDerivation
+- **Purpose**: Records the method and input used to derive a document's `doc_id`
+- **Used in**: `PipeDoc.doc_id_derivation` (optional field)
+- **Benefits**: Auditability, debugging doc_id collisions, understanding idempotency semantics
+
+### DocIdDerivationMethod
+- **CLIENT_PROVIDED**: `doc_id` was already set by client in `PipeDoc`
+- **SOURCE_DOC_ID**: Derived from intake request `source_doc_id` field
+- **SOURCE_URI**: Derived from `PipeDoc.search_metadata.source_uri` (canonicalized)
+- **SOURCE_PATH**: Derived from `PipeDoc.search_metadata.source_path` (normalized)
+- **SERVER_GENERATED**: Explicit server-generated ID (not automatic/random)
 
 ## Related Modules
 
