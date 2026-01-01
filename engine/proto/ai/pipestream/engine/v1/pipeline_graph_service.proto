@@ -3,6 +3,7 @@ syntax = "proto3";
 package ai.pipestream.engine.v1;
 
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "ai/pipestream/engine/v1/engine_service.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -313,6 +314,82 @@ service PipelineGraphService {
   // The stream remains open until the client disconnects or the server
   // terminates it due to errors or shutdown.
   rpc SubscribeToGraphUpdates(SubscribeToGraphUpdatesRequest) returns (stream SubscribeToGraphUpdatesResponse);
+
+  // ===========================================================================
+  // DATASOURCE INSTANCE MANAGEMENT
+  // ===========================================================================
+  //
+  // DatasourceInstances bind datasources (from datasource-admin) to entry nodes
+  // in a graph. They contain Tier 2 (graph-level) configuration that overrides
+  // Tier 1 (service-level) configuration from datasource-admin.
+  //
+  // Key concepts:
+  // - One datasource can have instances in multiple graphs (multicast routing)
+  // - DatasourceInstances are graph-versioned (tied to a specific graph version)
+  // - When a graph is activated, its DatasourceInstances are loaded into GraphCache
+  // - IntakeHandoff uses DatasourceInstances to route documents to entry nodes
+
+  // Creates a DatasourceInstance binding a datasource to an entry node.
+  //
+  // The DatasourceInstance is associated with a specific graph version.
+  // If the graph is active, the instance is immediately registered in GraphCache
+  // and becomes available for IntakeHandoff routing.
+  //
+  // Returns:
+  //   - The created DatasourceInstance with server-generated ID
+  //   - success = true if created successfully
+  //
+  // Errors:
+  //   - NOT_FOUND: graph_id + version doesn't exist
+  //   - INVALID_ARGUMENT: missing required fields or entry_node_id not in graph
+  //   - ALREADY_EXISTS: DatasourceInstance for this datasource already exists in this graph version
+  rpc CreateDatasourceInstance(CreateDatasourceInstanceRequest) returns (CreateDatasourceInstanceResponse);
+
+  // Updates an existing DatasourceInstance's configuration.
+  //
+  // Only the node_config (Tier 2 configuration) can be updated.
+  // To change the entry_node_id, delete and recreate the instance.
+  //
+  // If the graph is active, the updated instance is re-registered in GraphCache.
+  //
+  // Returns:
+  //   - The updated DatasourceInstance
+  //   - success = true if updated successfully
+  //
+  // Errors:
+  //   - NOT_FOUND: DatasourceInstance doesn't exist
+  rpc UpdateDatasourceInstance(UpdateDatasourceInstanceRequest) returns (UpdateDatasourceInstanceResponse);
+
+  // Deletes a DatasourceInstance.
+  //
+  // Removes the binding between the datasource and entry node.
+  // If the graph is active, the instance is unregistered from GraphCache
+  // and IntakeHandoff will no longer route to this entry node.
+  //
+  // Returns:
+  //   - deleted = true if an instance was removed
+  //   - deleted = false if the instance didn't exist (idempotent)
+  rpc DeleteDatasourceInstance(DeleteDatasourceInstanceRequest) returns (DeleteDatasourceInstanceResponse);
+
+  // Retrieves a DatasourceInstance by its ID.
+  //
+  // Returns:
+  //   - found = true with full instance data if exists
+  //   - found = false if not found
+  rpc GetDatasourceInstanceById(GetDatasourceInstanceByIdRequest) returns (GetDatasourceInstanceByIdResponse);
+
+  // Lists all DatasourceInstances for a graph version.
+  //
+  // Returns all datasource bindings configured for the specified graph.
+  // Use this to see which datasources feed into a pipeline.
+  rpc ListDatasourceInstancesByGraph(ListDatasourceInstancesByGraphRequest) returns (ListDatasourceInstancesByGraphResponse);
+
+  // Lists all DatasourceInstances across all graphs for a datasource.
+  //
+  // Returns all graphs that have bindings for the specified datasource_id.
+  // Useful for impact analysis - see which pipelines would be affected
+  // if a datasource is modified or deleted.
+  rpc ListDatasourceInstancesByDatasource(ListDatasourceInstancesByDatasourceRequest) returns (ListDatasourceInstancesByDatasourceResponse);
 }
 
 // ============================================================================
@@ -746,4 +823,191 @@ enum GraphUpdateType {
   // The graph field may only contain identifying information (graph_id, version).
   // Full graph data may not be available as it has been removed.
   GRAPH_UPDATE_TYPE_DELETED = 4;
+}
+
+// ============================================================================
+// DATASOURCE INSTANCE MESSAGES
+// ============================================================================
+
+// Request to create a DatasourceInstance binding.
+message CreateDatasourceInstanceRequest {
+  // Logical graph identifier where the instance will be created.
+  string graph_id = 1;
+
+  // Graph version to associate this instance with.
+  //
+  // The DatasourceInstance is tied to this specific version.
+  int64 version = 2;
+
+  // Datasource ID from datasource-admin (Tier 1 config owner).
+  //
+  // This references the datasource definition managed by datasource-admin.
+  string datasource_id = 3;
+
+  // Entry node ID where documents from this datasource enter the pipeline.
+  //
+  // Must be a valid node_id in the specified graph version.
+  string entry_node_id = 4;
+
+  // Optional Tier 2 (per-node) configuration.
+  //
+  // Overrides Tier 1 configuration from datasource-admin.
+  // If not provided, Tier 1 config is used as-is.
+  DatasourceInstance.NodeConfig node_config = 5;
+
+  // User or service creating this instance.
+  string created_by = 6;
+}
+
+// Response from creating a DatasourceInstance.
+message CreateDatasourceInstanceResponse {
+  // Whether the creation succeeded.
+  bool success = 1;
+
+  // Human-readable message (error details if failed).
+  string message = 2;
+
+  // The created DatasourceInstance with server-generated ID.
+  //
+  // The datasource_instance_id follows the format: {graph_id}:{version}:{datasource_id}
+  DatasourceInstance instance = 3;
+}
+
+// Request to update a DatasourceInstance's configuration.
+message UpdateDatasourceInstanceRequest {
+  // Unique ID of the DatasourceInstance to update.
+  //
+  // Format: {graph_id}:{version}:{datasource_id}
+  string datasource_instance_id = 1;
+
+  // Updated Tier 2 configuration.
+  //
+  // Replaces the existing node_config entirely.
+  DatasourceInstance.NodeConfig node_config = 2;
+}
+
+// Response from updating a DatasourceInstance.
+message UpdateDatasourceInstanceResponse {
+  // Whether the update succeeded.
+  bool success = 1;
+
+  // Human-readable message.
+  string message = 2;
+
+  // The updated DatasourceInstance.
+  DatasourceInstance instance = 3;
+}
+
+// Request to delete a DatasourceInstance.
+message DeleteDatasourceInstanceRequest {
+  // Unique ID of the DatasourceInstance to delete.
+  //
+  // Format: {graph_id}:{version}:{datasource_id}
+  string datasource_instance_id = 1;
+}
+
+// Response from deleting a DatasourceInstance.
+message DeleteDatasourceInstanceResponse {
+  // Whether the operation completed successfully.
+  bool success = 1;
+
+  // Whether an instance was actually deleted.
+  //
+  // False if the instance didn't exist (idempotent delete).
+  bool deleted = 2;
+
+  // Human-readable message.
+  string message = 3;
+}
+
+// Request to get a DatasourceInstance by ID.
+message GetDatasourceInstanceByIdRequest {
+  // Unique ID of the DatasourceInstance.
+  //
+  // Format: {graph_id}:{version}:{datasource_id}
+  string datasource_instance_id = 1;
+}
+
+// Response from getting a DatasourceInstance.
+message GetDatasourceInstanceByIdResponse {
+  // Whether the instance was found.
+  bool found = 1;
+
+  // The DatasourceInstance if found.
+  DatasourceInstance instance = 2;
+
+  // Graph ID this instance belongs to.
+  string graph_id = 3;
+
+  // Graph version this instance is associated with.
+  int64 version = 4;
+
+  // Whether the associated graph is currently active.
+  bool graph_is_active = 5;
+}
+
+// Request to list DatasourceInstances for a graph.
+message ListDatasourceInstancesByGraphRequest {
+  // Logical graph identifier.
+  string graph_id = 1;
+
+  // Optional: specific version to query.
+  //
+  // If 0 or not provided, returns instances for the active version.
+  // If provided, returns instances for that specific version.
+  int64 version = 2;
+}
+
+// Response containing DatasourceInstances for a graph.
+message ListDatasourceInstancesByGraphResponse {
+  // List of DatasourceInstances in the graph.
+  repeated DatasourceInstanceInfo instances = 1;
+
+  // Total count.
+  int32 total_count = 2;
+
+  // The graph version these instances belong to.
+  int64 version = 3;
+
+  // Whether this graph version is active.
+  bool is_active = 4;
+}
+
+// Summary information about a DatasourceInstance.
+message DatasourceInstanceInfo {
+  // The full DatasourceInstance.
+  DatasourceInstance instance = 1;
+
+  // Graph ID this instance belongs to.
+  string graph_id = 2;
+
+  // Graph version.
+  int64 version = 3;
+
+  // Timestamp when created.
+  google.protobuf.Timestamp created_at = 4;
+
+  // User or service that created this instance.
+  string created_by = 5;
+}
+
+// Request to list DatasourceInstances across all graphs for a datasource.
+message ListDatasourceInstancesByDatasourceRequest {
+  // Datasource ID to search for.
+  string datasource_id = 1;
+
+  // Optional: only return instances from active graphs.
+  //
+  // If true, only instances in currently active graph versions are returned.
+  // If false (default), all instances across all versions are returned.
+  bool active_only = 2;
+}
+
+// Response containing DatasourceInstances for a datasource.
+message ListDatasourceInstancesByDatasourceResponse {
+  // List of DatasourceInstances across all graphs.
+  repeated DatasourceInstanceInfo instances = 1;
+
+  // Total count.
+  int32 total_count = 2;
 }
