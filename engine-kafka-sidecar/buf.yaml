@@ -5,6 +5,7 @@ modules:
 deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
+  - buf.build/pipestreamai/common
 lint:
   use:
     - STANDARD

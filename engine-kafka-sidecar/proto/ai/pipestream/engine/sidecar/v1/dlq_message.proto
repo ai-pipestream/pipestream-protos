@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.sidecar.v1;
+
+import "google/protobuf/timestamp.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.engine.sidecar.v1";
+option java_outer_classname = "DlqMessageProto";
+
+// Represents a message that failed processing and was sent to the Dead Letter Queue.
+message DlqMessage {
+  // The original dehydrated stream (containing DocumentReference).
+  ai.pipestream.data.v1.PipeStream stream = 1;
+
+  // The type of error that caused the failure.
+  string error_type = 2;
+
+  // Detailed error message or stack trace.
+  string error_message = 3;
+
+  // Timestamp when the failure occurred.
+  google.protobuf.Timestamp failed_at = 4;
+
+  // Number of retry attempts made before giving up.
+  int32 retry_count = 5;
+
+  // The ID of the node where failure occurred (if applicable).
+  string failed_node_id = 6;
+
+  // The original topic name.
+  string original_topic = 7;
+
+  // The original partition.
+  int32 original_partition = 8;
+
+  // The original offset.
+  int64 original_offset = 9;
+}
