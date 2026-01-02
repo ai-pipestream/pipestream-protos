@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package ai.pipestream.engine.sidecar.v1;
 
-import "google/protobuf/timestamp.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.engine.sidecar.v1";
 option java_outer_classname = "DlqMessageProto";
+option java_package = "ai.pipestream.engine.sidecar.v1";
 
 // Represents a message that failed processing and was sent to the Dead Letter Queue.
 message DlqMessage {
