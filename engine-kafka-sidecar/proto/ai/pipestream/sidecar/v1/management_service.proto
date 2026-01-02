@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package ai.pipestream.sidecar.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SidecarManagementProto";
+option java_package = "ai.pipestream.sidecar.v1";
+
+// Management service for controlling the Kafka Sidecar instance.
+service SidecarManagementService {
+  // Get all active topic leases held by this sidecar.
+  rpc GetLeases(GetLeasesRequest) returns (GetLeasesResponse);
+
+  // Pause consumption for a specific topic (e.g. for incident response).
+  rpc PauseConsumption(PauseConsumptionRequest) returns (PauseConsumptionResponse);
+
+  // Resume consumption for a specific topic.
+  rpc ResumeConsumption(ResumeConsumptionRequest) returns (ResumeConsumptionResponse);
+}
+
+message GetLeasesRequest {
+  // Empty for now, but allows future filtering
+}
+
+message GetLeasesResponse {
+  repeated LeaseInfo leases = 1;
+}
+
+message LeaseInfo {
+  string topic = 1;
+  string type = 2; // "INTAKE" or "NODE"
+  int64 current_offset = 3;
+  string status = 4; // "ACTIVE", "PAUSED", "ERROR"
+  int32 retry_count = 5;
+}
+
+message PauseConsumptionRequest {
+  string topic = 1;
+}
+
+message PauseConsumptionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResumeConsumptionRequest {
+  string topic = 1;
+}
+
+message ResumeConsumptionResponse {
+  bool success = 1;
+  string message = 2;
+}

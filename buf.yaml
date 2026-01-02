@@ -10,6 +10,8 @@ modules:
     name: buf.build/pipestreamai/design
   - path: engine/proto
     name: buf.build/pipestreamai/engine
+  - path: engine-kafka-sidecar/proto
+    name: buf.build/pipestreamai/engine-kafka-sidecar
   - path: intake/proto
     name: buf.build/pipestreamai/intake
   - path: linear-processor/proto
