@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-package ai.pipestream.sidecar.v1;
+package ai.pipestream.engine.sidecar.v1;
 
 option java_multiple_files = true;
-option java_outer_classname = "SidecarManagementProto";
-option java_package = "ai.pipestream.sidecar.v1";
+option java_package = "ai.pipestream.engine.sidecar.v1";
 
 // Management service for controlling the Kafka Sidecar instance.
 service SidecarManagementService {
