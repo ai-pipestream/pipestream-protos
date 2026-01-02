@@ -4,8 +4,10 @@ package ai.pipestream.engine.sidecar.v1;
 
 option java_multiple_files = true;
 option java_package = "ai.pipestream.engine.sidecar.v1";
+option java_outer_classname = "SidecarManagementProto";
 
 // Management service for controlling the Kafka Sidecar instance.
+// Provides visibility into active leases and control over consumption.
 service SidecarManagementService {
   // Get all active topic leases held by this sidecar.
   rpc GetLeases(GetLeasesRequest) returns (GetLeasesResponse);
@@ -17,36 +19,55 @@ service SidecarManagementService {
   rpc ResumeConsumption(ResumeConsumptionRequest) returns (ResumeConsumptionResponse);
 }
 
+// Request to get active leases. Currently empty.
 message GetLeasesRequest {
   // Empty for now, but allows future filtering
 }
 
+// Response containing the list of active leases.
 message GetLeasesResponse {
+  // The list of active topic leases.
   repeated LeaseInfo leases = 1;
 }
 
+// Information about a specific topic lease.
 message LeaseInfo {
+  // The topic name.
   string topic = 1;
-  string type = 2; // "INTAKE" or "NODE"
+  // The type of topic (INTAKE or NODE).
+  string type = 2;
+  // The current consumer offset.
   int64 current_offset = 3;
-  string status = 4; // "ACTIVE", "PAUSED", "ERROR"
+  // The status of the consumer (ACTIVE, PAUSED, ERROR).
+  string status = 4;
+  // The number of retry attempts for the current message.
   int32 retry_count = 5;
 }
 
+// Request to pause consumption for a topic.
 message PauseConsumptionRequest {
+  // The topic to pause.
   string topic = 1;
 }
 
+// Response for pause consumption.
 message PauseConsumptionResponse {
+  // Whether the operation was successful.
   bool success = 1;
+  // Informational message or error description.
   string message = 2;
 }
 
+// Request to resume consumption for a topic.
 message ResumeConsumptionRequest {
+  // The topic to resume.
   string topic = 1;
 }
 
+// Response for resume consumption.
 message ResumeConsumptionResponse {
+  // Whether the operation was successful.
   bool success = 1;
+  // Informational message or error description.
   string message = 2;
 }
