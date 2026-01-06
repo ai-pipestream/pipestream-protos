@@ -14,8 +14,6 @@ modules:
     name: buf.build/pipestreamai/engine-kafka-sidecar
   - path: intake/proto
     name: buf.build/pipestreamai/intake
-  - path: linear-processor/proto
-    name: buf.build/pipestreamai/linear-processor
   - path: opensearch/proto
     name: buf.build/pipestreamai/opensearch
   - path: parser/proto
