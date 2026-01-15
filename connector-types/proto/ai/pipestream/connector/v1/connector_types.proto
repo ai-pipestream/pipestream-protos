@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.connector.v1";
+
+// ============================================
+// CONNECTOR TYPES (Shared Domain Model)
+// ============================================
+
+// Management type for connectors.
+enum ManagementType {
+  // Unspecified management type.
+  MANAGEMENT_TYPE_UNSPECIFIED = 0;
+  // Unmanaged: External systems push documents via API key. No connector app.
+  MANAGEMENT_TYPE_UNMANAGED = 1;
+  // Managed: Platform-managed connector with health checks, scheduling, etc.
+  MANAGEMENT_TYPE_MANAGED = 2;
+}
+
+// Connector type definition (template/registry).
+//
+// Connectors are pre-seeded types that define what kind of data source integration
+// is being used (e.g., "s3", "file-crawler", "confluence"). They are reusable across
+// accounts - each account creates a DataSource binding to use a connector type.
+message Connector {
+  // Unique connector type identifier.
+  // Deterministic: hash(connector_type)
+  string connector_id = 1;
+  // Connector type name (e.g., "s3", "file-crawler", "confluence").
+  string connector_type = 2;
+  // Human-readable display name.
+  string name = 3;
+  // Description of the connector type.
+  string description = 4;
+  // Whether this is managed or unmanaged.
+  ManagementType management_type = 5;
+  // Timestamp when connector type was created.
+  google.protobuf.Timestamp created_at = 6;
+  // Timestamp when connector type was last updated.
+  google.protobuf.Timestamp updated_at = 7;
+
+  // References connector_config_schemas.schema_id for JSON Schema validation of custom config.
+  string custom_config_schema_id = 8;
+
+  // Tier 1 defaults (strongly typed, NOT JSON schema).
+  bool default_persist_pipedoc = 9;
+  int32 default_max_inline_size_bytes = 10;
+
+  // Default values for connector-specific custom config (JSON Schema-validated).
+  google.protobuf.Struct default_custom_config = 11;
+
+  // UI/admin metadata.
+  string display_name = 12;
+  string owner = 13;
+  string documentation_url = 14;
+  repeated string tags = 15;
+}

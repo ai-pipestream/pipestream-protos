@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.connector.intake.v1;
 
-import "ai/pipestream/connector/intake/v1/connector_intake_service.proto";
+import "ai/pipestream/connector/v1/connector_types.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -123,7 +123,7 @@ message UpdateConnectorTypeDefaultsRequest {
 message UpdateConnectorTypeDefaultsResponse {
   bool success = 1;
   string message = 2;
-  Connector connector = 3;
+  ai.pipestream.connector.v1.Connector connector = 3;
 }
 
 message SetConnectorCustomConfigSchemaRequest {
@@ -135,5 +135,5 @@ message SetConnectorCustomConfigSchemaRequest {
 message SetConnectorCustomConfigSchemaResponse {
   bool success = 1;
   string message = 2;
-  Connector connector = 3;
+  ai.pipestream.connector.v1.Connector connector = 3;
 }

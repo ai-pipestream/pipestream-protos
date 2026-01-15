@@ -6,6 +6,8 @@ modules:
     name: buf.build/pipestreamai/common
   - path: config/proto
     name: buf.build/pipestreamai/config
+  - path: connector-types/proto
+    name: buf.build/pipestreamai/connector-types
   - path: design/proto
     name: buf.build/pipestreamai/design
   - path: engine/proto

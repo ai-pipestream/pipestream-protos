@@ -67,6 +67,12 @@ service PlatformRegistrationService {
   // Provides detailed version metadata from Apicurio Registry including
   // creation timestamps and version-specific descriptions.
   rpc GetModuleSchemaVersions(GetModuleSchemaVersionsRequest) returns (GetModuleSchemaVersionsResponse);
+
+  // Get connector schema from Apicurio Registry.
+  //
+  // Retrieves either a specific version or the latest schema for a connector.
+  // Returns JSON Schema used for validating connector configuration.
+  rpc GetConnectorSchema(GetConnectorSchemaRequest) returns (GetConnectorSchemaResponse);
 }
 
 // Type of service being registered.
@@ -77,6 +83,8 @@ enum ServiceType {
   SERVICE_TYPE_SERVICE = 1;
   // Document processing module (implements PipeStepProcessorService).
   SERVICE_TYPE_MODULE = 2;
+  // Intake Connector (implements ConnectorControlService).
+  SERVICE_TYPE_CONNECTOR = 3;
 }
 
 // Connection information for reaching a service.
@@ -513,6 +521,35 @@ message GetModuleSchemaVersionsResponse {
   repeated ModuleSchemaVersion versions = 3;
   // Latest version string for convenience.
   string latest_version = 4;
+}
+
+// Request to retrieve connector configuration schema from Apicurio Registry.
+message GetConnectorSchemaRequest {
+  // Connector type (e.g., "s3", "file-crawler").
+  string connector_type = 1;
+  // Specific version to retrieve. If omitted, returns latest from Apicurio.
+  optional string version = 2;
+}
+
+// Response containing connector configuration schema.
+//
+// Provides JSON Schema definition used to validate connector configuration
+// along with version information and available versions.
+message GetConnectorSchemaResponse {
+  // Connector type.
+  string connector_type = 1;
+  // JSON Schema definition as string.
+  string schema_json = 2;
+  // Current schema version (e.g., "1.2.3").
+  string schema_version = 3;
+  // Apicurio Registry artifact ID.
+  string artifact_id = 4;
+  // Additional metadata (author, description, etc.).
+  map<string, string> metadata = 5;
+  // Timestamp when schema was last updated in Apicurio Registry.
+  google.protobuf.Timestamp updated_at = 6;
+  // All versions available in Apicurio Registry.
+  repeated string available_versions = 7;
 }
 
 // Metadata for a single schema version.
