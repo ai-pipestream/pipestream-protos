@@ -101,6 +101,22 @@ message Connectivity {
   bool tls_enabled = 5;
 }
 
+// HTTP endpoint definition for service discovery.
+message HttpEndpoint {
+  // Scheme for the endpoint (e.g., "http", "https").
+  string scheme = 1;
+  // Host that clients should use to connect.
+  string host = 2;
+  // Port that clients should use to connect.
+  int32 port = 3;
+  // Base path prefix for the service (e.g., "/repository").
+  string base_path = 4;
+  // Health check path (e.g., "/q/health").
+  string health_path = 5;
+  // Whether TLS/SSL is enabled for connections.
+  bool tls_enabled = 6;
+}
+
 // Request to register a service or module with the platform.
 //
 // Provides the minimal information needed for registration. For modules,
@@ -121,6 +137,8 @@ message RegisterRequest {
   repeated string tags = 6;
   // Service capabilities (e.g., "document-storage", "search").
   repeated string capabilities = 7;
+  // HTTP endpoints for this service (optional).
+  repeated HttpEndpoint http_endpoints = 8;
 }
 
 // Response for Register RPC (streaming).
@@ -292,6 +310,8 @@ message ResolveServiceResponse {
   string selection_reason = 12;
   // Timestamp when resolution occurred.
   google.protobuf.Timestamp resolved_at = 13;
+  // HTTP endpoints for the selected instance (if provided by service).
+  repeated HttpEndpoint http_endpoints = 14;
 }
 
 // Complete details for a registered service instance.
@@ -320,6 +340,8 @@ message GetServiceResponse {
   google.protobuf.Timestamp registered_at = 10;
   // Timestamp of last health check.
   google.protobuf.Timestamp last_health_check = 11;
+  // HTTP endpoints for this service instance (if provided).
+  repeated HttpEndpoint http_endpoints = 12;
 }
 
 // Complete details for a registered module instance.
