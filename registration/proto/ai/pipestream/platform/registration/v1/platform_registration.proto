@@ -139,6 +139,12 @@ message RegisterRequest {
   repeated string capabilities = 7;
   // HTTP endpoints for this service (optional).
   repeated HttpEndpoint http_endpoints = 8;
+  // REST/OpenAPI schema definition for this service (JSON or YAML string).
+  optional string http_schema = 9;
+  // Schema version for REST/OpenAPI definition.
+  optional string http_schema_version = 10;
+  // Optional artifact ID override for REST/OpenAPI schema.
+  optional string http_schema_artifact_id = 11;
 }
 
 // Response for Register RPC (streaming).
@@ -312,6 +318,10 @@ message ResolveServiceResponse {
   google.protobuf.Timestamp resolved_at = 13;
   // HTTP endpoints for the selected instance (if provided by service).
   repeated HttpEndpoint http_endpoints = 14;
+  // REST/OpenAPI schema artifact ID for this service.
+  optional string http_schema_artifact_id = 15;
+  // REST/OpenAPI schema version for this service.
+  optional string http_schema_version = 16;
 }
 
 // Complete details for a registered service instance.
@@ -342,6 +352,10 @@ message GetServiceResponse {
   google.protobuf.Timestamp last_health_check = 11;
   // HTTP endpoints for this service instance (if provided).
   repeated HttpEndpoint http_endpoints = 12;
+  // REST/OpenAPI schema artifact ID for this service.
+  optional string http_schema_artifact_id = 13;
+  // REST/OpenAPI schema version for this service.
+  optional string http_schema_version = 14;
 }
 
 // Complete details for a registered module instance.
