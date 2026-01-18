@@ -140,6 +140,20 @@ message ListAccountsResponse {
   int32 total_count = 3;
 }
 
+// Request to stream all accounts (for cache warmup or bulk consumers)
+message StreamAllAccountsRequest {
+  // Optional partial search on account_id or name
+  string query = 1;
+  // Whether to include inactive accounts (defaults to false)
+  bool include_inactive = 2;
+}
+
+// Response wrapper for streaming accounts.
+message StreamAllAccountsResponse {
+  // Single account entry in the stream
+  Account account = 1;
+}
+
 // Account service
 service AccountService {
   // Register a new account
@@ -159,4 +173,7 @@ service AccountService {
 
   // List accounts with optional filtering
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+
+  // Stream all accounts matching optional filters
+  rpc StreamAllAccounts(StreamAllAccountsRequest) returns (stream StreamAllAccountsResponse);
 }
