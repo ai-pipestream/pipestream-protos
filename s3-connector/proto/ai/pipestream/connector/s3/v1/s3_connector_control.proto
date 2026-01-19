@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.s3.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "S3ConnectorControlProto";
+option java_package = "ai.pipestream.connector.s3.v1";
+
+// S3 connector control surface for unmanaged connectors.
+service S3ConnectorControlService {
+  // Trigger a crawl for a bucket/prefix.
+  rpc StartCrawl(StartCrawlRequest) returns (StartCrawlResponse);
+}
+
+message StartCrawlRequest {
+  // DataSource identifier (required).
+  string datasource_id = 1;
+  // Optional bucket override (if empty, use connector config).
+  string bucket = 2;
+  // Optional prefix override (if empty, use connector config).
+  string prefix = 3;
+  // Client-provided request identifier (for idempotency).
+  string request_id = 4;
+}
+
+message StartCrawlResponse {
+  bool accepted = 1;
+  string message = 2;
+  string request_id = 3;
+  google.protobuf.Timestamp accepted_at = 4;
+}
