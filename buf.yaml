@@ -32,6 +32,8 @@ modules:
     name: buf.build/pipestreamai/testing-harness
   - path: ui-ux/proto
     name: buf.build/pipestreamai/ui-ux
+  - path: s3-connector/proto
+    name: buf.build/pipestreamai/s3-connector
 deps:
   - buf.build/grpc/grpc
   - buf.build/googleapis/googleapis
