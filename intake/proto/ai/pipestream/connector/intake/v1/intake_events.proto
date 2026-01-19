@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.intake.v1;
+
+import "ai/pipestream/connector/intake/v1/connector_intake_service.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.connector.intake.v1";
+
+// ============================================
+// INTAKE EVENTS
+// Source of truth for crawl ledger updates
+// ============================================
+
+// Emitted when a crawl session starts (after intake accepts it).
+message CrawlSessionStarted {
+  string datasource_id = 1;
+  string crawl_id = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp started_at = 4;
+  map<string, string> metadata = 5;
+}
+
+// Emitted when a crawl session completes (success or failure).
+message CrawlSessionCompleted {
+  string datasource_id = 1;
+  string crawl_id = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp completed_at = 4;
+  CrawlSummary summary = 5;
+  string status = 6; // "COMPLETED", "FAILED", "CANCELED"
+  string message = 7;
+}
+
+// Emitted when a document is accepted by intake.
+message DocumentAccepted {
+  string datasource_id = 1;
+  string crawl_id = 2;
+  string session_id = 3;
+  string source_doc_id = 4;
+  string doc_id = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Emitted when a document is rejected by intake.
+message DocumentRejected {
+  string datasource_id = 1;
+  string crawl_id = 2;
+  string session_id = 3;
+  string source_doc_id = 4;
+  RejectionDetails rejection = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Emitted when a document is skipped by intake.
+message DocumentSkipped {
+  string datasource_id = 1;
+  string crawl_id = 2;
+  string session_id = 3;
+  string source_doc_id = 4;
+  SkipDetails skip = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Rejection details with structured reason and human-readable logs.
+message RejectionDetails {
+  RejectionReason reason = 1;
+  string message = 2;
+}
+
+// Skip details with structured reason and human-readable logs.
+message SkipDetails {
+  SkipReason reason = 1;
+  string message = 2;
+}
+
+enum RejectionReason {
+  REJECTION_REASON_UNSPECIFIED = 0;
+  REJECTION_REASON_INVALID_REQUEST = 1;
+  REJECTION_REASON_AUTH_FAILED = 2;
+  REJECTION_REASON_RATE_LIMITED = 3;
+  REJECTION_REASON_SIZE_LIMIT = 4;
+  REJECTION_REASON_UNSUPPORTED_TYPE = 5;
+  REJECTION_REASON_STORAGE_ERROR = 6;
+  REJECTION_REASON_INTERNAL_ERROR = 7;
+}
+
+enum SkipReason {
+  SKIP_REASON_UNSPECIFIED = 0;
+  SKIP_REASON_DUPLICATE = 1;
+  SKIP_REASON_UNCHANGED = 2;
+  SKIP_REASON_OUT_OF_SCOPE = 3;
+  SKIP_REASON_RATE_LIMITED = 4;
+  SKIP_REASON_POLICY = 5;
+}
