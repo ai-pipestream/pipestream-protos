@@ -29,7 +29,7 @@ message CrawlSessionCompleted {
   string session_id = 3;
   google.protobuf.Timestamp completed_at = 4;
   CrawlSummary summary = 5;
-  string status = 6; // "COMPLETED", "FAILED", "CANCELED"
+  CrawlSessionStatus status = 6;
   string message = 7;
 }
 
@@ -93,4 +93,11 @@ enum SkipReason {
   SKIP_REASON_OUT_OF_SCOPE = 3;
   SKIP_REASON_RATE_LIMITED = 4;
   SKIP_REASON_POLICY = 5;
+}
+
+enum CrawlSessionStatus {
+  CRAWL_SESSION_STATUS_UNSPECIFIED = 0;
+  CRAWL_SESSION_STATUS_COMPLETED = 1;
+  CRAWL_SESSION_STATUS_FAILED = 2;
+  CRAWL_SESSION_STATUS_CANCELED = 3;
 }
