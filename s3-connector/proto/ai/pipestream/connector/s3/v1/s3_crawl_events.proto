@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.s3.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "S3CrawlEventsProto";
+option java_package = "ai.pipestream.connector.s3.v1";
+
+// S3 crawl event representing an S3 object to be processed.
+message S3CrawlEvent {
+  // Deterministic: hash(datasource_id + bucket + key + version_id + timestamp_millis)
+  string event_id = 1;
+
+  google.protobuf.Timestamp timestamp = 2;
+  
+  // Datasource ID (account + connector combination identifier)
+  string datasource_id = 3;
+  
+  // S3 bucket name
+  string bucket = 4;
+  
+  // S3 object key
+  string key = 5;
+  
+  // S3 object version ID (if versioning enabled, empty if not)
+  string version_id = 6;
+  
+  // Object size in bytes
+  int64 size_bytes = 7;
+  
+  // Object ETag (may be used for deduplication)
+  string etag = 8;
+  
+  // Last modified timestamp
+  google.protobuf.Timestamp last_modified = 9;
+  
+  // Source S3 URL (e.g., "s3://bucket/key" or "s3://bucket/key?versionId=xyz")
+  string source_url = 10;
+}
