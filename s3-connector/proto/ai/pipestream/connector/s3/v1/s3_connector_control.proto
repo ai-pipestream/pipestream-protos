@@ -19,12 +19,14 @@ service S3ConnectorControlService {
 message StartCrawlRequest {
   // DataSource identifier (required).
   string datasource_id = 1;
+  // S3 connection configuration (required).
+  S3ConnectionConfig connection_config = 2;
   // Optional bucket override (if empty, use connector config).
-  string bucket = 2;
+  string bucket = 3;
   // Optional prefix override (if empty, use connector config).
-  string prefix = 3;
+  string prefix = 4;
   // Client-provided request identifier (for idempotency).
-  string request_id = 4;
+  string request_id = 5;
 }
 
 message StartCrawlResponse {
