@@ -12,6 +12,8 @@ option java_package = "ai.pipestream.connector.s3.v1";
 service S3ConnectorControlService {
   // Trigger a crawl for a bucket/prefix.
   rpc StartCrawl(StartCrawlRequest) returns (StartCrawlResponse);
+  // Test connectivity and optionally count documents in a bucket.
+  rpc TestBucketCrawl(TestBucketCrawlRequest) returns (TestBucketCrawlResponse);
 }
 
 message StartCrawlRequest {
@@ -30,4 +32,48 @@ message StartCrawlResponse {
   string message = 2;
   string request_id = 3;
   google.protobuf.Timestamp accepted_at = 4;
+}
+
+// S3 connection configuration (reusable for test and registered datasources).
+message S3ConnectionConfig {
+  // AWS region (e.g., "us-east-1", "eu-west-1"). Defaults to "us-east-1".
+  string region = 1;
+  // Credentials type: "anonymous" (public buckets) or "static" (access key/secret).
+  string credentials_type = 2;
+  // AWS access key ID (required if credentials_type is "static").
+  string access_key_id = 3;
+  // AWS secret access key (required if credentials_type is "static").
+  string secret_access_key = 4;
+  // Custom S3 endpoint (e.g., for MinIO: "http://localhost:9000").
+  string endpoint_override = 5;
+  // Path-style access (set true for MinIO, false for AWS S3).
+  bool path_style_access = 6;
+}
+
+// Request to test bucket connectivity and optionally count documents.
+message TestBucketCrawlRequest {
+  // S3 connection configuration.
+  S3ConnectionConfig connection_config = 1;
+  // Bucket name (required).
+  string bucket = 2;
+  // Optional prefix filter.
+  string prefix = 3;
+  // Dry run mode: count documents without emitting events.
+  bool dry_run = 4;
+  // Maximum number of objects to sample (0 for all, default 100).
+  int32 max_sample = 5;
+}
+
+// Response from bucket crawl test.
+message TestBucketCrawlResponse {
+  // Whether the S3 connection and bucket access succeeded.
+  bool success = 1;
+  // Error message (if success is false).
+  string error_message = 2;
+  // Total number of objects found (if dry_run is true).
+  int64 total_objects = 3;
+  // Sample of object keys found (limited by max_sample).
+  repeated string sample_object_keys = 4;
+  // Test completion timestamp.
+  google.protobuf.Timestamp tested_at = 5;
 }
