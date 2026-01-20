@@ -43,13 +43,21 @@ message S3ConnectionConfig {
   // Credentials type: "anonymous" (public buckets) or "static" (access key/secret).
   string credentials_type = 2;
   // AWS access key ID (required if credentials_type is "static").
+  // Can be provided directly or via kms_access_key_ref.
   string access_key_id = 3;
   // AWS secret access key (required if credentials_type is "static").
+  // Can be provided directly or via kms_secret_key_ref.
   string secret_access_key = 4;
   // Custom S3 endpoint (e.g., for MinIO: "http://localhost:9000").
   string endpoint_override = 5;
   // Path-style access (set true for MinIO, false for AWS S3).
   bool path_style_access = 6;
+  // KMS reference for API key (separate service entry in KMS).
+  string kms_api_key_ref = 7;
+  // KMS reference for S3 access key ID (alternative to direct access_key_id).
+  string kms_access_key_ref = 8;
+  // KMS reference for S3 secret access key (alternative to direct secret_access_key).
+  string kms_secret_key_ref = 9;
 }
 
 // Request to test bucket connectivity and optionally count documents.
