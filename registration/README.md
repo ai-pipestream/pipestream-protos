@@ -106,11 +106,12 @@ dependencies {
 | `RegisterRequest/RegisterResponse` | Unified registration for services and modules with streaming events |
 | `UnregisterRequest/UnregisterResponse` | Unified unregistration for services and modules |
 | `ServiceType` | Enum: `SERVICE` or `MODULE` |
-| `Connectivity` | Connection info (advertised/internal host/port, TLS) |
+| `Connectivity` | gRPC connection info (advertised/internal host/port, TLS) |
+| `HttpEndpoint` | HTTP endpoint definition (scheme/host/port/base_path/health_path/TLS) |
 | `RegistrationEvent` | Streaming lifecycle events during registration |
-| `ResolveServiceRequest/Response` | Find best available service instance |
+| `ResolveServiceRequest/Response` | Find best available service instance with gRPC + HTTP endpoints |
 | `GetModuleSchemaRequest/Response` | Retrieve JSON schema from Apicurio |
-| `WatchServicesResponse` / `WatchModulesResponse` | Real-time health updates |
+| `WatchServicesResponse` / `WatchModulesResponse` | Real-time health updates with full endpoint info |
 
 ## Registration Flow
 
@@ -162,6 +163,45 @@ message Connectivity {
 ```
 
 This supports NAT, Docker, Kubernetes where services bind to `0.0.0.0:8080` but advertise as `my-service.example.com:443`.
+
+## HTTP Endpoint Registration
+
+Services can register both gRPC and HTTP endpoints for dual-protocol service discovery. The `HttpEndpoint` message defines HTTP-specific connection information:
+
+```protobuf
+message HttpEndpoint {
+  string scheme = 1;       // "http" or "https"
+  string host = 2;          // Client-facing hostname
+  int32 port = 3;           // Client-facing port
+  string base_path = 4;     // API base path (e.g., "/api/v1")
+  string health_path = 5;   // Health check endpoint (e.g., "/health")
+  bool tls_enabled = 6;     // Whether TLS/SSL is enabled
+}
+```
+
+### HTTP Endpoint Registration Flow
+
+```mermaid
+sequenceDiagram
+    participant Service
+    participant RegistrationService
+    participant Consul
+
+    Service->>RegistrationService: Register(..., http_endpoints: [...])
+    RegistrationService->>Consul: Register gRPC + HTTP endpoints
+    RegistrationService-->>Service: Event: CONSUL_REGISTERED
+    Note over Service,Consul: HTTP endpoints available for discovery
+```
+
+### HTTP Endpoint Discovery
+
+HTTP endpoints are included in all discovery responses:
+
+- `ResolveServiceResponse.http_endpoints` - HTTP endpoints for the selected instance
+- `GetServiceResponse.http_endpoints` - HTTP endpoints for the requested service
+- `WatchServicesResponse.services[].http_endpoints` - HTTP endpoints in streaming updates
+
+Services can also register OpenAPI/REST schemas for HTTP API documentation and validation.
 
 ## Registration Event Types
 

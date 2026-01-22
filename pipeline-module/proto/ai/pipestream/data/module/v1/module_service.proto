@@ -76,7 +76,8 @@ message GetServiceRegistrationResponse {
 
 // Capabilities that describe the module's operational characteristics
 message Capabilities {
-  // List of capability types this module supports
+  // List of capability types this module supports (not mutually exclusive -
+  // a module can be both PARSER and SINK, for example)
   repeated CapabilityType types = 1;
   // Reserved for future capability-specific configuration
 }
