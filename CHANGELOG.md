@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NodeProcessingConfig.filter_condition** (field 6): New CEL expression field for document filtering before node processing. When evaluates to false, documents skip the node.
 - **ProcessingMapping.MAPPING_TYPE_CEL**: New mapping type using `CelConfig` for flexible field transformations with full CEL expression support. Available context variables: `document`, `stream`, `value`.
 
+#### Execution Record Terminology Alignment
+- **StepExecutionRecord.node_id** (field 2): Renamed from `step_name` to align with graph-based node architecture
+- **StepExecutionRecord.attempted_target_node_id** (field 9): Renamed from `attempted_target_step_name`
+- **ErrorData.originating_node_id** (field 4): Renamed from `originating_step_name`
+- **ErrorData.attempted_target_node_id** (field 5): Renamed from `attempted_target_step_name`
+
 #### GraphEdge Transport Configuration
 - **GraphEdge.transport_type** (field 8): Transport mechanism override for the edge (MESSAGING or GRPC).
 - **GraphEdge.kafka_topic** (field 9): Custom Kafka topic override for routing.
