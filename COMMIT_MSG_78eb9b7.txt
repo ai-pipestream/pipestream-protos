@@ -1,0 +1,17 @@
+refactor: Remove unused GraphNode transport configuration fields
+
+BREAKING CHANGE: Remove transport fields from GraphNode and related messages
+
+- Remove GraphNode.transport (field 7) - TransportConfig type
+- Remove GraphNode.kafka_output_topic (field 11) - string type  
+- Remove TransportConfig, GrpcConfig, MessagingConfig messages entirely
+- Update GraphNode field numbers after removals (shifted down by 1-2)
+- Remove transport field references from graph_repository_service.proto
+- Update config/README.md to remove TransportConfig references
+- Update CHANGELOG.md with breaking change documentation
+
+Rationale: Transport configuration moved to GraphEdge for edge-based routing.
+These node-level fields were unused in the codebase. Pipeline sinks now serve
+as datasources for other pipelines instead of kafka_output_topic approach.
+
+Migration: Regenerate protos due to field renumbering and removal.
