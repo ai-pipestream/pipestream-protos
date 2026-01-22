@@ -776,8 +776,8 @@ message SemanticProcessingResult {
 message StepExecutionRecord {
   // Sequential hop number for this step in the processing stream.
   int64 hop_number = 1;
-  // Name of the pipeline step configuration that was executed.
-  string step_name = 2;
+  // ID of the graph node that was executed.
+  string node_id = 2;
   // Identifier of the service instance/pod that executed the step.
   optional string service_instance_id = 3;
   // Timestamp when step processing began.
@@ -792,8 +792,8 @@ message StepExecutionRecord {
   repeated string processor_logs = 7;
   // Error information if status is "FAILURE".
   optional ErrorData error_info = 8;
-  // Target step name if status is "DISPATCH_FAILURE".
-  optional string attempted_target_step_name = 9;
+  // Target node ID if status is "DISPATCH_FAILURE".
+  optional string attempted_target_node_id = 9;
 }
 
 // Error information for a failed processing step.
@@ -808,10 +808,10 @@ message ErrorData {
   optional string error_code = 2;
   // Technical details such as stack trace snippets.
   optional string technical_details = 3;
-  // Name of the step where the error originated or was detected.
-  string originating_step_name = 4;
-  // Target step name if error occurred during routing/dispatch.
-  optional string attempted_target_step_name = 5;
+  // ID of the node where the error originated or was detected.
+  string originating_node_id = 4;
+  // Target node ID if error occurred during routing/dispatch.
+  optional string attempted_target_node_id = 5;
   // Input state at the time of failure for reproducibility.
   optional FailedStepInputState input_state_at_failure = 6;
   // Timestamp when the error occurred or was logged.
