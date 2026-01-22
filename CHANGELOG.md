@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### CEL (Common Expression Language) Integration
 - **GraphEdge.condition**: Enhanced documentation to specify CEL expression usage with `org.projectnessie.cel:cel-tools` for Java/Quarkus implementation. Available context variables: `document`, `metadata`, `context_params`.
 - **NodeProcessingConfig.filter_condition** (field 6): New CEL expression field for document filtering before node processing. When evaluates to false, documents skip the node.
-- **TransformConfig.cel_expression** (field 3): New CEL expression field for flexible field transformations. Available context: `value`, `document`, `metadata`.
+- **ProcessingMapping.MAPPING_TYPE_CEL**: New mapping type using `CelConfig` for flexible field transformations with full CEL expression support. Available context variables: `document`, `stream`, `value`.
 
 #### GraphEdge Transport Configuration
 - **GraphEdge.transport_type** (field 8): Transport mechanism override for the edge (MESSAGING or GRPC).
@@ -41,30 +41,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Pipeline Graph Versioning
 - **PipelineGraph.version** (field 10): Version number for optimistic locking to detect concurrent modifications.
 
-### Deprecated
+### Removed
 
-- **TransformConfig.rule_name** (field 1): Use `cel_expression` for new transformations.
-- **TransformConfig.params** (field 2): Use `cel_expression` for new transformations.
+#### Transport Configuration Cleanup
+**BREAKING CHANGE**: Removed unused transport configuration fields from `GraphNode`:
+- **`GraphNode.transport`** (field 7): Transport configuration moved to edges
+- **`GraphNode.kafka_output_topic`** (field 11): Output routing moved to edges
+- **`TransportConfig`**: Unused transport configuration message
+- **`GrpcConfig`**: Unused gRPC configuration message
+- **`MessagingConfig`**: Unused messaging configuration message
+
+**Migration**: Transport is now configured per-edge using `GraphEdge.transport_type` and `GraphEdge.kafka_topic`.
 
 ### Migration Notes
 
-#### TransformConfig Migration
-Existing implementations using `rule_name` and `params` will continue to work but should migrate to `cel_expression`:
+#### CEL Expression Mapping
+For advanced field transformations requiring full CEL expression power, use `MAPPING_TYPE_CEL` with `CelConfig`:
 
-| Legacy rule_name | CEL Expression Equivalent |
-|------------------|---------------------------|
-| `uppercase` | `value.upperAscii()` |
-| `lowercase` | `value.lowerAscii()` |
-| `trim` | `value.trim()` |
-| `substring` | `value.substring(start, end)` |
+```protobuf
+ProcessingMapping {
+  mapping_type: MAPPING_TYPE_CEL
+  cel_config: {
+    expression: "value.upperAscii()"
+  }
+}
+```
+
+Traditional transforms continue to use `MAPPING_TYPE_TRANSFORM` with `TransformConfig.rule_name`:
+- `uppercase`, `lowercase`, `trim`
+- `proto_rules` for advanced ProtoFieldMapper syntax
 
 #### Field Number Safety
-All new fields use previously unassigned field numbers:
-- GraphEdge: 8, 9, 10
-- GraphNode: 16
-- NodeProcessingConfig: 6
-- PipelineGraph: 10
-- StreamMetadata: 9, 10, 11
-- TransformConfig: 3
+**BREAKING CHANGE**: Removed fields from `GraphNode` causing field renumbering:
+- GraphNode fields after transport (field 7) shifted down by 1
+- GraphNode fields after kafka_output_topic (field 11) shifted down by 2
 
-No breaking changes to wire format compatibility.
+Wire format is incompatible due to field removal and renumbering.

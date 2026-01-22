@@ -92,43 +92,39 @@ message GraphNode {
   string module_id = 5;
   // Custom configuration for this node instance.
   ai.pipestream.data.v1.ProcessConfiguration custom_config = 6;
-  // Transport configuration for node communication.
-  TransportConfig transport = 7;
   // Visibility scope across clusters.
-  ClusterVisibility visibility = 8;
+  ClusterVisibility visibility = 7;
   // Operating mode (design or production).
   NodeMode mode = 9;
 
   // Kafka input topic (production mode only). Typically matches node_id (e.g., "prod.chunker-v1").
   string kafka_input_topic = 10;
-  // Kafka output topic (production mode only). Routes to next node's input topic or custom destination.
-  string kafka_output_topic = 11;
   // Auto-generated repository path (production mode only) in format /clusters/{cluster_id}/nodes/{node_id}.
-  string repository_path = 12;
+  string repository_path = 11;
 
   // Design mode configuration for frontend simulation.
-  DesignModeConfig design_config = 13;
+  DesignModeConfig design_config = 12;
 
   // Timestamp when the node was created.
-  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp created_at = 13;
   // Timestamp of last modification.
-  google.protobuf.Timestamp modified_at = 15;
+  google.protobuf.Timestamp modified_at = 14;
   // Dead Letter Queue configuration for failed message handling.
   //
   // When enabled, messages that fail processing are routed to a DLQ topic
   // for later inspection and reprocessing.
-  DlqConfig dlq_config = 16;
+  DlqConfig dlq_config = 15;
 
   // Field mappings applied before module processing.
   //
   // These mappings transform the document before it is sent to the module.
   // Use cases include field renaming, data extraction, and format conversion.
-  repeated ai.pipestream.data.v1.ProcessingMapping pre_mappings = 17;
+  repeated ai.pipestream.data.v1.ProcessingMapping pre_mappings = 16;
   // Field mappings applied after module processing.
   //
   // These mappings transform the document after the module returns.
   // Use cases include output normalization and field consolidation.
-  repeated ai.pipestream.data.v1.ProcessingMapping post_mappings = 18;
+  repeated ai.pipestream.data.v1.ProcessingMapping post_mappings = 17;
   // CEL expressions to filter documents before processing.
   //
   // All conditions must evaluate to true for the document to be processed.
@@ -141,12 +137,12 @@ message GraphNode {
   //   - "document.search_metadata.language == 'en'"
   //   - "stream.metadata.context_params['skip_ocr'] != 'true'"
   //   - "document.search_metadata.content_length > 100"
-  repeated string filter_conditions = 19;
+  repeated string filter_conditions = 18;
   // Whether to save the document to the repository even if processing fails.
   //
   // When true, the document is persisted to the repository even if the module
   // processing encounters an error. Useful for debugging and reprocessing.
-  bool save_on_error = 20;
+  bool save_on_error = 19;
 }
 
 // Dead Letter Queue configuration for handling failed messages.
@@ -258,49 +254,8 @@ message ModuleDefinition {
   google.protobuf.Timestamp modified_at = 8;
 }
 
-// Transport configuration for node communication.
-//
-// Defines how a node communicates using either messaging (Kafka/Pulsar) or gRPC.
-// Includes retry and timeout settings.
-message TransportConfig {
-  // Transport mechanism type.
-  TransportType type = 1;
-  // gRPC-specific configuration (when type is GRPC).
-  GrpcConfig grpc = 2;
-  // Messaging-specific configuration (when type is MESSAGING).
-  MessagingConfig messaging = 3;
-  // Maximum number of retry attempts for failed operations.
-  int32 max_retries = 4;
-  // Backoff duration between retries.
-  google.protobuf.Duration retry_backoff = 5;
-  // Timeout duration for each processing step.
-  google.protobuf.Duration step_timeout = 6;
-}
-
 // JsonConfigOptions is deprecated - use ai.pipestream.data.v1.ProcessConfiguration instead.
 // Keeping this comment for migration reference.
-
-// gRPC transport configuration.
-message GrpcConfig {
-  // gRPC service name to invoke.
-  string service_name = 1;
-  // Additional gRPC client properties.
-  map<string, string> properties = 2;
-}
-
-// Messaging transport configuration.
-//
-// Abstraction layer supporting Kafka, Pulsar, and other messaging platforms.
-message MessagingConfig {
-  // Topics to publish messages to.
-  repeated string topics = 1;
-  // Topics to subscribe to for incoming messages.
-  repeated string subscriptions = 2;
-  // Field name to use for message partitioning.
-  string partition_key_field = 3;
-  // Platform-specific messaging properties.
-  map<string, string> properties = 4;
-}
 
 // Real-time notification of graph topology changes.
 //

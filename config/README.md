@@ -41,13 +41,8 @@ graph TD
         NODE --> NID[node_id<br/>cluster.node-name]
         NODE --> TYPE[NodeType<br/>CONNECTOR | PROCESSOR | SINK]
         NODE --> MOD[module_id]
-        NODE --> TRANS[TransportConfig]
     end
 
-    subgraph "Transport"
-        TRANS --> KAFKA[Kafka topics]
-        TRANS --> GRPCT[gRPC service]
-    end
 
     subgraph "Real-time Streaming"
         WATCH[Watch RPCs]
@@ -98,7 +93,6 @@ dependencies {
 | `GraphNode` | Individual processing step with DNS-style ID (`cluster.node-name`) |
 | `GraphEdge` | Connection between nodes, supports cross-cluster routing |
 | `ModuleDefinition` | Reusable processing module with config schema |
-| `TransportConfig` | Messaging (Kafka) or gRPC transport configuration |
 | `PipelineInstance` | Running instance with runtime status and config overrides |
 
 ## Node Types & Modes

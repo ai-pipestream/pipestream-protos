@@ -83,8 +83,6 @@ message CreateNodeRequest {
   string module_id = 4;
   // Custom configuration for the node
   ai.pipestream.data.v1.ProcessConfiguration custom_config = 5;
-  // Transport configuration (Kafka/gRPC settings)
-  ai.pipestream.config.v1.TransportConfig transport = 6;
 }
 
 // Get Node request
@@ -101,8 +99,6 @@ message UpdateNodeRequest {
   string name = 2;
   // Updated custom configuration
   ai.pipestream.data.v1.ProcessConfiguration custom_config = 3;
-  // Updated transport configuration
-  ai.pipestream.config.v1.TransportConfig transport = 4;
 }
 
 // Delete Node request
