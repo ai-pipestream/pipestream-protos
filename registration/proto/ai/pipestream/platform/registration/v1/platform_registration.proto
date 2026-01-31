@@ -145,6 +145,8 @@ message RegisterRequest {
   optional string http_schema_version = 10;
   // Optional artifact ID override for REST/OpenAPI schema.
   optional string http_schema_artifact_id = 11;
+  // gRPC service names exposed by this service (optional).
+  repeated string grpc_services = 12;
 }
 
 // Response for Register RPC (streaming).
