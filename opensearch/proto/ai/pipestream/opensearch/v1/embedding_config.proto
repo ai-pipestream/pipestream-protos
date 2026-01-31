@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// EmbeddingConfigService provides CRUD operations for embedding model configurations
+// and index-to-embedding bindings. Used by admin UI, opensearch-sink, and indexing
+// logic to manage which embedding models and dimensions apply to which indices.
+service EmbeddingConfigService {
+  // EmbeddingModelConfig CRUD
+  rpc CreateEmbeddingModelConfig(CreateEmbeddingModelConfigRequest) returns (CreateEmbeddingModelConfigResponse);
+  rpc GetEmbeddingModelConfig(GetEmbeddingModelConfigRequest) returns (GetEmbeddingModelConfigResponse);
+  rpc UpdateEmbeddingModelConfig(UpdateEmbeddingModelConfigRequest) returns (UpdateEmbeddingModelConfigResponse);
+  rpc DeleteEmbeddingModelConfig(DeleteEmbeddingModelConfigRequest) returns (DeleteEmbeddingModelConfigResponse);
+  rpc ListEmbeddingModelConfigs(ListEmbeddingModelConfigsRequest) returns (ListEmbeddingModelConfigsResponse);
+
+  // IndexEmbeddingBinding CRUD
+  rpc CreateIndexEmbeddingBinding(CreateIndexEmbeddingBindingRequest) returns (CreateIndexEmbeddingBindingResponse);
+  rpc GetIndexEmbeddingBinding(GetIndexEmbeddingBindingRequest) returns (GetIndexEmbeddingBindingResponse);
+  rpc UpdateIndexEmbeddingBinding(UpdateIndexEmbeddingBindingRequest) returns (UpdateIndexEmbeddingBindingResponse);
+  rpc DeleteIndexEmbeddingBinding(DeleteIndexEmbeddingBindingRequest) returns (DeleteIndexEmbeddingBindingResponse);
+  rpc ListIndexEmbeddingBindings(ListIndexEmbeddingBindingsRequest) returns (ListIndexEmbeddingBindingsResponse);
+}
+
+// === EmbeddingModelConfig messages ===
+
+message EmbeddingModelConfig {
+  string id = 1;
+  string name = 2;
+  string model_identifier = 3;
+  optional int32 dimensions = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  optional google.protobuf.Struct metadata = 7;
+}
+
+message CreateEmbeddingModelConfigRequest {
+  optional string id = 1;  // If omitted, server generates UUID
+  string name = 2;
+  string model_identifier = 3;
+  optional int32 dimensions = 4;
+  optional google.protobuf.Struct metadata = 5;
+}
+
+message CreateEmbeddingModelConfigResponse {
+  EmbeddingModelConfig config = 1;
+}
+
+message GetEmbeddingModelConfigRequest {
+  string id = 1;  // id or name
+  optional bool by_name = 2;  // If true, id is interpreted as name
+}
+
+message GetEmbeddingModelConfigResponse {
+  EmbeddingModelConfig config = 1;
+}
+
+message UpdateEmbeddingModelConfigRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string model_identifier = 3;
+  optional int32 dimensions = 4;
+  optional google.protobuf.Struct metadata = 5;
+}
+
+message UpdateEmbeddingModelConfigResponse {
+  EmbeddingModelConfig config = 1;
+}
+
+message DeleteEmbeddingModelConfigRequest {
+  string id = 1;
+}
+
+message DeleteEmbeddingModelConfigResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListEmbeddingModelConfigsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListEmbeddingModelConfigsResponse {
+  repeated EmbeddingModelConfig configs = 1;
+  string next_page_token = 2;
+}
+
+// === IndexEmbeddingBinding messages ===
+
+message IndexEmbeddingBinding {
+  string id = 1;
+  string index_name = 2;
+  string embedding_model_config_id = 3;
+  string field_name = 4;
+  optional string result_set_name = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CreateIndexEmbeddingBindingRequest {
+  optional string id = 1;
+  string index_name = 2;
+  string embedding_model_config_id = 3;
+  string field_name = 4;
+  optional string result_set_name = 5;
+}
+
+message CreateIndexEmbeddingBindingResponse {
+  IndexEmbeddingBinding binding = 1;
+}
+
+message GetIndexEmbeddingBindingRequest {
+  string id = 1;
+  optional string index_name = 2;  // If set with field_name, lookup by index+field
+  optional string field_name = 3;
+}
+
+message GetIndexEmbeddingBindingResponse {
+  IndexEmbeddingBinding binding = 1;
+}
+
+message UpdateIndexEmbeddingBindingRequest {
+  string id = 1;
+  optional string index_name = 2;
+  optional string embedding_model_config_id = 3;
+  optional string field_name = 4;
+  optional string result_set_name = 5;
+}
+
+message UpdateIndexEmbeddingBindingResponse {
+  IndexEmbeddingBinding binding = 1;
+}
+
+message DeleteIndexEmbeddingBindingRequest {
+  string id = 1;
+}
+
+message DeleteIndexEmbeddingBindingResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListIndexEmbeddingBindingsRequest {
+  optional string index_name = 1;  // Filter by index
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListIndexEmbeddingBindingsResponse {
+  repeated IndexEmbeddingBinding bindings = 1;
+  string next_page_token = 2;
+}
