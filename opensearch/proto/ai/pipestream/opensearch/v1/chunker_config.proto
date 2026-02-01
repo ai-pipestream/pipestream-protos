@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// ChunkerConfigService provides CRUD operations for chunker configurations.
+// Used by admin UI, pipeline configuration, and indexing logic to manage
+// text chunking strategies and their parameters.
+//
+// Chunker configs define how documents are split into chunks before embedding.
+// Configs are stored as JSON blobs for flexibility, with schemas validated
+// against Apicurio Registry artifacts.
+service ChunkerConfigService {
+  // Create a new chunker configuration.
+  // The config_json field should contain a valid ChunkerConfig JSON structure
+  // matching the schema registered in Apicurio Registry.
+  rpc CreateChunkerConfig(CreateChunkerConfigRequest) returns (CreateChunkerConfigResponse);
+
+  // Retrieve a chunker configuration by ID or name.
+  // Use by_name=true to lookup by name instead of ID.
+  rpc GetChunkerConfig(GetChunkerConfigRequest) returns (GetChunkerConfigResponse);
+
+  // Update an existing chunker configuration.
+  // Only provided fields will be updated; omitted fields remain unchanged.
+  rpc UpdateChunkerConfig(UpdateChunkerConfigRequest) returns (UpdateChunkerConfigResponse);
+
+  // Delete a chunker configuration by ID.
+  // This operation will fail if the config is referenced by any VectorSet.
+  rpc DeleteChunkerConfig(DeleteChunkerConfigRequest) returns (DeleteChunkerConfigResponse);
+
+  // List all chunker configurations with pagination support.
+  // Results are ordered by created_at descending (newest first).
+  rpc ListChunkerConfigs(ListChunkerConfigsRequest) returns (ListChunkerConfigsResponse);
+}
+
+// ChunkerConfig represents a stored chunking strategy configuration.
+// The config_json field contains the full chunker parameters as a JSON blob,
+// allowing flexibility for different chunking algorithms and future extensions.
+message ChunkerConfig {
+  // Unique identifier for this chunker configuration (UUID).
+  string id = 1;
+
+  // Human-readable name for this chunker configuration.
+  // Used for display in UI and pipeline configuration.
+  // Example: "Standard 512-token chunks with 50-token overlap"
+  string name = 2;
+
+  // Stable configuration identifier derived from chunker parameters.
+  // Format: {algorithm}-{sourceField}-{chunkSize}-{chunkOverlap}
+  // Example: "token-body-512-50"
+  // This ID is used in SemanticProcessingResult.chunk_config_id for traceability.
+  string config_id = 3;
+
+  // Full chunker configuration as a JSON structure.
+  // This should match the ChunkerConfig schema from the chunker service.
+  // Stored as JSON for flexibility as chunking strategies evolve.
+  // Example structure:
+  // {
+  //   "algorithm": "token",
+  //   "sourceField": "body",
+  //   "chunkSize": 512,
+  //   "chunkOverlap": 50,
+  //   "preserveUrls": true,
+  //   "cleanText": true
+  // }
+  google.protobuf.Struct config_json = 4;
+
+  // Optional reference to the Apicurio Registry artifact for schema validation.
+  // Format: "group/artifact:version" or artifact ID.
+  // Example: "chunker-configs/ChunkerConfig:1.0.0"
+  optional string schema_ref = 5;
+
+  // Timestamp when this configuration was created.
+  google.protobuf.Timestamp created_at = 6;
+
+  // Timestamp when this configuration was last updated.
+  google.protobuf.Timestamp updated_at = 7;
+
+  // Optional metadata for audit trail, tags, or additional context.
+  // Can include: creator, purpose, environment, version info, etc.
+  optional google.protobuf.Struct metadata = 8;
+}
+
+// === ChunkerConfig CRUD messages ===
+
+// Request to create a new chunker configuration.
+message CreateChunkerConfigRequest {
+  // Optional ID for the configuration (UUID).
+  // If omitted, server generates a new UUID.
+  optional string id = 1;
+
+  // Human-readable name for this configuration (required).
+  // Must be unique across all chunker configs.
+  string name = 2;
+
+  // Stable configuration identifier (required).
+  // Format: {algorithm}-{sourceField}-{chunkSize}-{chunkOverlap}
+  // Example: "token-body-512-50"
+  string config_id = 3;
+
+  // Full chunker configuration as JSON (required).
+  // Must be a valid ChunkerConfig structure.
+  google.protobuf.Struct config_json = 4;
+
+  // Optional Apicurio Registry schema reference for validation.
+  optional string schema_ref = 5;
+
+  // Optional metadata for audit trail.
+  optional google.protobuf.Struct metadata = 6;
+}
+
+// Response from creating a chunker configuration.
+message CreateChunkerConfigResponse {
+  // The created chunker configuration with generated timestamps.
+  ChunkerConfig config = 1;
+}
+
+// Request to retrieve a chunker configuration.
+message GetChunkerConfigRequest {
+  // ID or name of the configuration to retrieve (required).
+  // Interpretation depends on by_name flag.
+  string id = 1;
+
+  // If true, id field is interpreted as a name lookup.
+  // If false (default), id field is interpreted as UUID lookup.
+  optional bool by_name = 2;
+}
+
+// Response from retrieving a chunker configuration.
+message GetChunkerConfigResponse {
+  // The requested chunker configuration.
+  ChunkerConfig config = 1;
+}
+
+// Request to update an existing chunker configuration.
+message UpdateChunkerConfigRequest {
+  // ID of the configuration to update (required, UUID).
+  string id = 1;
+
+  // Optional new name for the configuration.
+  // If omitted, name remains unchanged.
+  optional string name = 2;
+
+  // Optional new config_id.
+  // If omitted, config_id remains unchanged.
+  optional string config_id = 3;
+
+  // Optional new config_json.
+  // If omitted, config_json remains unchanged.
+  optional google.protobuf.Struct config_json = 4;
+
+  // Optional new schema_ref.
+  // If omitted, schema_ref remains unchanged.
+  optional string schema_ref = 5;
+
+  // Optional new metadata.
+  // If omitted, metadata remains unchanged.
+  optional google.protobuf.Struct metadata = 6;
+}
+
+// Response from updating a chunker configuration.
+message UpdateChunkerConfigResponse {
+  // The updated chunker configuration with new updated_at timestamp.
+  ChunkerConfig config = 1;
+}
+
+// Request to delete a chunker configuration.
+message DeleteChunkerConfigRequest {
+  // ID of the configuration to delete (required, UUID).
+  string id = 1;
+}
+
+// Response from deleting a chunker configuration.
+message DeleteChunkerConfigResponse {
+  // True if deletion was successful, false otherwise.
+  bool success = 1;
+
+  // Status message or error details.
+  // Example: "Configuration deleted successfully"
+  // Example error: "Cannot delete: configuration is referenced by 3 vector sets"
+  string message = 2;
+}
+
+// Request to list chunker configurations with pagination.
+message ListChunkerConfigsRequest {
+  // Maximum number of configurations to return per page.
+  // Default: 50, Maximum: 100.
+  int32 page_size = 1;
+
+  // Pagination token from previous ListChunkerConfigsResponse.
+  // Omit or use empty string for first page.
+  string page_token = 2;
+}
+
+// Response from listing chunker configurations.
+message ListChunkerConfigsResponse {
+  // List of chunker configurations for the current page.
+  // Ordered by created_at descending (newest first).
+  repeated ChunkerConfig configs = 1;
+
+  // Token for retrieving the next page of results.
+  // Empty string indicates no more pages available.
+  string next_page_token = 2;
+}

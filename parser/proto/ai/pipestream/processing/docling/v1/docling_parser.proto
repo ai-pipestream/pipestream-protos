@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package ai.pipestream.processing.docling.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DoclingParserProto";
+option java_package = "ai.pipestream.processing.docling.v1";
+
+// Docling Parser Protocol Buffers Definition
+//
+// This proto file defines the parser interface for Docling document processing.
+// It provides simple wrapper messages for parser services, similar to TikaParser.
+//
+// Design Pattern:
+// ==============
+//
+// Like TikaParser, this defines messages (not gRPC service yet).
+// The Java service implementation will:
+// 1. Accept document input
+// 2. Call Docling processing
+// 3. Return ParsedDocumentReply with success/error
+// 4. The actual DoclingResponse (from common module) is used separately
+//
+// Future: Will evolve to include gRPC service definition when needed.
+
+// Represents a document parsed by Docling.
+// This is a simplified representation - the full DoclingResponse
+// (from ai.pipestream.parsed.data.docling.v1) contains the complete structure.
+message ParsedDocument {
+  // Document identifier
+  string doc_id = 1;
+
+  // Parse identifier for tracking
+  string parse_id = 2;
+
+  // Markdown export of the parsed document
+  string markdown = 3;
+
+  // Plain text export (optional)
+  string text = 4;
+
+  // HTML export (optional)
+  string html = 5;
+
+  // Success status
+  bool success = 6;
+
+  // Parse time in milliseconds
+  int64 parse_time_ms = 7;
+
+  // Number of pages processed
+  int32 pages_processed = 8;
+
+  // Metadata as key-value pairs
+  // Contains: source, content_type, file_size_bytes, detected_language, etc.
+  map<string, string> metadata = 9;
+}
+
+// Response message containing a parsed document from Docling.
+message ParsedDocumentReply {
+  // Whether parsing was successful
+  bool success = 1;
+
+  // The parsed document (if successful)
+  // For full structured data, use DoclingResponse from common module
+  ParsedDocument parsed_document = 2;
+
+  // Error message (if not successful)
+  string error_message = 3;
+}
+
+// Configuration for Docling parsing (optional).
+// Used to control parsing behavior. Defaults are used if not provided.
+message DoclingParseConfig {
+  // Whether to enable OCR for scanned documents
+  // Default: false
+  bool enable_ocr = 1;
+
+  // Whether to extract and structure tables
+  // Default: true
+  bool extract_tables = 2;
+
+  // Whether to extract images and generate metadata
+  // Default: true
+  bool extract_images = 3;
+
+  // Whether to enable AI-powered image classification
+  // Default: true
+  bool enable_ai_classification = 4;
+
+  // Whether to generate markdown export
+  // Default: true
+  bool generate_markdown = 5;
+
+  // Whether to generate HTML export
+  // Default: false
+  bool generate_html = 6;
+
+  // Whether to generate plain text export
+  // Default: false
+  bool generate_text = 7;
+
+  // Timeout in seconds
+  // Default: 300
+  int32 timeout_seconds = 8;
+
+  // Quality level: "fast", "balanced", "high"
+  // Default: "balanced"
+  string quality_level = 9;
+
+  // OCR language hints (ISO 639-1 codes)
+  // Default: ["eng"]
+  repeated string ocr_languages = 10;
+}

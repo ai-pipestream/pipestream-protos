@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_package = "ai.pipestream.opensearch.v1";
@@ -40,7 +40,7 @@ message EmbeddingModelConfig {
 }
 
 message CreateEmbeddingModelConfigRequest {
-  optional string id = 1;  // If omitted, server generates UUID
+  optional string id = 1; // If omitted, server generates UUID
   string name = 2;
   string model_identifier = 3;
   optional int32 dimensions = 4;
@@ -52,8 +52,8 @@ message CreateEmbeddingModelConfigResponse {
 }
 
 message GetEmbeddingModelConfigRequest {
-  string id = 1;  // id or name
-  optional bool by_name = 2;  // If true, id is interpreted as name
+  string id = 1; // id or name
+  optional bool by_name = 2; // If true, id is interpreted as name
 }
 
 message GetEmbeddingModelConfigResponse {
@@ -117,7 +117,7 @@ message CreateIndexEmbeddingBindingResponse {
 
 message GetIndexEmbeddingBindingRequest {
   string id = 1;
-  optional string index_name = 2;  // If set with field_name, lookup by index+field
+  optional string index_name = 2; // If set with field_name, lookup by index+field
   optional string field_name = 3;
 }
 
@@ -147,7 +147,7 @@ message DeleteIndexEmbeddingBindingResponse {
 }
 
 message ListIndexEmbeddingBindingsRequest {
-  optional string index_name = 1;  // Filter by index
+  optional string index_name = 1; // Filter by index
   int32 page_size = 2;
   string page_token = 3;
 }

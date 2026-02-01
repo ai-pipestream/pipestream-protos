@@ -1,162 +1,320 @@
-# OpenSearch
+# OpenSearch Proto Module
 
-> Part of the [AI Pipestream](https://github.com/ai-pipestream) platform - Open-source document processing for intelligent search
+This module defines the protocol buffer schemas for OpenSearch indexing, search, and semantic metadata management.
 
 ## Overview
 
-The **opensearch** module provides OpenSearch indexing, collection management, and semantic search capabilities. It defines the document structure for OpenSearch indices, the manager service for schema and index lifecycle operations, and a high-throughput ingestion service for streaming document indexing.
+The OpenSearch module provides gRPC services and message types for:
 
-This is the sink layer of the platform—where processed documents with embeddings are indexed for semantic and keyword search.
+1. **Document Indexing** - Canonical document structure for OpenSearch with vector embeddings
+2. **Embedding Configuration** - CRUD for embedding model configs and index-field bindings
+3. **Chunker Configuration** - CRUD for text chunking strategies and parameters
+4. **OpenSearch Management** - Index lifecycle, schema management, and search operations
 
-## Published Location
+## Services
 
-**Repository**: [`buf.build/pipestreamai/opensearch`](https://buf.build/pipestreamai/opensearch)
+### OpenSearchManagerService
 
-## Contents
+Manages OpenSearch indices, documents, and search operations.
 
-| Proto File | Purpose |
-|------------|---------|
-| `ai/pipestream/opensearch/v1/opensearch_document.proto` | Canonical OpenSearch document structure |
-| `ai/pipestream/opensearch/v1/opensearch_manager.proto` | Index management, schema, and document operations |
-| `ai/pipestream/ingestion/v1/opensearch_ingestion.proto` | High-throughput streaming ingestion |
+**Key RPCs:**
+- `CreateIndex` - Create index with vector field mappings
+- `IndexDocument` - Index a canonical OpenSearchDocument
+- `IndexAnyDocument` - Index arbitrary protobuf messages with dynamic mapping
+- `SearchFilesystemMeta` - Search documents with highlighting and pagination
 
-## Architecture
+### EmbeddingConfigService
+
+Manages embedding model configurations and index-to-embedding bindings.
+
+**Key RPCs:**
+- `CreateEmbeddingModelConfig` - Register an embedding model (name, identifier, dimensions)
+- `CreateIndexEmbeddingBinding` - Bind an embedding model to an index field
+- CRUD operations for both configs and bindings
+
+### ChunkerConfigService
+
+Manages chunker configurations for text splitting strategies.
+
+**Key RPCs:**
+- `CreateChunkerConfig` - Register a chunking strategy (algorithm, size, overlap)
+- CRUD operations with JSON blob storage for flexibility
+
+## Data Model
+
+### Semantic Metadata Architecture
 
 ```mermaid
-graph TD
-    subgraph "Document Model"
-        OSD[OpenSearchDocument]
-        OSD --> CORE[Core Fields<br/>doc_id, title, body]
-        OSD --> EMB[Embeddings<br/>Nested vectors]
-        OSD --> CUSTOM[custom_fields<br/>Flexible JSON]
+graph TB
+    subgraph "Document Processing Pipeline"
+        DOC[Document] --> CHUNK[Chunker Service]
+        CHUNK --> EMBED[Embedder Service]
+        EMBED --> INDEX[OpenSearch Index]
     end
-
-    subgraph "Embedding Structure"
-        EMB --> VEC[vector]
-        EMB --> SRC[source_text]
-        EMB --> CTX[context_text]
-        EMB --> PRIM[is_primary<br/>title vs chunks]
+    
+    subgraph "Semantic Metadata Service (opensearch-manager)"
+        CC[ChunkerConfig]
+        EMC[EmbeddingModelConfig]
+        VS[VectorSet]
+        IVB[IndexVectorBinding]
+        
+        CC -->|references| VS
+        EMC -->|references| VS
+        VS -->|maps to| IVB
+        IVB -->|defines| INDEX
     end
-
-    subgraph "Manager Service"
-        MGR[OpenSearchManagerService]
-        MGR --> CREATE[CreateIndex]
-        MGR --> DELETE[DeleteIndex]
-        MGR --> SCHEMA[EnsureNestedEmbeddingsFieldExists]
-        MGR --> INDEX[IndexDocument / IndexAnyDocument]
-        MGR --> SEARCH[SearchFilesystemMeta]
+    
+    subgraph "Audit Trail"
+        CHUNK -->|produces| SPR[SemanticProcessingResult]
+        SPR -->|contains| CID[chunk_config_id]
+        SPR -->|contains| EID[embedding_config_id]
+        
+        CID -.->|traces back to| CC
+        EID -.->|traces back to| EMC
     end
-
-    subgraph "Ingestion Service"
-        ING[OpenSearchIngestionService]
-        ING --> STREAM[StreamDocuments<br/>Bidirectional]
-        STREAM --> REQ[StreamDocumentsRequest]
-        STREAM --> RESP[StreamDocumentsResponse<br/>Real-time ACKs]
-    end
+    
+    style CC fill:#e1f5ff
+    style EMC fill:#e1f5ff
+    style VS fill:#fff4e1
+    style IVB fill:#f0f0f0
 ```
 
-## Dependencies
+### Entity Relationships
 
-- `buf.build/grpc/grpc` - gRPC core types
-- `buf.build/googleapis/googleapis` - Google common types
-- `buf.build/pipestreamai/common` - Core `PipeDoc` types
-
-## Usage
-
-### With Buf CLI
-
-```yaml
-# Add to your buf.yaml
-deps:
-  - buf.build/pipestreamai/opensearch
+```mermaid
+erDiagram
+    ChunkerConfig ||--o{ VectorSet : "used by"
+    EmbeddingModelConfig ||--o{ VectorSet : "used by"
+    VectorSet ||--o{ IndexVectorBinding : "maps to"
+    IndexVectorBinding }o--|| OpenSearchIndex : "populates"
+    
+    ChunkerConfig {
+        uuid id PK
+        string name UK
+        string config_id UK
+        jsonb config_json
+        string schema_ref
+        timestamp created_at
+        timestamp updated_at
+        jsonb metadata
+    }
+    
+    EmbeddingModelConfig {
+        uuid id PK
+        string name UK
+        string model_identifier
+        int dimensions
+        timestamp created_at
+        timestamp updated_at
+        jsonb metadata
+    }
+    
+    VectorSet {
+        uuid id PK
+        string name UK
+        uuid chunker_config_id FK
+        uuid embedding_model_config_id FK
+        string source_field
+        string result_set_name
+        int vector_dimensions
+        timestamp created_at
+        timestamp updated_at
+        jsonb metadata
+    }
+    
+    IndexVectorBinding {
+        uuid id PK
+        uuid vector_set_id FK
+        string engine
+        string index_name
+        string field_name
+        timestamp created_at
+        timestamp updated_at
+    }
 ```
 
-### Code Generation
+## Message Types
 
-```bash
-buf generate buf.build/pipestreamai/opensearch
-```
+### OpenSearchDocument
 
-### With Gradle (Java/Kotlin)
+Canonical structure for documents indexed in OpenSearch.
 
-```kotlin
-dependencies {
-    implementation("build.buf.gen:pipestreamai_opensearch_grpc_java:+")
-    implementation("build.buf.gen:pipestreamai_opensearch_protobuf_java:+")
+**Key Fields:**
+- `original_doc_id` - Source document identifier
+- `title`, `body`, `tags` - Core content fields
+- `embeddings` - Nested array of `OpenSearchEmbedding` objects
+- `custom_fields` - Flexible JSON container for user-defined data
+
+### OpenSearchEmbedding
+
+Represents a single vector embedding with metadata.
+
+**Key Fields:**
+- `vector` - Float array of embedding values
+- `source_text` - Original text that was embedded
+- `chunk_config_id` - Identifier of chunking strategy used
+- `embedding_id` - Identifier of embedding model used
+- `is_primary` - Flag for primary (title) vs secondary (chunk) embeddings
+
+### ChunkerConfig
+
+Stores text chunking strategy configurations.
+
+**Key Fields:**
+- `config_id` - Stable identifier (e.g., "token-body-512-50")
+- `config_json` - Full chunker parameters as JSON blob
+- `schema_ref` - Optional Apicurio Registry reference for validation
+
+**Example config_json:**
+```json
+{
+  "algorithm": "token",
+  "sourceField": "body",
+  "chunkSize": 512,
+  "chunkOverlap": 50,
+  "preserveUrls": true,
+  "cleanText": true
 }
 ```
 
-## Key Messages
+### EmbeddingModelConfig
 
-| Message/Service | Description |
-|-----------------|-------------|
-| `OpenSearchManagerService` | Schema management, index lifecycle, document CRUD |
-| `OpenSearchIngestionService` | Bidirectional streaming for high-throughput indexing |
-| `OpenSearchDocument` | Canonical document with embeddings and custom fields |
-| `Embedding` | Vector with source text, context, and metadata |
-| `VectorFieldDefinition` | k-NN configuration (dimension, engine, space type) |
-| `KnnMethodDefinition` | HNSW parameters (m, ef_construction, ef_search) |
-| `SearchFilesystemMetaRequest/Response` | Filesystem metadata search |
+Stores embedding model configurations.
 
-## Embedding Model
+**Key Fields:**
+- `model_identifier` - Model name/path (e.g., "sentence-transformers/all-MiniLM-L6-v2")
+- `dimensions` - Vector dimensionality (e.g., 384)
+- `metadata` - Additional model info (version, provider, etc.)
 
-```mermaid
-graph TD
-    subgraph "Document"
-        DOC[OpenSearchDocument]
-        DOC --> EMBS[embeddings: repeated Embedding]
-    end
+### IndexEmbeddingBinding
 
-    subgraph "Embedding Fields"
-        E[Embedding]
-        E --> V[vector: float array]
-        E --> ST[source_text: original text]
-        E --> CT[context_text: derived text]
-        E --> CCID[chunk_config_id]
-        E --> EID[embedding_id]
-        E --> IP[is_primary: title vs body chunk]
-    end
+Links an embedding model to a specific OpenSearch index field.
 
-    subgraph "k-NN Config"
-        KNN[KnnMethodDefinition]
-        KNN --> DIM[dimension: 768, 1536, etc.]
-        KNN --> SPACE[space_type: cosine, innerproduct]
-        KNN --> HNSW[HNSW params: m, ef_construction]
-    end
-```
+**Key Fields:**
+- `index_name` - Target OpenSearch index
+- `embedding_model_config_id` - FK to EmbeddingModelConfig
+- `field_name` - Field path (e.g., "embeddings_384.embedding")
+- `result_set_name` - Optional result set identifier from pipeline
 
-## Streaming Ingestion
+## Workflow Examples
+
+### Creating a Vector-Enabled Index
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant Ingestion
-    participant OpenSearch
-
-    Client->>Ingestion: StreamDocuments (bidirectional)
-
-    loop Document Batch
-        Client->>Ingestion: StreamDocumentsRequest (doc + request_id)
-        Ingestion->>OpenSearch: Bulk index
-        Ingestion-->>Client: StreamDocumentsResponse (ACK)
-    end
+    participant Admin
+    participant ChunkerService as ChunkerConfigService
+    participant EmbedService as EmbeddingConfigService
+    participant OSManager as OpenSearchManagerService
+    
+    Admin->>ChunkerService: CreateChunkerConfig
+    Note over ChunkerService: Store chunker params as JSON
+    ChunkerService-->>Admin: ChunkerConfig (id, config_id)
+    
+    Admin->>EmbedService: CreateEmbeddingModelConfig
+    Note over EmbedService: Store model info + dimensions
+    EmbedService-->>Admin: EmbeddingModelConfig (id, dimensions)
+    
+    Admin->>OSManager: CreateIndex(index_name, vector_field_definition)
+    Note over OSManager: Create index with knn_vector field
+    OSManager-->>Admin: CreateIndexResponse (success)
+    
+    Admin->>EmbedService: CreateIndexEmbeddingBinding
+    Note over EmbedService: Link embedding model to index field
+    EmbedService-->>Admin: IndexEmbeddingBinding (id)
 ```
 
-## Related Modules
+### Document Indexing with Audit Trail
 
-- [`common`](../common/) - Core `PipeDoc` with semantic chunks
-- [`admin`](../admin/) - Schema manager integration
-- [`engine`](../engine/) - Routes documents to OpenSearch sink
+```mermaid
+sequenceDiagram
+    participant Pipeline
+    participant Chunker
+    participant Embedder
+    participant OSManager as OpenSearchManagerService
+    participant OpenSearch
+    
+    Pipeline->>Chunker: ProcessData(document, ChunkerConfig)
+    Note over Chunker: Split text using config_id: token-body-512-50
+    Chunker-->>Pipeline: SemanticProcessingResult (chunk_config_id)
+    
+    Pipeline->>Embedder: Embed(chunks, EmbeddingModelConfig)
+    Note over Embedder: Generate vectors with model: all-MiniLM-L6-v2
+    Embedder-->>Pipeline: Embeddings (embedding_id)
+    
+    Pipeline->>OSManager: IndexDocument(OpenSearchDocument)
+    Note over OSManager: Document contains:<br/>chunk_config_id + embedding_id<br/>in each OpenSearchEmbedding
+    OSManager->>OpenSearch: Bulk index via gRPC
+    OpenSearch-->>OSManager: BulkResponse
+    OSManager-->>Pipeline: IndexDocumentResponse (success)
+    
+    Note over Pipeline,OpenSearch: Audit trail preserved:<br/>chunk_config_id → ChunkerConfig<br/>embedding_id → EmbeddingModelConfig
+```
 
-## Related Repositories
+## Configuration
 
-- [`pipestream-opensearch`](https://github.com/ai-pipestream/pipestream-opensearch) - OpenSearch service implementation
+### Index Naming Convention
 
-## Documentation
+Indices follow the pattern: `{domain}-{type}-{version}`
 
-- [Buf Schema Registry](https://buf.build/pipestreamai/opensearch)
-- [AI Pipestream Documentation](https://github.com/ai-pipestream)
+Examples:
+- `repository-pipedocs` - Repository document index
+- `filesystem-drives` - Filesystem drive metadata
+- `filesystem-nodes` - Filesystem node metadata
 
-## License
+### Field Naming Convention
 
-MIT License - See [LICENSE](./LICENSE) file for details.
+Vector fields use dimension-based naming: `embeddings_{dimension}`
+
+Examples:
+- `embeddings_384` - For 384-dimensional vectors (MiniLM)
+- `embeddings_768` - For 768-dimensional vectors (BERT-base)
+- `embeddings_1536` - For 1536-dimensional vectors (OpenAI ada-002)
+
+### Result Set Naming
+
+Result sets from chunking follow: `{pipeStepName}_chunks_{config_id}`
+
+Examples:
+- `chunker-v1_chunks_token-body-512-50`
+- `title-chunker_chunks_sentence-title-1000-100`
+
+## Schema Validation
+
+Chunker configurations can be validated against schemas stored in Apicurio Registry:
+
+1. Register ChunkerConfig schema in Apicurio
+2. Store artifact reference in `ChunkerConfig.schema_ref`
+3. Validate `config_json` against schema before persistence
+
+## Future Extensions
+
+### VectorSet Entity (Planned)
+
+A composite entity that ties together chunker + embedder + metadata:
+
+```protobuf
+message VectorSet {
+  string id = 1;
+  string name = 2;
+  string chunker_config_id = 3;  // FK to ChunkerConfig
+  string embedding_model_config_id = 4;  // FK to EmbeddingModelConfig
+  string source_field = 5;  // e.g., "body", "title"
+  string result_set_name = 6;
+  int32 vector_dimensions = 7;  // Denormalized from embedding config
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  google.protobuf.Struct metadata = 10;
+}
+```
+
+This will enable:
+- Single entity representing "how to produce vectors"
+- Simplified index binding (bind VectorSet → index field)
+- Better audit trail and traceability
+
+## References
+
+- [OpenSearch k-NN Plugin](https://opensearch.org/docs/latest/search-plugins/knn/index/)
+- [OpenSearch gRPC Transport](https://github.com/opensearch-project/opensearch-protobufs)
+- [Apicurio Registry](https://www.apicur.io/registry/)
