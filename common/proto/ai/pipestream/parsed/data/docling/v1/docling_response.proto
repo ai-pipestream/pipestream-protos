@@ -9,101 +9,462 @@ option java_multiple_files = true;
 option java_outer_classname = "DoclingResponseProto";
 option java_package = "ai.pipestream.parsed.data.docling.v1";
 
-// DoclingResponse wraps a DoclingDocument with processing metadata
-// This is the primary message used to represent a document parsed by Docling
+// Docling Response Protocol Buffers Definition
+//
+// This proto file defines the wrapper structure for Docling parsing responses.
+// It includes the parsed document, parse status, metadata, and export formats.
+//
+// Usage Pattern:
+// =============
+//
+// 1. Parse Request Flow:
+//    Client → Docling Service → DoclingResponse
+//
+// 2. Response Contents:
+//    - Original document structure (DoclingDocument)
+//    - Parse operation status and timing
+//    - Multiple export formats (markdown, HTML, text)
+//    - Processing metadata and options
+//
+// 3. Error Handling:
+//    - Check status.status for parse result
+//    - Review status.errors for failure details
+//    - Check status.warnings for non-fatal issues
+//
+// 4. Export Formats:
+//    - Markdown: Human-readable, preserves structure
+//    - HTML: Web-ready with semantic markup
+//    - Text: Plain text, structure flattened
+//    - JSON: Full document object (via DoclingDocument)
+//
+// Integration Examples:
+// ====================
+//
+// Example 1: Basic Document Parsing
+// ```
+// DoclingResponse response = parseDocument(file);
+// if (response.getStatus().getStatus() == Status.SUCCESS) {
+//   DoclingDocument doc = response.getDocument();
+//   String markdown = response.getMarkdown();
+//   // Process document...
+// }
+// ```
+//
+// Example 2: Error Handling
+// ```
+// DoclingResponse response = parseDocument(file);
+// switch (response.getStatus().getStatus()) {
+//   case SUCCESS:
+//     processDocument(response.getDocument());
+//     break;
+//   case PARTIAL:
+//     logWarnings(response.getStatus().getWarnings());
+//     processPartialDocument(response.getDocument());
+//     break;
+//   case FAILED:
+//     handleErrors(response.getStatus().getErrors());
+//     break;
+//   case TIMEOUT:
+//     retryWithTimeout(file);
+//     break;
+// }
+// ```
+//
+// Example 3: Multi-Format Export
+// ```
+// DoclingResponse response = parseDocument(file);
+// saveToFile("output.md", response.getMarkdown());
+// saveToFile("output.html", response.getHtml());
+// saveToFile("output.txt", response.getText());
+// saveToFile("output.json", JsonFormat.printer().print(response.getDocument()));
+// ```
+//
+// Performance Considerations:
+// ==========================
+//
+// - Parse time typically correlates with document complexity and page count
+// - OCR significantly increases processing time (10-100x)
+// - Table extraction adds overhead for table-heavy documents
+// - Image classification and description require AI model inference
+// - Consider parse_metadata.parse_options for optimization
+
+// DoclingResponse is the primary response message for document parsing operations.
+// It wraps a DoclingDocument with processing metadata, status information,
+// and multiple export format options. This message is returned after successfully
+// (or unsuccessfully) parsing a document with the Docling service.
 message DoclingResponse {
-  // Document identifier
+  // Unique document identifier.
+  // This ID should be stable across multiple parses of the same source document.
+  // Typically derived from the document's content hash or file path.
   string doc_id = 1;
 
-  // Parse identifier (for tracking multiple parses of the same document)
+  // Unique parse operation identifier.
+  // This ID is unique for each parse operation, allowing tracking of
+  // multiple parses of the same document (e.g., with different options).
+  // Format: UUID or timestamp-based ID.
   string parse_id = 2;
 
-  // The parsed document structure (main content)
+  // The parsed document structure containing all extracted content.
+  // This field is optional because it may be absent on parse failures.
+  // Even for partial failures, this may contain partially extracted content.
+  //
+  // The document includes:
+  // - Hierarchical structure (body, groups)
+  // - All text content (titles, paragraphs, lists, code, formulas)
+  // - Visual elements (pictures with AI metadata)
+  // - Tables with cell-level structure
+  // - Forms and key-value pairs
+  // - Page metadata
   optional DoclingDocument document = 3;
 
-  // Parse status and statistics
+  // Parse operation status and error information.
+  // Always present, indicates success/failure and provides diagnostics.
+  // Check this field first before processing the document.
   DoclingParseStatus status = 4;
 
-  // When the document was parsed
+  // Timestamp when the document was parsed.
+  // Uses UTC timezone. Useful for cache invalidation and auditing.
   google.protobuf.Timestamp parsed_at = 5;
 
-  // Additional metadata about the parse operation
+  // Additional metadata about the parse operation.
+  // Includes source info, file size, detected language, and parse options.
   DoclingParseMetadata parse_metadata = 6;
 
-  // Raw document markdown export (if generated)
+  // Markdown export of the document (if generated).
+  // This is a human-readable representation preserving document structure.
+  // Includes:
+  // - Headings with proper levels
+  // - Lists (bulleted and numbered)
+  // - Code blocks with language tags
+  // - Tables in markdown format
+  // - Links and emphasis
+  //
+  // Note: Complex elements (forms, advanced layouts) may be simplified.
   optional string markdown = 7;
 
-  // Raw document HTML export (if generated)
+  // HTML export of the document (if generated).
+  // This is a semantic HTML5 representation with proper tags.
+  // Includes:
+  // - Semantic tags (article, section, header, etc.)
+  // - Styled tables with proper thead/tbody
+  // - Figure and figcaption for images
+  // - Code blocks with syntax highlighting classes
+  //
+  // Note: Inline styles are avoided; use CSS classes for styling.
   optional string html = 8;
 
-  // Raw document plain text export (if generated)
+  // Plain text export of the document (if generated).
+  // This is a simple text-only representation with minimal formatting.
+  // Structure is flattened; useful for:
+  // - Full-text search indexing
+  // - Simple content preview
+  // - Text analysis
+  // - Character count statistics
+  //
+  // Note: All formatting, structure, and metadata are removed.
   optional string text = 9;
 }
 
-// DoclingParseStatus contains information about the parse operation
+// DoclingParseStatus contains information about the parse operation result.
+// This includes the overall status, timing information, errors, and warnings.
+// Always check this field before processing the parsed document.
 message DoclingParseStatus {
+  // Status enumeration for parse operation results.
+  // The status indicates whether parsing succeeded, partially succeeded, or failed.
   enum Status {
+    // Default/unknown status (should not occur in practice)
     STATUS_UNSPECIFIED = 0;
+
+    // Parse completed successfully.
+    // The document was fully extracted with no errors.
+    // All content should be present and accurate.
     STATUS_SUCCESS = 1;
+
+    // Parse completed with warnings.
+    // Most content was extracted, but some issues occurred.
+    // Check warnings field for details about what was problematic.
+    // The document field should be present but may be incomplete.
+    //
+    // Common partial failure scenarios:
+    // - Damaged/corrupted pages skipped
+    // - Unsupported embedded objects ignored
+    // - OCR failures on some images
+    // - Timeout during optional processing (e.g., AI classification)
     STATUS_PARTIAL = 2;
+
+    // Parse failed completely.
+    // The document could not be processed.
+    // Check errors field for failure reasons.
+    // The document field will be absent or empty.
+    //
+    // Common failure scenarios:
+    // - Unsupported file format
+    // - Corrupted or encrypted file
+    // - Missing required dependencies
+    // - Invalid document structure
     STATUS_FAILED = 3;
+
+    // Parse operation timed out.
+    // Processing exceeded the configured timeout limit.
+    // This typically occurs with:
+    // - Very large documents (1000+ pages)
+    // - Complex layouts requiring extensive processing
+    // - OCR on low-quality scans
+    // - AI model inference timeouts
+    //
+    // Retry with increased timeout or reduced processing options.
     STATUS_TIMEOUT = 4;
   }
 
+  // Overall status of the parse operation.
+  // Always check this field before using the parsed document.
   Status status = 1;
 
-  // Time taken to parse the document in milliseconds
+  // Time taken to parse the document in milliseconds.
+  // Includes all processing:
+  // - File format decoding
+  // - Layout analysis
+  // - Text extraction
+  // - OCR (if applicable)
+  // - Table detection and extraction
+  // - AI model inference (classifications, descriptions)
+  // - Export format generation
+  //
+  // Typical ranges:
+  // - Simple PDFs: 100-1000ms
+  // - Complex PDFs: 1-10 seconds
+  // - Scanned documents with OCR: 10-60 seconds
   int64 parse_time_ms = 2;
 
-  // Version of Docling used for parsing
+  // Version of the Docling service that performed the parsing.
+  // Format: "X.Y.Z" (semantic versioning)
+  // Useful for debugging and ensuring compatibility.
   optional string docling_version = 3;
 
-  // Model used for parsing (if applicable)
+  // AI model used for parsing (if applicable).
+  // Examples:
+  // - "docling-v1" for standard model
+  // - "docling-vlm-v2" for vision-language model
+  // - "custom-model-xyz" for custom models
+  //
+  // Different models provide different capabilities:
+  // - Layout analysis models
+  // - OCR engines
+  // - Table detection models
+  // - Image classification models
   optional string model_used = 4;
 
-  // Warnings encountered during parsing
+  // Non-fatal warnings encountered during parsing.
+  // These indicate issues that didn't prevent parsing but may affect quality.
+  //
+  // Example warnings:
+  // - "Page 5 contains damaged content, may be incomplete"
+  // - "Table on page 12 has irregular structure, extraction may be inaccurate"
+  // - "Image on page 7 could not be classified (low quality)"
+  // - "Font substitution applied for unavailable fonts"
+  //
+  // Even with warnings, the document field should be present and usable.
   repeated string warnings = 5;
 
-  // Errors encountered during parsing
+  // Fatal errors that prevented successful parsing.
+  // Present when status is FAILED or sometimes with PARTIAL.
+  //
+  // Example errors:
+  // - "Unsupported file format: .xyz"
+  // - "File is password-protected, cannot decrypt"
+  // - "Document structure is invalid or corrupted"
+  // - "Out of memory while processing page 150"
+  //
+  // Use these messages for user-facing error reporting and debugging.
   repeated string errors = 6;
 
-  // Number of pages processed
+  // Number of pages successfully processed.
+  // Useful for progress tracking and quality assessment.
+  // Compare with the total page count (from parse_metadata or document.pages)
+  // to determine completeness.
   optional int32 pages_processed = 7;
 }
 
-// DoclingParseMetadata contains additional metadata about the parse operation
+// DoclingParseMetadata contains additional information about the parse operation.
+// This metadata helps understand how the document was processed and provides
+// context for the parsing results.
 message DoclingParseMetadata {
-  // Source of the document (file path, URL, etc.)
+  // Source of the document being parsed.
+  // This could be:
+  // - File path: "/path/to/document.pdf"
+  // - URL: "https://example.com/document.pdf"
+  // - S3 URI: "s3://bucket/document.pdf"
+  // - Blob ID: "blob:abc123def456"
+  //
+  // Used for logging, debugging, and provenance tracking.
   optional string source = 1;
 
-  // File size in bytes
+  // File size in bytes of the source document.
+  // Useful for:
+  // - Estimating processing time
+  // - Storage cost calculation
+  // - Performance analysis
+  // - Rate limiting decisions
   optional int64 file_size_bytes = 2;
 
-  // Content type of the source document
+  // MIME type (content type) of the source document.
+  // Examples:
+  // - "application/pdf"
+  // - "application/vnd.openxmlformats-officedocument.wordprocessingml.document" (DOCX)
+  // - "application/vnd.ms-excel" (XLS)
+  // - "image/png" (for image-only documents)
+  //
+  // Used to select appropriate parsers and validate file format.
   optional string content_type = 3;
 
-  // Whether OCR was used
+  // Whether Optical Character Recognition (OCR) was used during parsing.
+  // OCR is typically used for:
+  // - Scanned documents (images of pages)
+  // - PDFs without embedded text
+  // - Handwritten text detection
+  // - Text in images/figures
+  //
+  // OCR significantly increases processing time and may introduce errors.
+  // When true, consider the potential for transcription errors.
   optional bool ocr_used = 4;
 
-  // Whether tables were detected and extracted
+  // Whether tables were detected and extracted from the document.
+  // Table extraction includes:
+  // - Cell boundaries and merging
+  // - Header detection (row/column headers)
+  // - Content extraction per cell
+  // - Table structure reconstruction
+  //
+  // When true, check document.tables for extracted table data.
   optional bool tables_extracted = 5;
 
-  // Whether images were extracted
+  // Whether images were extracted from the document.
+  // Image extraction includes:
+  // - Embedded images
+  // - Inline graphics
+  // - Charts and diagrams
+  // - Logos and icons
+  //
+  // When true, check document.pictures for extracted images.
+  // Images may have AI-generated descriptions and classifications.
   optional bool images_extracted = 6;
 
-  // Language detected in the document
+  // Primary language detected in the document.
+  // ISO 639-1 language code (e.g., "en", "de", "fr", "ja", "zh")
+  //
+  // Language detection helps with:
+  // - OCR accuracy improvement
+  // - Text processing and NLP
+  // - Content categorization
+  // - Translation decisions
+  //
+  // Note: Multilingual documents may contain content in multiple languages,
+  // but this field indicates the predominant language.
   optional string detected_language = 7;
 
-  // Parse options used
+  // Parse options used for this document.
+  // Key-value map of configuration options that influenced parsing.
+  //
+  // Common options:
+  // - "enable_ocr": "true"
+  // - "extract_tables": "true"
+  // - "extract_images": "true"
+  // - "enable_ai_classification": "true"
+  // - "generate_markdown": "true"
+  // - "generate_html": "true"
+  // - "timeout_seconds": "300"
+  // - "quality_level": "high"
+  // - "ocr_language": "eng+deu"
+  //
+  // Useful for:
+  // - Reproducing parse results
+  // - Debugging unexpected behavior
+  // - Performance optimization
+  // - Cost analysis (some options increase processing time/cost)
   map<string, string> parse_options = 8;
 }
 
-// DoclingExportFormat defines the available export formats
+// DoclingExportFormat defines the available export formats for parsed documents.
+// Different formats serve different use cases and have different characteristics.
 enum DoclingExportFormat {
+  // Default/unspecified format
   DOCLING_EXPORT_FORMAT_UNSPECIFIED = 0;
+
+  // Markdown format (.md)
+  // Characteristics:
+  // - Human-readable text format
+  // - Preserves document structure (headings, lists, etc.)
+  // - Supports code blocks with syntax highlighting
+  // - Tables in simple ASCII art or markdown table syntax
+  // - Widely supported by documentation tools
+  //
+  // Best for:
+  // - Documentation
+  // - README files
+  // - Note-taking applications
+  // - Static site generators
+  // - Git-friendly version control
   DOCLING_EXPORT_FORMAT_MARKDOWN = 1;
+
+  // HTML format (.html)
+  // Characteristics:
+  // - Semantic HTML5 markup
+  // - Preserves styling and layout information
+  // - Supports complex structures (nested lists, tables)
+  // - Embeds images as base64 or references
+  // - CSS classes for styling customization
+  //
+  // Best for:
+  // - Web publishing
+  // - Email content
+  // - Rich text editors
+  // - Browser-based previews
+  // - Print-friendly output (with CSS)
   DOCLING_EXPORT_FORMAT_HTML = 2;
+
+  // Plain text format (.txt)
+  // Characteristics:
+  // - Pure text content, no markup
+  // - Flattened structure (limited hierarchy)
+  // - No formatting or styling
+  // - Maximum compatibility
+  // - Smallest file size
+  //
+  // Best for:
+  // - Full-text search indexing
+  // - Simple content preview
+  // - Text analytics
+  // - Character/word count
+  // - Machine learning training data
   DOCLING_EXPORT_FORMAT_TEXT = 3;
+
+  // JSON format (.json)
+  // Characteristics:
+  // - Complete document structure (DoclingDocument)
+  // - All metadata preserved
+  // - Machine-readable
+  // - Supports round-trip serialization
+  // - Structured data for APIs
+  //
+  // Best for:
+  // - API responses
+  // - Data interchange
+  // - Document analysis pipelines
+  // - Content management systems
+  // - Structured data storage
   DOCLING_EXPORT_FORMAT_JSON = 4;
+
+  // DocTags format (custom structured format)
+  // Characteristics:
+  // - Docling-specific tagged format
+  // - Preserves all semantic information
+  // - Includes layout annotations
+  // - Supports custom rendering
+  //
+  // Best for:
+  // - Docling-specific workflows
+  // - Custom document viewers
+  // - Layout-aware processing
+  // - Docling tool interoperability
   DOCLING_EXPORT_FORMAT_DOCTAGS = 5;
 }

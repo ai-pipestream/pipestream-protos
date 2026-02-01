@@ -6,417 +6,1045 @@ option java_multiple_files = true;
 option java_outer_classname = "DoclingDocumentProto";
 option java_package = "ai.pipestream.parsed.data.docling.v1";
 
-// DoclingDocument represents a document processed by the Docling service
-// with its structure, content, and metadata. This is a 1:1 mapping of the
-// Docling JSON schema to protobuf.
+// Docling Document Structure Protocol Buffers Definition
+//
+// This proto file defines the complete structure for documents processed by Docling,
+// providing a 1:1 mapping of the Docling JSON schema to protobuf. Docling is an
+// advanced document parsing system that extracts rich semantic structure from PDFs
+// and other document formats.
+//
+// Document Structure Overview:
+// ===========================
+//
+// A DoclingDocument contains:
+// - Hierarchical structure (body, groups)
+// - Text content (titles, headers, paragraphs, lists, code, formulas)
+// - Visual elements (pictures with AI-generated descriptions)
+// - Tabular data (tables with cell-level structure)
+// - Form data (key-value pairs, form fields)
+// - Page metadata (size, images)
+// - Provenance tracking (bounding boxes, page numbers)
+//
+// Mermaid Diagram:
+// ===============
+//
+// ```mermaid
+// graph TB
+//     subgraph "Core Document"
+//         DOC[DoclingDocument]
+//         DOC --> ORIGIN[DocumentOrigin]
+//         DOC --> BODY[GroupItem body]
+//         DOC --> GROUPS[GroupItem groups]
+//         DOC --> PAGES[PageItem pages]
+//     end
+//
+//     subgraph "Content Items"
+//         DOC --> TEXTS[BaseTextItem texts]
+//         DOC --> PICS[PictureItem pictures]
+//         DOC --> TABLES[TableItem tables]
+//         DOC --> KV[KeyValueItem key_value_items]
+//         DOC --> FORMS[FormItem form_items]
+//     end
+//
+//     subgraph "Text Item Types"
+//         TEXTS --> TITLE[TitleItem]
+//         TEXTS --> HEADER[SectionHeaderItem]
+//         TEXTS --> LIST[ListItem]
+//         TEXTS --> CODE[CodeItem]
+//         TEXTS --> FORMULA[FormulaItem]
+//         TEXTS --> TEXT[TextItem]
+//     end
+//
+//     subgraph "Common Components"
+//         TITLE --> BASE[TextItemBase]
+//         HEADER --> BASE
+//         LIST --> BASE
+//         CODE --> BASE
+//         FORMULA --> BASE
+//         TEXT --> BASE
+//         BASE --> PROV[ProvenanceItem]
+//         BASE --> FORMAT[Formatting]
+//         PROV --> BBOX[BoundingBox]
+//     end
+//
+//     subgraph "Table Structure"
+//         TABLES --> TDATA[TableData]
+//         TDATA --> TROW[TableRow]
+//         TROW --> TCELL[TableCell]
+//         TCELL --> BBOX
+//     end
+//
+//     subgraph "Picture Metadata"
+//         PICS --> PMETA[PictureMeta]
+//         PMETA --> SUMMARY[SummaryMetaField]
+//         PMETA --> DESC[DescriptionMetaField]
+//         PMETA --> CLASS[PictureClassificationMetaField]
+//         PMETA --> MOL[MoleculeMetaField]
+//         PMETA --> CHART[TabularChartMetaField]
+//         PICS --> IMGREF[ImageRef]
+//         IMGREF --> SIZE[Size]
+//     end
+//
+//     subgraph "Key-Value Structure"
+//         KV --> GRAPH[GraphData]
+//         FORMS --> GRAPH
+//         GRAPH --> GCELL[GraphCell]
+//         GRAPH --> GLINK[GraphLink]
+//         GCELL --> PROV
+//     end
+//
+//     subgraph "Hierarchical References"
+//         BODY --> REF[RefItem]
+//         GROUPS --> REF
+//         BASE --> REF
+//         PICS --> REF
+//         TABLES --> REF
+//         KV --> REF
+//         FORMS --> REF
+//     end
+//
+//     subgraph "Page Information"
+//         PAGES --> SIZE
+//         PAGES --> IMGREF
+//     end
+//
+//     style DOC fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+//     style ORIGIN fill:#fff3e0,stroke:#e65100
+//     style TEXTS fill:#f3e5f5,stroke:#4a148c
+//     style PICS fill:#e8f5e9,stroke:#1b5e20
+//     style TABLES fill:#fff9c4,stroke:#f57f17
+//     style KV fill:#fce4ec,stroke:#880e4f
+//     style FORMS fill:#fce4ec,stroke:#880e4f
+//     style BASE fill:#e1bee7,stroke:#4a148c
+//     style GRAPH fill:#ffebee,stroke:#b71c1c
+// ```
+//
+// Key Concepts:
+// ============
+//
+// 1. Hierarchical Structure:
+//    - Documents have a tree structure with groups containing child items
+//    - RefItem references link items together (parent-child relationships)
+//
+// 2. Content Layers:
+//    - BODY: Main document content
+//    - FURNITURE: Headers, footers, page numbers
+//    - BACKGROUND: Watermarks, background images
+//    - INVISIBLE: Hidden or redacted content
+//    - NOTES: Comments, annotations
+//
+// 3. Provenance:
+//    - Every content item tracks its location in the source document
+//    - BoundingBox provides pixel coordinates
+//    - Page numbers and character spans are recorded
+//
+// 4. AI-Enhanced Metadata:
+//    - Pictures can have AI-generated summaries and classifications
+//    - Confidence scores track AI prediction quality
+//    - Chemical structures (molecules) can be detected
+//    - Charts can be converted to tabular data
+//
+// 5. Form Understanding:
+//    - Key-value pairs are extracted from forms
+//    - Graph structure represents relationships
+//    - Checkboxes and fillable fields are identified
+
+// DoclingDocument is the root message representing a complete parsed document.
+// It contains all content items, metadata, and structural information extracted
+// from the source document (PDF, DOCX, etc.).
 message DoclingDocument {
+  // Schema identifier for versioning (e.g., "docling_document_v2")
   optional string schema_name = 1;
+
+  // Version number of the Docling schema used
   optional string version = 2;
+
+  // Human-readable name or title of the document
   string name = 3;
+
+  // Metadata about the source document (file info, hash, etc.)
   optional DocumentOrigin origin = 4;
+
+  // The root body group containing the main document structure.
+  // All content is organized hierarchically under this root.
   GroupItem body = 5;
+
+  // Additional groups representing logical sections (chapters, sections, etc.).
+  // Each group can contain references to child items.
   repeated GroupItem groups = 6;
+
+  // All text items in the document (titles, paragraphs, lists, etc.).
+  // Each text item contains its content, formatting, and location.
   repeated BaseTextItem texts = 7;
+
+  // All picture/image items in the document.
+  // Includes AI-generated descriptions and classifications.
   repeated PictureItem pictures = 8;
+
+  // All table items in the document.
+  // Includes cell-level structure, headers, and content.
   repeated TableItem tables = 9;
+
+  // Key-value pairs extracted from forms or structured data.
+  // Represents field labels and their corresponding values.
   repeated KeyValueItem key_value_items = 10;
+
+  // Form elements detected in the document.
+  // Similar to key-value items but with richer structure.
   repeated FormItem form_items = 11;
+
+  // Map of page numbers to page metadata.
+  // Key is the page number (as string), value contains size and image info.
   map<string, PageItem> pages = 12;
 }
 
-// DocumentOrigin contains metadata about the source document
+// DocumentOrigin contains metadata about the source document file.
+// This information is used to track document provenance and verify integrity.
 message DocumentOrigin {
+  // MIME type of the source file (e.g., "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
   string mimetype = 1;
-  // Using string for binary_hash as proto3 doesn't have BigInteger
-  // This will store the hash as a decimal string
+
+  // Binary hash of the source file for integrity verification.
+  // Stored as a decimal string since proto3 doesn't have BigInteger.
+  // This is typically a SHA-256 or similar cryptographic hash.
   string binary_hash = 2;
+
+  // Original filename of the source document
   string filename = 3;
+
+  // Optional URI/URL where the document was retrieved from
   optional string uri = 4;
 }
 
-// ContentLayer defines the layer where content appears in the document
+// ContentLayer defines the semantic layer where content appears in the document.
+// This classification helps understand the role of content within the document layout.
 enum ContentLayer {
+  // Default/unknown layer
   CONTENT_LAYER_UNSPECIFIED = 0;
+
+  // Main document content (body text, tables, images)
   CONTENT_LAYER_BODY = 1;
+
+  // Page furniture (headers, footers, page numbers, decorative elements)
   CONTENT_LAYER_FURNITURE = 2;
+
+  // Background elements (watermarks, background images)
   CONTENT_LAYER_BACKGROUND = 3;
+
+  // Invisible or redacted content
   CONTENT_LAYER_INVISIBLE = 4;
+
+  // Annotations, comments, or notes
   CONTENT_LAYER_NOTES = 5;
 }
 
-// GroupLabel defines the semantic meaning of a group
+// GroupLabel defines the semantic type of a group in the document hierarchy.
+// Groups organize content into logical sections and structures.
 enum GroupLabel {
+  // Default/unknown group type
   GROUP_LABEL_UNSPECIFIED = 0;
+
+  // Unordered (bulleted) list
   GROUP_LABEL_LIST = 1;
+
+  // Ordered (numbered) list
   GROUP_LABEL_ORDERED_LIST = 2;
+
+  // Book or document chapter
   GROUP_LABEL_CHAPTER = 3;
+
+  // Section within a chapter
   GROUP_LABEL_SECTION = 4;
+
+  // Spreadsheet sheet
   GROUP_LABEL_SHEET = 5;
+
+  // Presentation slide
   GROUP_LABEL_SLIDE = 6;
+
+  // Area containing form fields
   GROUP_LABEL_FORM_AREA = 7;
+
+  // Area containing key-value pairs
   GROUP_LABEL_KEY_VALUE_AREA = 8;
+
+  // Section containing comments or annotations
   GROUP_LABEL_COMMENT_SECTION = 9;
+
+  // Inline grouping (e.g., inline code, inline math)
   GROUP_LABEL_INLINE = 10;
+
+  // Area containing pictures or figures
   GROUP_LABEL_PICTURE_AREA = 11;
 }
 
-// GroupItem represents a logical grouping of document elements
+// GroupItem represents a logical grouping of document elements.
+// Groups form the hierarchical structure of the document, with parent-child
+// relationships connecting content items into a tree structure.
 message GroupItem {
+  // Unique reference ID for this group (e.g., "#/groups/0")
   string self_ref = 1;
+
+  // Reference to the parent group in the hierarchy
   optional RefItem parent = 2;
+
+  // References to child items (groups, texts, pictures, tables, etc.)
+  // These references point to items by their self_ref IDs.
   repeated RefItem children = 3;
+
+  // The content layer this group belongs to
   ContentLayer content_layer = 4;
+
+  // Optional metadata (e.g., AI-generated summary)
   optional BaseMeta meta = 5;
+
+  // Optional human-readable name for this group
   optional string name = 6;
+
+  // Semantic label indicating the type of group
   GroupLabel label = 7;
 }
 
-// RefItem is a reference to another item by its ID
+// RefItem is a JSON Pointer reference to another item in the document.
+// This is how items reference each other to form the hierarchical structure.
+// The ref field contains a JSON Pointer path like "#/texts/3" or "#/groups/1".
 message RefItem {
-  // The "$ref" field from JSON becomes "ref" in proto
+  // JSON Pointer reference to another item (e.g., "#/texts/5", "#/groups/2")
+  // The "#" indicates the root of the document, followed by the collection
+  // name (texts, groups, pictures, etc.) and the index.
   string ref = 1;
 }
 
-// BaseMeta contains metadata fields common to most items
+// BaseMeta contains metadata fields common to most document items.
+// This is typically AI-generated summary information.
 message BaseMeta {
+  // Optional AI-generated summary of the item's content
   optional SummaryMetaField summary = 1;
 }
 
-// SummaryMetaField contains AI-generated summary metadata
+// SummaryMetaField contains an AI-generated text summary with confidence.
+// Used for automatic document summarization and content understanding.
 message SummaryMetaField {
+  // Confidence score for the generated summary (0.0 to 1.0)
   optional double confidence = 1;
+
+  // Name/ID of the AI model or system that created this summary
   optional string created_by = 2;
+
+  // The generated summary text
   string text = 3;
 }
 
-// DocItemLabel defines the semantic type of document items
+// DocItemLabel defines the semantic type of document content items.
+// This fine-grained classification helps understand the role of each text element.
 enum DocItemLabel {
+  // Default/unknown item type
   DOC_ITEM_LABEL_UNSPECIFIED = 0;
+
+  // Figure or table caption
   DOC_ITEM_LABEL_CAPTION = 1;
+
+  // Chart or graph
   DOC_ITEM_LABEL_CHART = 2;
+
+  // Selected/checked checkbox
   DOC_ITEM_LABEL_CHECKBOX_SELECTED = 3;
+
+  // Unselected/unchecked checkbox
   DOC_ITEM_LABEL_CHECKBOX_UNSELECTED = 4;
+
+  // Code block or inline code
   DOC_ITEM_LABEL_CODE = 5;
+
+  // Document index or table of contents
   DOC_ITEM_LABEL_DOCUMENT_INDEX = 6;
+
+  // Empty form field
   DOC_ITEM_LABEL_EMPTY_VALUE = 7;
+
+  // Footnote reference or content
   DOC_ITEM_LABEL_FOOTNOTE = 8;
+
+  // Form element
   DOC_ITEM_LABEL_FORM = 9;
+
+  // Mathematical formula (inline or display)
   DOC_ITEM_LABEL_FORMULA = 10;
+
+  // Grading scale or rubric
   DOC_ITEM_LABEL_GRADING_SCALE = 11;
+
+  // Handwritten text (detected by OCR)
   DOC_ITEM_LABEL_HANDWRITTEN_TEXT = 12;
+
+  // Key-value region in a form
   DOC_ITEM_LABEL_KEY_VALUE_REGION = 13;
+
+  // List item (bullet or numbered)
   DOC_ITEM_LABEL_LIST_ITEM = 14;
+
+  // Page footer
   DOC_ITEM_LABEL_PAGE_FOOTER = 15;
+
+  // Page header
   DOC_ITEM_LABEL_PAGE_HEADER = 16;
+
+  // Regular paragraph text
   DOC_ITEM_LABEL_PARAGRAPH = 17;
+
+  // Picture or image
   DOC_ITEM_LABEL_PICTURE = 18;
+
+  // Reference or citation
   DOC_ITEM_LABEL_REFERENCE = 19;
+
+  // Section header (h1-h6)
   DOC_ITEM_LABEL_SECTION_HEADER = 20;
+
+  // Table
   DOC_ITEM_LABEL_TABLE = 21;
+
+  // Generic text
   DOC_ITEM_LABEL_TEXT = 22;
+
+  // Document or section title
   DOC_ITEM_LABEL_TITLE = 23;
 }
 
-// Script enum for text formatting
+// Script defines the vertical positioning of text (normal, subscript, superscript).
+// Used for proper rendering of mathematical formulas and chemical notation.
 enum Script {
+  // Default/unknown script position
   SCRIPT_UNSPECIFIED = 0;
+
+  // Normal baseline text
   SCRIPT_BASELINE = 1;
+
+  // Subscript text (lowered below baseline)
   SCRIPT_SUB = 2;
+
+  // Superscript text (raised above baseline)
   SCRIPT_SUPER = 3;
 }
 
-// Formatting contains text formatting information
+// Formatting contains text formatting/styling information.
+// This preserves the visual appearance of text from the source document.
 message Formatting {
+  // Whether the text is bold/strong
   bool bold = 1;
+
+  // Whether the text is italic/emphasized
   bool italic = 2;
+
+  // Whether the text is underlined
   bool underline = 3;
+
+  // Whether the text has strikethrough
   bool strikethrough = 4;
+
+  // Vertical script position (baseline, subscript, superscript)
   Script script = 5;
 }
 
-// BaseTextItem represents any text-based item in the document
-// This uses a oneof to distinguish between different text item types
+// BaseTextItem is a union type representing any text-based item in the document.
+// Use oneof to distinguish between different text item types while sharing
+// common fields through TextItemBase.
 message BaseTextItem {
   oneof item {
+    // Document or section title
     TitleItem title = 1;
+
+    // Section header (h1-h6 with level)
     SectionHeaderItem section_header = 2;
+
+    // List item (bulleted or numbered)
     ListItem list_item = 3;
+
+    // Code block with optional language
     CodeItem code = 4;
+
+    // Mathematical formula
     FormulaItem formula = 5;
+
+    // Generic text content
     TextItem text = 6;
   }
 }
 
-// Common fields for all text items
+// TextItemBase contains fields common to all text-based items.
+// All specific text item types (TitleItem, SectionHeaderItem, etc.)
+// include this base structure.
 message TextItemBase {
+  // Unique reference ID for this text item (e.g., "#/texts/0")
   string self_ref = 1;
+
+  // Reference to the parent group or item
   optional RefItem parent = 2;
+
+  // References to child items (for nested structures)
   repeated RefItem children = 3;
+
+  // The content layer this text belongs to
   ContentLayer content_layer = 4;
+
+  // Optional metadata (e.g., AI-generated summary)
   optional BaseMeta meta = 5;
+
+  // Semantic label indicating the type of text
   DocItemLabel label = 6;
+
+  // Provenance information (location in source document)
+  // Multiple provenance items indicate text spanning multiple pages
   repeated ProvenanceItem prov = 7;
+
+  // Original text exactly as it appeared in source (before processing)
   string orig = 8;
+
+  // Processed/cleaned text content
   string text = 9;
+
+  // Optional formatting information (bold, italic, etc.)
   optional Formatting formatting = 10;
+
+  // Optional hyperlink URL if this text is a link
   optional string hyperlink = 11;
 }
 
-// TitleItem represents a document title
+// TitleItem represents a document title or major heading.
+// Titles are typically the most prominent text in a document or section.
 message TitleItem {
+  // Common text item fields
   TextItemBase base = 1;
 }
 
-// SectionHeaderItem represents a section header with level
+// SectionHeaderItem represents a section header with hierarchical level.
+// Headers organize content into sections and subsections (h1-h6 in HTML terms).
 message SectionHeaderItem {
+  // Common text item fields
   TextItemBase base = 1;
+
+  // Header level (1=h1, 2=h2, 3=h3, etc.)
+  // Level 1 is the highest/most important, increasing levels are more nested
   int32 level = 2;
 }
 
-// ListItem represents a list item (ordered or unordered)
+// ListItem represents a single item in a bulleted or numbered list.
+// The marker field contains the bullet or number used.
 message ListItem {
+  // Common text item fields
   TextItemBase base = 1;
+
+  // Whether this is part of an enumerated (numbered) list
   bool enumerated = 2;
+
+  // The list marker (e.g., "•", "1.", "a)", "(i)")
   optional string marker = 3;
 }
 
-// CodeItem represents a code block
+// CodeItem represents a code block with syntax highlighting metadata.
+// Code blocks can have captions, references, and optional language detection.
 message CodeItem {
+  // Common text item fields
   TextItemBase base = 1;
+
+  // Floating metadata (can have descriptions in addition to summaries)
   optional FloatingMeta meta = 2; // Overrides base meta
+
+  // References to caption text items
   repeated RefItem captions = 3;
+
+  // References to items that reference this code block
   repeated RefItem references = 4;
+
+  // References to footnote items
   repeated RefItem footnotes = 5;
+
+  // Optional rendered image of the code (for formatted/styled code)
   optional ImageRef image = 6;
+
+  // Programming language identifier (e.g., "python", "java", "javascript")
+  // Used for syntax highlighting and code analysis
   optional string code_language = 7;
 }
 
-// FormulaItem represents a mathematical formula
+// FormulaItem represents a mathematical formula or equation.
+// Formulas can be inline (within text) or display (on separate line).
 message FormulaItem {
+  // Common text item fields
+  // The text field contains LaTeX or MathML representation
   TextItemBase base = 1;
 }
 
-// TextItem represents generic text content
+// TextItem represents generic text content (paragraphs, captions, etc.).
+// This is the most common text item type for body text.
 message TextItem {
+  // Common text item fields
   TextItemBase base = 1;
 }
 
-// ProvenanceItem tracks the location of content in the source document
+// ProvenanceItem tracks the precise location of content in the source document.
+// This allows tracing any content back to its exact position in the original file.
 message ProvenanceItem {
+  // Page number where this content appears (1-indexed)
   int32 page_no = 1;
+
+  // Bounding box coordinates on the page
   BoundingBox bbox = 2;
+
+  // Character span in the original text stream
+  // Two integers: [start_index, end_index]
   repeated int32 charspan = 3;
 }
 
-// BoundingBox defines a rectangular area in the document
+// BoundingBox defines a rectangular region in page coordinates.
+// Coordinates can be in different systems (top-left or bottom-left origin).
 message BoundingBox {
+  // Left edge (x-coordinate)
   double l = 1; // left
+
+  // Top edge (y-coordinate)
   double t = 2; // top
+
+  // Right edge (x-coordinate)
   double r = 3; // right
+
+  // Bottom edge (y-coordinate)
   double b = 4; // bottom
+
+  // Coordinate system origin (e.g., "top-left", "bottom-left")
+  // Specifies how to interpret the coordinates
   optional string coord_origin = 5;
 }
 
-// ImageRef references an image with its properties
+// ImageRef references an embedded image with its properties.
+// Images can be extracted from the document or rendered representations.
 message ImageRef {
+  // MIME type of the image (e.g., "image/png", "image/jpeg")
   string mimetype = 1;
+
+  // Resolution in dots per inch
   int32 dpi = 2;
+
+  // Image dimensions
   Size size = 3;
+
+  // URI where the image can be accessed
+  // Can be a data URI, file path, or URL
   string uri = 4;
 }
 
-// Size defines width and height
+// Size represents 2D dimensions (width and height).
+// Used for images, pages, and other visual elements.
 message Size {
+  // Width in pixels or points
   double width = 1;
+
+  // Height in pixels or points
   double height = 2;
 }
 
-// PictureItem represents an image or picture in the document
+// PictureItem represents an image or figure in the document.
+// Pictures can have AI-generated descriptions, classifications, and captions.
 message PictureItem {
+  // Unique reference ID for this picture (e.g., "#/pictures/0")
   optional string self_ref = 1;
+
+  // Reference to the parent group
   RefItem parent = 2;
+
+  // References to child items
   repeated RefItem children = 3;
+
+  // The content layer this picture belongs to
   ContentLayer content_layer = 4;
+
+  // Rich metadata including AI-generated descriptions and classifications
   optional PictureMeta meta = 5;
+
+  // Label/type of picture (typically "picture")
   string label = 6;
+
+  // Provenance information (location in source document)
   repeated ProvenanceItem prov = 7;
+
+  // References to caption text items
   repeated RefItem captions = 8;
+
+  // References to items that reference this picture
   repeated RefItem references = 9;
+
+  // References to footnote items
   repeated RefItem footnotes = 10;
+
+  // The actual image data reference
   optional ImageRef image = 11;
 }
 
-// PictureMeta contains metadata specific to pictures
+// PictureMeta contains rich metadata for pictures, including AI analysis.
+// This enables advanced features like image search, classification, and understanding.
 message PictureMeta {
+  // AI-generated summary of the image content
   optional SummaryMetaField summary = 1;
+
+  // Detailed AI-generated description
   optional DescriptionMetaField description = 2;
+
+  // AI-generated classification labels (e.g., "chart", "diagram", "photo")
   optional PictureClassificationMetaField classification = 3;
+
+  // Chemical structure detection (for scientific documents)
   optional MoleculeMetaField molecule = 4;
+
+  // Chart data extraction (converts chart images to structured data)
   optional TabularChartMetaField tabular_chart = 5;
 }
 
-// DescriptionMetaField contains AI-generated description
+// DescriptionMetaField contains an AI-generated detailed description.
+// Similar to SummaryMetaField but with more detail.
 message DescriptionMetaField {
+  // Confidence score for the generated description (0.0 to 1.0)
   optional double confidence = 1;
+
+  // Name/ID of the AI model that created this description
   optional string created_by = 2;
+
+  // The generated description text
   string text = 3;
 }
 
-// PictureClassificationMetaField contains classification predictions
+// PictureClassificationMetaField contains AI classification results.
+// Multiple predictions can be provided with confidence scores.
 message PictureClassificationMetaField {
+  // List of classification predictions, typically ordered by confidence
   repeated PictureClassificationPrediction predictions = 1;
 }
 
-// PictureClassificationPrediction is a single classification result
+// PictureClassificationPrediction is a single classification result.
+// Each prediction assigns a class label with a confidence score.
 message PictureClassificationPrediction {
+  // Confidence score for this classification (0.0 to 1.0)
   optional double confidence = 1;
+
+  // Name/ID of the AI model that made this prediction
   optional string created_by = 2;
+
+  // The predicted class name (e.g., "chart", "diagram", "photo", "screenshot")
   string class_name = 3;
 }
 
-// MoleculeMetaField contains chemical structure information
+// MoleculeMetaField contains chemical structure information.
+// Used in scientific documents to extract and represent molecular structures.
 message MoleculeMetaField {
+  // Confidence score for the structure detection (0.0 to 1.0)
   optional double confidence = 1;
+
+  // Name/ID of the AI model that detected the structure
   optional string created_by = 2;
+
+  // SMILES (Simplified Molecular Input Line Entry System) notation
+  // A string representation of the chemical structure
   string smi = 3; // SMILES notation
 }
 
-// TabularChartMetaField contains chart data extracted from images
+// TabularChartMetaField contains chart data extracted from images.
+// AI models can convert chart images into structured tabular data.
 message TabularChartMetaField {
+  // Confidence score for the chart extraction (0.0 to 1.0)
   optional double confidence = 1;
+
+  // Name/ID of the AI model that extracted the data
   optional string created_by = 2;
+
+  // Optional chart title (extracted from image or caption)
   optional string title = 3;
+
+  // The extracted tabular data
   TableData chart_data = 4;
 }
 
-// FloatingMeta contains metadata for floating elements (tables, code, etc.)
+// FloatingMeta contains metadata for floating elements (tables, code blocks, figures).
+// These elements typically have both summaries and descriptions.
 message FloatingMeta {
+  // AI-generated summary
   optional SummaryMetaField summary = 1;
+
+  // AI-generated detailed description
   optional DescriptionMetaField description = 2;
 }
 
-// TableItem represents a table in the document
+// TableItem represents a table in the document with full structure.
+// Tables are one of the most complex elements, with cell-level formatting
+// and relationships.
 message TableItem {
+  // Unique reference ID for this table (e.g., "#/tables/0")
   string self_ref = 1;
+
+  // Reference to the parent group
   optional RefItem parent = 2;
+
+  // References to child items
   repeated RefItem children = 3;
+
+  // The content layer this table belongs to
   ContentLayer content_layer = 4;
+
+  // Optional metadata (summaries, descriptions)
   optional FloatingMeta meta = 5;
+
+  // Label/type of table (typically "table")
   string label = 6;
+
+  // Provenance information (location in source document)
   repeated ProvenanceItem prov = 7;
+
+  // References to caption text items
   repeated RefItem captions = 8;
+
+  // References to items that reference this table
   repeated RefItem references = 9;
+
+  // References to footnote items
   repeated RefItem footnotes = 10;
+
+  // Optional rendered image of the table
   optional ImageRef image = 11;
+
+  // The table's data structure (cells, rows, columns)
   TableData data = 12;
 }
 
-// TableData contains the table structure and content
+// TableData contains the complete table structure and content.
+// Tables are represented as both a flat list of cells and a 2D grid.
 message TableData {
-  // Using google.protobuf.Any for table_cells since it's List<Object> in Java
-  // In practice, you might want to define specific types
+  // Legacy field for compatibility (simplified representation)
+  // Using string for now; could be structured objects in future versions
   repeated string table_cells = 1; // Simplified to string for now
+
+  // Number of rows in the table
   int32 num_rows = 2;
+
+  // Number of columns in the table
   int32 num_cols = 3;
+
+  // 2D grid of table cells (rows containing cells)
+  // This provides the structured table layout
   repeated TableRow grid = 4;
 }
 
-// TableRow is a single row in the table grid
+// TableRow represents a single row in the table.
+// Each row contains one or more cells.
 message TableRow {
+  // List of cells in this row
   repeated TableCell cells = 1;
 }
 
-// TableCell is a single cell in the table
+// TableCell represents a single cell in a table.
+// Cells can span multiple rows/columns and have various properties.
 message TableCell {
+  // Bounding box of this cell in the source document
   BoundingBox bbox = 1;
+
+  // Number of rows this cell spans (1 = single row)
   int32 row_span = 2;
+
+  // Number of columns this cell spans (1 = single column)
   int32 col_span = 3;
+
+  // Starting row offset index for merged cells
   int32 start_row_offset_idx = 4;
+
+  // Ending row offset index for merged cells
   int32 end_row_offset_idx = 5;
+
+  // Starting column offset index for merged cells
   int32 start_col_offset_idx = 6;
+
+  // Ending column offset index for merged cells
   int32 end_col_offset_idx = 7;
+
+  // Text content of the cell
   string text = 8;
+
+  // Whether this cell is a column header
   bool column_header = 9;
+
+  // Whether this cell is a row header
   bool row_header = 10;
+
+  // Whether this cell starts a row section
   bool row_section = 11;
+
+  // Whether this cell is fillable (form field)
   bool fillable = 12;
 }
 
-// KeyValueItem represents a key-value pair (e.g., form fields)
+// KeyValueItem represents a key-value pair extracted from forms.
+// The graph structure represents the relationship between keys and values.
 message KeyValueItem {
+  // Unique reference ID for this key-value item (e.g., "#/key_value_items/0")
   string self_ref = 1;
+
+  // Reference to the parent group
   optional RefItem parent = 2;
+
+  // References to child items
   repeated RefItem children = 3;
+
+  // The content layer this item belongs to
   ContentLayer content_layer = 4;
+
+  // Optional metadata
   optional FloatingMeta meta = 5;
+
+  // Label/type (typically "key_value_region")
   string label = 6;
+
+  // Provenance information
   repeated ProvenanceItem prov = 7;
+
+  // References to caption text items
   repeated RefItem captions = 8;
+
+  // References to items that reference this key-value pair
   repeated RefItem references = 9;
+
+  // References to footnote items
   repeated RefItem footnotes = 10;
+
+  // Optional rendered image
   optional ImageRef image = 11;
+
+  // Graph structure representing key-value relationships
   GraphData graph = 12;
 }
 
-// GraphData represents the structure of key-value relationships
+// GraphData represents the structure of key-value relationships as a graph.
+// Cells are nodes (keys, values, checkboxes), links are edges (relationships).
 message GraphData {
+  // List of cells (nodes in the graph)
   repeated GraphCell cells = 1;
+
+  // List of links (edges in the graph)
   repeated GraphLink links = 2;
 }
 
-// GraphCellLabel defines the role of a cell in a key-value graph
+// GraphCellLabel defines the role of a cell in a key-value graph.
 enum GraphCellLabel {
+  // Default/unknown cell type
   GRAPH_CELL_LABEL_UNSPECIFIED = 0;
+
+  // Key/label cell (e.g., "Name:", "Address:")
   GRAPH_CELL_LABEL_KEY = 1;
+
+  // Value cell (the data entered for a key)
   GRAPH_CELL_LABEL_VALUE = 2;
+
+  // Checkbox cell (selected or unselected)
   GRAPH_CELL_LABEL_CHECKBOX = 3;
 }
 
-// GraphCell is a node in the key-value graph
+// GraphCell is a node in the key-value graph.
+// Each cell represents a piece of information in the form structure.
 message GraphCell {
+  // Semantic label indicating the cell's role
   GraphCellLabel label = 1;
+
+  // Unique integer ID for this cell within the graph
   int32 cell_id = 2;
+
+  // Processed/cleaned text content of the cell
   string text = 3;
+
+  // Original text exactly as it appeared
   string orig = 4;
+
+  // Optional provenance information (location in source)
   optional ProvenanceItem prov = 5;
+
+  // Optional reference to the corresponding text item
   optional RefItem item_ref = 6;
 }
 
-// GraphLinkLabel defines the type of relationship between cells
+// GraphLinkLabel defines the type of relationship between cells.
 enum GraphLinkLabel {
+  // Default/unknown link type
   GRAPH_LINK_LABEL_UNSPECIFIED = 0;
+
+  // Link from key to its value
   GRAPH_LINK_LABEL_TO_VALUE = 1;
+
+  // Link from value back to its key
   GRAPH_LINK_LABEL_TO_KEY = 2;
+
+  // Link to parent element (hierarchical forms)
   GRAPH_LINK_LABEL_TO_PARENT = 3;
+
+  // Link to child element (hierarchical forms)
   GRAPH_LINK_LABEL_TO_CHILD = 4;
 }
 
-// GraphLink is an edge in the key-value graph
+// GraphLink is an edge in the key-value graph.
+// Links connect cells to represent their relationships.
 message GraphLink {
+  // Semantic label indicating the relationship type
   GraphLinkLabel label = 1;
+
+  // ID of the source cell (where the link originates)
   int32 source_cell_id = 2;
+
+  // ID of the target cell (where the link points to)
   int32 target_cell_id = 3;
 }
 
-// FormItem represents a form element
+// FormItem represents a form element in the document.
+// Similar to KeyValueItem but represents complete form structures.
 message FormItem {
+  // Unique reference ID for this form item (e.g., "#/form_items/0")
   string self_ref = 1;
+
+  // Reference to the parent group
   optional RefItem parent = 2;
+
+  // References to child items
   repeated RefItem children = 3;
+
+  // The content layer this form belongs to
   ContentLayer content_layer = 4;
+
+  // Optional metadata
   optional FloatingMeta meta = 5;
+
+  // Label/type of form (typically "form")
   string label = 6;
+
+  // Provenance information
   repeated ProvenanceItem prov = 7;
+
+  // References to caption text items
   repeated RefItem captions = 8;
+
+  // References to items that reference this form
   repeated RefItem references = 9;
+
+  // References to footnote items
   repeated RefItem footnotes = 10;
+
+  // Optional rendered image
   optional ImageRef image = 11;
+
+  // Graph structure representing form field relationships
   GraphData graph = 12;
 }
 
-// PageItem represents a page in the document
+// PageItem represents metadata about a single page in the document.
+// This includes page dimensions and optional page images.
 message PageItem {
+  // Dimensions of the page
   Size size = 1;
+
+  // Optional full-page image (for scanned documents or page previews)
   optional ImageRef image = 2;
+
+  // Page number (1-indexed)
   int32 page_no = 3;
 }
