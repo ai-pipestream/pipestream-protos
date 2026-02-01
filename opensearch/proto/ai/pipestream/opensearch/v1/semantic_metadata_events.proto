@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "ai/pipestream/opensearch/v1/chunker_config.proto";
+import "ai/pipestream/opensearch/v1/embedding_config.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// =============================================================================
+// SemanticMetadataEvent — Semantic Metadata Change Events
+// =============================================================================
+//
+// This file defines the Kafka event schema for semantic metadata CRUD changes.
+// opensearch-manager (intelligence-manager) publishes these events when
+// ChunkerConfig, EmbeddingModelConfig, or IndexEmbeddingBinding entities are
+// created, updated, or deleted.
+//
+// Topic: semantic-metadata-events (single topic; use event_type to discriminate)
+//
+// Consumers (chunker, embedder) use these events to invalidate caches, refresh
+// config lookups, or trigger re-processing when configs change.
+//
+// Event flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "opensearch-manager"
+//       CRUD[ChunkerConfigService / EmbeddingConfigService]
+//       Producer[Kafka Producer]
+//       CRUD -->|on Create/Update/Delete| Producer
+//     end
+//     Producer -->|publish| Topic[semantic-metadata-events]
+//     Topic -->|consume| Chunker[module-chunker]
+//     Topic -->|consume| Embedder[module-embedder]
+//     Chunker -->|invalidate cache| Chunker
+//     Embedder -->|invalidate cache| Embedder
+//   ```
+
+// Event type discriminator for semantic metadata changes.
+enum SemanticMetadataEventType {
+  SEMANTIC_METADATA_EVENT_TYPE_UNSPECIFIED = 0;
+
+  // ChunkerConfig events
+  SEMANTIC_METADATA_EVENT_TYPE_CHUNKER_CONFIG_CREATED = 1;
+  SEMANTIC_METADATA_EVENT_TYPE_CHUNKER_CONFIG_UPDATED = 2;
+  SEMANTIC_METADATA_EVENT_TYPE_CHUNKER_CONFIG_DELETED = 3;
+
+  // EmbeddingModelConfig events
+  SEMANTIC_METADATA_EVENT_TYPE_EMBEDDING_MODEL_CONFIG_CREATED = 4;
+  SEMANTIC_METADATA_EVENT_TYPE_EMBEDDING_MODEL_CONFIG_UPDATED = 5;
+  SEMANTIC_METADATA_EVENT_TYPE_EMBEDDING_MODEL_CONFIG_DELETED = 6;
+
+  // IndexEmbeddingBinding events
+  SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_CREATED = 7;
+  SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_UPDATED = 8;
+  SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_DELETED = 9;
+}
+
+// Envelope for semantic metadata change events.
+// Published to topic: semantic-metadata-events
+message SemanticMetadataEvent {
+  // Event type discriminator.
+  SemanticMetadataEventType event_type = 1;
+
+  // Entity ID (UUID) that changed.
+  string entity_id = 2;
+
+  // When the event occurred.
+  google.protobuf.Timestamp occurred_at = 3;
+
+  // Optional snapshot of the entity after change (for CREATE/UPDATE).
+  // Omitted for DELETE events.
+  oneof payload {
+    ChunkerConfig chunker_config = 4;
+    EmbeddingModelConfig embedding_model_config = 5;
+    IndexEmbeddingBinding index_embedding_binding = 6;
+  }
+
+  // Optional previous entity snapshot (for UPDATE events only).
+  // Enables consumers to detect what changed.
+  oneof previous_payload {
+    ChunkerConfig previous_chunker_config = 7;
+    EmbeddingModelConfig previous_embedding_model_config = 8;
+    IndexEmbeddingBinding previous_index_embedding_binding = 9;
+  }
+}

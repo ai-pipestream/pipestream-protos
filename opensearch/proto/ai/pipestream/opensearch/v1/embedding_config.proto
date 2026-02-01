@@ -8,9 +8,34 @@ import "google/protobuf/timestamp.proto";
 option java_multiple_files = true;
 option java_package = "ai.pipestream.opensearch.v1";
 
-// EmbeddingConfigService provides CRUD operations for embedding model configurations
-// and index-to-embedding bindings. Used by admin UI, opensearch-sink, and indexing
-// logic to manage which embedding models and dimensions apply to which indices.
+// =============================================================================
+// EmbeddingConfigService — Embedding Model & Index Binding Registry API
+// =============================================================================
+//
+// This file defines the gRPC service and messages for managing embedding model
+// configurations and index-to-embedding bindings. EmbeddingConfigService is
+// the registry where embedding models (model_identifier, dimensions) and their
+// bindings to OpenSearch index fields are stored and looked up.
+//
+// EmbeddingModelConfig: model metadata (name, identifier, dimensions).
+// IndexEmbeddingBinding: links an index field to an EmbeddingModelConfig.
+//
+// Data flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "EmbeddingConfigService"
+//       EMC[EmbeddingModelConfig CRUD]
+//       IEB[IndexEmbeddingBinding CRUD]
+//       DB[(PostgreSQL)]
+//       EMC --> DB
+//       IEB --> DB
+//     end
+//     Admin[Admin UI] --> EMC
+//     Admin --> IEB
+//     Embedder[module-embedder] -.->|resolve dimensions| EMC
+//     Sink[opensearch-sink] -.->|resolve field binding| IEB
+//   ```
 service EmbeddingConfigService {
   // EmbeddingModelConfig CRUD
   rpc CreateEmbeddingModelConfig(CreateEmbeddingModelConfigRequest) returns (CreateEmbeddingModelConfigResponse);

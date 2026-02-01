@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ai.pipestream.types.v1;
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.types.v1";
+
+// =============================================================================
+// Uuid — Universally Unique Identifier (RFC 4122) Semantic Type
+// =============================================================================
+//
+// This file defines an optional Uuid message for semantic typing. Protocol
+// Buffers has no built-in UUID well-known type; most fields use `string`.
+// Use this message when you want explicit UUID typing or validation hooks.
+//
+// Structure (Mermaid):
+//
+//   ```mermaid
+//   classDiagram
+//     class Uuid {
+//       +string value
+//     }
+//     Uuid : value stores canonical UUID string
+//     Uuid : e.g. "550e8400-e29b-41d4-a716-446655440000"
+//   ```
+//
+// UUID represents a universally unique identifier (RFC 4122).
+//
+// Protocol Buffers does not have a built-in UUID well-known type. This message
+// provides semantic typing when a field represents a UUID rather than an
+// arbitrary string. For most use cases, using `string` directly is acceptable;
+// use this message when you want explicit UUID typing or validation hooks.
+//
+// Format: canonical UUID string (e.g., "550e8400-e29b-41d4-a716-446655440000").
+// The value field stores the string representation.
+message Uuid {
+  // Canonical UUID string representation (RFC 4122 format).
+  // Example: "550e8400-e29b-41d4-a716-446655440000"
+  string value = 1;
+}

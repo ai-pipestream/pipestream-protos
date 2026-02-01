@@ -8,9 +8,35 @@ import "google/protobuf/timestamp.proto";
 option java_multiple_files = true;
 option java_package = "ai.pipestream.opensearch.v1";
 
-// ChunkerConfigService provides CRUD operations for chunker configurations.
-// Used by admin UI, pipeline configuration, and indexing logic to manage
-// text chunking strategies and their parameters.
+// =============================================================================
+// ChunkerConfigService — Chunker Configuration Registry API
+// =============================================================================
+//
+// This file defines the gRPC service and messages for managing text chunking
+// strategy configurations. ChunkerConfigService is the registry where chunker
+// configs (algorithm, chunk size, overlap, source field, etc.) are stored and
+// looked up by module-chunker, pipelines, and indexing logic.
+//
+// ChunkerConfig stores the full config as a JSON blob (config_json) for
+// flexibility as chunking strategies evolve. config_id is a stable identifier
+// derived from parameters: {algorithm}-{sourceField}-{chunkSize}-{chunkOverlap}.
+//
+// Data flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "ChunkerConfigService"
+//       CRUD[Create/Get/Update/Delete/List]
+//       DB[(PostgreSQL chunker_config)]
+//       CRUD --> DB
+//     end
+//     Admin[Admin UI] --> CRUD
+//     Pipeline[Pipeline Config] --> CRUD
+//     Chunker[module-chunker] -.->|optional lookup| CRUD
+//     Indexer[Indexing Logic] -.->|resolve config_id| CRUD
+//   ```
+//
+// See INTEGRATION_ALIGNMENT.md for module-chunker integration details.
 //
 // Chunker configs define how documents are split into chunks before embedding.
 // Configs are stored as JSON blobs for flexibility, with schemas validated
@@ -98,13 +124,14 @@ message CreateChunkerConfigRequest {
   // Must be unique across all chunker configs.
   string name = 2;
 
-  // Stable configuration identifier (required).
+  // Stable configuration identifier (optional).
   // Format: {algorithm}-{sourceField}-{chunkSize}-{chunkOverlap}
   // Example: "token-body-512-50"
-  string config_id = 3;
+  // If omitted, server derives from config_json using module-chunker's format.
+  optional string config_id = 3;
 
   // Full chunker configuration as JSON (required).
-  // Must be a valid ChunkerConfig structure.
+  // Must be a valid ChunkerConfig structure matching module-chunker schema.
   google.protobuf.Struct config_json = 4;
 
   // Optional Apicurio Registry schema reference for validation.
