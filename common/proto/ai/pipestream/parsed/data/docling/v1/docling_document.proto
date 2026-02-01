@@ -183,7 +183,7 @@ message ListItem {
 // CodeItem represents a code block
 message CodeItem {
   TextItemBase base = 1;
-  optional FloatingMeta meta = 2;  // Overrides base meta
+  optional FloatingMeta meta = 2; // Overrides base meta
   repeated RefItem captions = 3;
   repeated RefItem references = 4;
   repeated RefItem footnotes = 5;
@@ -210,10 +210,10 @@ message ProvenanceItem {
 
 // BoundingBox defines a rectangular area in the document
 message BoundingBox {
-  double l = 1;  // left
-  double t = 2;  // top
-  double r = 3;  // right
-  double b = 4;  // bottom
+  double l = 1; // left
+  double t = 2; // top
+  double r = 3; // right
+  double b = 4; // bottom
   optional string coord_origin = 5;
 }
 
@@ -278,7 +278,7 @@ message PictureClassificationPrediction {
 message MoleculeMetaField {
   optional double confidence = 1;
   optional string created_by = 2;
-  string smi = 3;  // SMILES notation
+  string smi = 3; // SMILES notation
 }
 
 // TabularChartMetaField contains chart data extracted from images
@@ -315,7 +315,7 @@ message TableItem {
 message TableData {
   // Using google.protobuf.Any for table_cells since it's List<Object> in Java
   // In practice, you might want to define specific types
-  repeated string table_cells = 1;  // Simplified to string for now
+  repeated string table_cells = 1; // Simplified to string for now
   int32 num_rows = 2;
   int32 num_cols = 3;
   repeated TableRow grid = 4;
