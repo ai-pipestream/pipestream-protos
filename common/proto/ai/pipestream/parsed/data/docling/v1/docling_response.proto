@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package ai.pipestream.parsed.data.docling.v1;
+
+import "ai/pipestream/parsed/data/docling/v1/docling_document.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DoclingResponseProto";
+option java_package = "ai.pipestream.parsed.data.docling.v1";
+
+// DoclingResponse wraps a DoclingDocument with processing metadata
+// This is the primary message used to represent a document parsed by Docling
+message DoclingResponse {
+  // Document identifier
+  string doc_id = 1;
+
+  // Parse identifier (for tracking multiple parses of the same document)
+  string parse_id = 2;
+
+  // The parsed document structure (main content)
+  optional DoclingDocument document = 3;
+
+  // Parse status and statistics
+  DoclingParseStatus status = 4;
+
+  // When the document was parsed
+  google.protobuf.Timestamp parsed_at = 5;
+
+  // Additional metadata about the parse operation
+  DoclingParseMetadata parse_metadata = 6;
+
+  // Raw document markdown export (if generated)
+  optional string markdown = 7;
+
+  // Raw document HTML export (if generated)
+  optional string html = 8;
+
+  // Raw document plain text export (if generated)
+  optional string text = 9;
+}
+
+// DoclingParseStatus contains information about the parse operation
+message DoclingParseStatus {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_SUCCESS = 1;
+    STATUS_PARTIAL = 2;
+    STATUS_FAILED = 3;
+    STATUS_TIMEOUT = 4;
+  }
+
+  Status status = 1;
+
+  // Time taken to parse the document in milliseconds
+  int64 parse_time_ms = 2;
+
+  // Version of Docling used for parsing
+  optional string docling_version = 3;
+
+  // Model used for parsing (if applicable)
+  optional string model_used = 4;
+
+  // Warnings encountered during parsing
+  repeated string warnings = 5;
+
+  // Errors encountered during parsing
+  repeated string errors = 6;
+
+  // Number of pages processed
+  optional int32 pages_processed = 7;
+}
+
+// DoclingParseMetadata contains additional metadata about the parse operation
+message DoclingParseMetadata {
+  // Source of the document (file path, URL, etc.)
+  optional string source = 1;
+
+  // File size in bytes
+  optional int64 file_size_bytes = 2;
+
+  // Content type of the source document
+  optional string content_type = 3;
+
+  // Whether OCR was used
+  optional bool ocr_used = 4;
+
+  // Whether tables were detected and extracted
+  optional bool tables_extracted = 5;
+
+  // Whether images were extracted
+  optional bool images_extracted = 6;
+
+  // Language detected in the document
+  optional string detected_language = 7;
+
+  // Parse options used
+  map<string, string> parse_options = 8;
+}
+
+// DoclingExportFormat defines the available export formats
+enum DoclingExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0;
+  EXPORT_FORMAT_MARKDOWN = 1;
+  EXPORT_FORMAT_HTML = 2;
+  EXPORT_FORMAT_TEXT = 3;
+  EXPORT_FORMAT_JSON = 4;
+  EXPORT_FORMAT_DOCTAGS = 5;
+}
