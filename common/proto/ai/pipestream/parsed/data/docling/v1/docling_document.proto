@@ -816,9 +816,8 @@ message TableItem {
 // TableData contains the complete table structure and content.
 // Tables are represented as both a flat list of cells and a 2D grid.
 message TableData {
-  // Legacy field for compatibility (simplified representation)
-  // Using string for now; could be structured objects in future versions
-  repeated string table_cells = 1; // Simplified to string for now
+  // Flat list of all table cells (structured format)
+  repeated TableCell table_cells = 1;
 
   // Number of rows in the table
   int32 num_rows = 2;
