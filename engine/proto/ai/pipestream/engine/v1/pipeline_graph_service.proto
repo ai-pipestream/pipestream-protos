@@ -282,6 +282,19 @@ service PipelineGraphService {
   rpc DeleteAllGraphVersions(DeleteAllGraphVersionsRequest) returns (DeleteAllGraphVersionsResponse);
 
   // ===========================================================================
+  // DRAFT OPERATIONS
+  // ===========================================================================
+
+  // Saves a draft pipeline graph (editor work-in-progress, not activated).
+  rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+
+  // Retrieves a draft pipeline graph by cluster, graph, and optional user.
+  rpc GetDraft(GetDraftRequest) returns (GetDraftResponse);
+
+  // Deletes a draft pipeline graph.
+  rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
+
+  // ===========================================================================
   // VERSION UTILITIES
   // ===========================================================================
 
@@ -726,6 +739,51 @@ message DeleteAllGraphVersionsResponse {
 
   // Number of versions that were deleted.
   int64 deleted_count = 2;
+}
+
+// ============================================================================
+// DRAFT MESSAGES
+// ============================================================================
+
+// Request to save a draft pipeline graph.
+message SaveDraftRequest {
+  string cluster_id = 1;
+  string graph_id = 2;
+  optional string user_id = 3;
+  ai.pipestream.config.v1.PipelineGraph graph = 4;
+}
+
+// Response from saving a draft.
+message SaveDraftResponse {
+  bool success = 1;
+  optional string message = 2;
+}
+
+// Request to retrieve a draft pipeline graph.
+message GetDraftRequest {
+  string cluster_id = 1;
+  string graph_id = 2;
+  optional string user_id = 3;
+}
+
+// Response from retrieving a draft.
+message GetDraftResponse {
+  bool found = 1;
+  ai.pipestream.config.v1.PipelineGraph graph = 2;
+  // When the draft was last saved (set only when found = true).
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// Request to delete a draft pipeline graph.
+message DeleteDraftRequest {
+  string cluster_id = 1;
+  string graph_id = 2;
+  optional string user_id = 3;
+}
+
+// Response from deleting a draft.
+message DeleteDraftResponse {
+  bool deleted = 1;
 }
 
 // ============================================================================
