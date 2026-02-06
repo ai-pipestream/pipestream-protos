@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.engine.v1";
+
+// GraphUpdateEvent is published to Kafka when a pipeline graph is created, activated, or deactivated.
+// Other engine instances consume this to reload their in-memory GraphCache from the database.
+message GraphUpdateEvent {
+  // Unique event ID (UUID string) used as Kafka message key for partitioning.
+  string event_id = 1;
+  string graph_id = 2;
+  string cluster_id = 3;
+  int64 version = 4;
+  // Whether this event indicates the graph was activated or deactivated (clearer than a bare bool).
+  GraphUpdateEventKind update_kind = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Kind of graph update for the event (replaces a bare is_active bool).
+enum GraphUpdateEventKind {
+  GRAPH_UPDATE_EVENT_KIND_UNSPECIFIED = 0;
+  GRAPH_UPDATE_EVENT_KIND_ACTIVATED = 1;
+  GRAPH_UPDATE_EVENT_KIND_DEACTIVATED = 2;
+}
