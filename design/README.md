@@ -91,7 +91,7 @@ dependencies {
 
 | Message/Service | Description |
 |-----------------|-------------|
-| `DesignModev1Service` | Design mode operations for pipeline simulation and deployment |
+| `DesignModeService` | Design mode operations for pipeline simulation and deployment |
 | `CreateDesignGraphRequest/Response` | Create a new design-time graph |
 | `SimulatePipelineRequest/Response` | Run sample document through graph in frontend |
 | `SimulationStep` | Per-node input/output and timing during simulation |
