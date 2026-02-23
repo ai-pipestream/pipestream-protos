@@ -9,6 +9,13 @@ option java_outer_classname = "S3CrawlEventsProto";
 option java_package = "ai.pipestream.connector.s3.v1";
 
 // S3 crawl event representing an S3 object to be processed.
+enum CrawlSource {
+  CRAWL_SOURCE_UNSPECIFIED = 0;
+  CRAWL_SOURCE_INITIAL = 1;
+  CRAWL_SOURCE_INCREMENTAL = 2;
+  CRAWL_SOURCE_LIVE = 3;
+}
+
 message S3CrawlEvent {
   // Deterministic: hash(datasource_id + bucket + key + version_id + timestamp_millis)
   string event_id = 1;
@@ -38,4 +45,7 @@ message S3CrawlEvent {
 
   // Source S3 URL (e.g., "s3://bucket/key" or "s3://bucket/key?versionId=xyz")
   string source_url = 10;
+
+  // How this crawl event was emitted
+  CrawlSource crawl_source = 11;
 }
