@@ -19,6 +19,7 @@ This module emphasizes the critical separation between immutable `parsed_metadat
 | `ai/pipestream/data/v1/pipeline_core_types.proto` | Core `PipeDoc`, `PipeStream`, `SearchMetadata`, `Blob`, and field mapping types |
 | `ai/pipestream/events/v1/document_events.proto` | Document lifecycle events (`DocumentUploadedEvent`) |
 | `ai/pipestream/events/v1/repo_metadata_events.proto` | Repository metadata change events |
+| `ai/pipestream/events/v1/intake_repo_events.proto` | Pipeline intake trigger events (`IntakeRepoEvent`) |
 | `ai/pipestream/parsed/data/tika/v1/tika_response.proto` | Apache Tika parser output structure |
 | `ai/pipestream/parsed/data/**/*.proto` | Format-specific metadata (PDF, Office, HTML, Image, Email, EPUB, etc.) |
 

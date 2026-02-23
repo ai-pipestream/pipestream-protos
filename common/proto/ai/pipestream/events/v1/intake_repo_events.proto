@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package ai.pipestream.events.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.events.v1";
+
+// ============================================
+// INTAKE REPO EVENTS
+// Source-of-truth trigger envelope for repository docs
+// that are ready for pipeline intake.
+// ============================================
+
+// Emitted when a repository document is ready for intake routing.
+// A dedicated event stream avoids overloading generic repository metadata events.
+message IntakeRepoEvent {
+  string event_id = 1;
+  // Intent of this intake event.
+  IntakeRepoEventType event_type = 2;
+  google.protobuf.Timestamp event_time = 3;
+
+  // Canonical document identity.
+  string doc_id = 4;
+  string account_id = 5;
+  string connector_id = 6;
+
+  // Deterministic datasource identifier for intake routing.
+  string datasource_id = 7;
+
+  // Optional logical source node. For this WIP path this is typically "connector-intake".
+  string source_node_id = 8;
+
+  // Version marker from repository event/source object store.
+  string s3_version_id = 9;
+
+  // Extensible metadata for staged/contextual routing and future enrichment.
+  // For now this may include ownership hints, source timestamps, and audit fields.
+  google.protobuf.Struct metadata = 10;
+
+  // Optional free-form text reason (especially useful for DELETED/cleanup paths).
+  optional string message = 11;
+}
+
+// Supported intake lifecycle intents.
+enum IntakeRepoEventType {
+  INTAKE_REPO_EVENT_TYPE_UNSPECIFIED = 0;
+  INTAKE_REPO_EVENT_TYPE_CREATED = 1;
+  INTAKE_REPO_EVENT_TYPE_DELETED = 2;
+}
