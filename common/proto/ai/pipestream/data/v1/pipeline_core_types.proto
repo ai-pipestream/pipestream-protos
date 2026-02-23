@@ -371,6 +371,18 @@ message HydrationConfig {
   }
 }
 
+// Configuration for right-to-be-forgotten handling.
+//
+// Expresses whether a stream is subject to RTBF behavior and what
+// downstream data surfaces should be deleted.
+message RightToBeForgottenConfig {
+  // Delete indexed content for this stream when RTBF is enabled.
+  bool delete_search_index = 1;
+
+  // Delete source blobs and source-of-truth storage content when RTBF is enabled.
+  bool delete_source_blobs = 2;
+}
+
 // Configuration for document persistence decisions.
 //
 // Controls whether documents are persisted to storage and under what conditions.
@@ -452,6 +464,9 @@ message IngestionConfig {
   // Merged from Tier 1 + Tier 2 custom_config fields. This is the only
   // configuration that uses JSON Schema validation (connector-specific).
   google.protobuf.Struct custom_config = 4;
+
+  // Right-to-be-forgotten policy for this stream.
+  RightToBeForgottenConfig right_to_be_forgotten = 5;
 }
 
 // Metadata for tracking stream processing history and context.

@@ -350,6 +350,8 @@ message DatasourceInstance {
 
     // Output hints for downstream processing - uses shared type from core types.
     ai.pipestream.data.v1.OutputHints output_hints = 4;
+    // Right-to-be-forgotten overrides for this stream entry node.
+    optional ai.pipestream.data.v1.RightToBeForgottenConfig right_to_be_forgotten = 6;
 
     // Node-specific custom config (ONLY field validated against JSON Schema).
     // Examples: Node-specific connector options (e.g., "parse_images" for Wikipedia).

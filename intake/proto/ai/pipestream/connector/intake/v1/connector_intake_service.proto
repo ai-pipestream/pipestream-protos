@@ -198,6 +198,9 @@ message DataSourceConfig {
     // Examples: Wikipedia connector might have "parse_images", "include_history_metadata", "extract_urls"
     // This is the only JSON Schema-validated configuration.
     google.protobuf.Struct custom_config = 5;
+
+    // Right-to-be-forgotten policy for this datasource (stream-default fallback).
+    ai.pipestream.data.v1.RightToBeForgottenConfig right_to_be_forgotten = 6;
   }
 
   // Configuration for document persistence decisions.

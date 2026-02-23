@@ -117,6 +117,13 @@ This module provides shared configuration types used across the ingestion pipeli
   - `HydrationConfig` - Blob handling policies (resolved from Tier 1 + Tier 2)
   - `OutputHints` - Routing hints for downstream modules (from Tier 2)
   - `custom_config` - Merged connector-specific config (from Tier 1 + Tier 2)
+- `right_to_be_forgotten` - Right-to-be-forgotten policy merged from datasource defaults and stream overrides
+
+### RightToBeForgottenConfig
+- **Purpose**: Controls how the stream should be handled for privacy/delete workflows.
+- **Fields**:
+  - `delete_search_index`: whether to delete indexed/searchable document content.
+  - `delete_source_blobs`: whether to delete source storage blob content.
 
 ### HydrationConfig
 - **Purpose**: Controls blob hydration/dehydration during pipeline processing

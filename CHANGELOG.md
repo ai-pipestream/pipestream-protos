@@ -47,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Pipeline Graph Versioning
 - **PipelineGraph.version** (field 10): Version number for optimistic locking to detect concurrent modifications.
 
+#### RTBF Ingestion Configuration
+- **RightToBeForgottenConfig** (new): New datasource/stream policy type with:
+  - `delete_search_index`: remove indexed content when enabled
+  - `delete_source_blobs`: remove source/blob content when enabled
+- **ConnectorGlobalConfig.right_to_be_forgotten**: Added to datasource-level config to provide default RTBF behavior.
+- **IngestionConfig.right_to_be_forgotten**: Added stream metadata field carrying resolved RTBF policy through intake-to-engine handoff.
+- **DatasourceInstance.NodeConfig.right_to_be_forgotten**: Added as stream-level override in engine graph config.
+
 ### Removed
 
 #### Transport Configuration Cleanup
