@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package ai.pipestream.testing.harness.v1;
+
+import "ai/pipestream/data/module/v1/module_service.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ModuleTestingSidecarServiceProto";
+option java_package = "ai.pipestream.testing.harness.v1";
+
+service ModuleTestingSidecarService {
+  // Executes a single module test call with either uploaded file input or repository input.
+  rpc RunModuleTest(RunModuleTestRequest) returns (RunModuleTestResponse);
+}
+
+message RunModuleTestRequest {
+  // Logical module service name to call (e.g. parser module name from registration).
+  string module_name = 1;
+
+  // One of the supported input sources.
+  oneof input {
+    UploadInput upload = 2;
+    RepositoryInput repository = 3;
+  }
+
+  // Module configuration payload (JSON Schema-compatible).
+  google.protobuf.Struct module_config = 4;
+
+  // Optional execution context for module logging/auditing.
+  ServiceContext context = 5;
+
+  // Logical account identifier for authorization/auditing.
+  string account_id = 6;
+
+  // Request the service to include output_doc on success.
+  bool include_output_doc = 7;
+}
+
+message ServiceContext {
+  string pipeline_name = 1;
+  string pipe_step_name = 2;
+  string stream_id = 3;
+  int64 current_hop_number = 4;
+  map<string, string> context_params = 5;
+}
+
+message UploadInput {
+  string filename = 1;
+  string mime_type = 2;
+  bytes file_data = 3;
+}
+
+message RepositoryInput {
+  // Repository node id from repository service.
+  string repository_node_id = 1;
+
+  // Optional drive hint passed through when listing documents.
+  string drive = 2;
+
+  // If true, fetches inline bytes for storage-ref blobs prior to invocation.
+  bool hydrate_blob_from_storage = 3;
+}
+
+message RunModuleTestResponse {
+  bool success = 1;
+  string message = 2;
+  int64 duration_ms = 3;
+
+  // Optional output document from module processing.
+  optional ai.pipestream.data.v1.PipeDoc output_doc = 4;
+
+  // Processor logs from the module call.
+  repeated string processor_logs = 5;
+
+  // Summaries to support lightweight UI rendering.
+  google.protobuf.Struct input_summary = 6;
+  google.protobuf.Struct output_summary = 7;
+
+  // Full process data response for advanced consumers.
+  ai.pipestream.data.module.v1.ProcessDataResponse process_data_response = 8;
+
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp completed_at = 10;
+  int64 elapsed_ms = 11;
+  string error_code = 12;
+  repeated string errors = 13;
+}
