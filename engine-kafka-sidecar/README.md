@@ -11,7 +11,7 @@ The engine-kafka-sidecar module provides protocol buffer definitions for Kafka s
 This module is published to the Buf Schema Registry:
 
 **Repository**: `buf.build/pipestreamai/engine-kafka-sidecar`
-**Latest Version**: [03816d02e29a48275182520c942a9dcdcb2374b4](https://buf.build/pipestreamai/engine-kafka-sidecar)
+**Latest Version**: [01816d02e29a48275182520c942a9dcdcb2374b4](https://buf.build/pipestreamai/engine-kafka-sidecar)
 
 ## Contents
 

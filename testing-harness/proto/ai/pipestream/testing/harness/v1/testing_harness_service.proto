@@ -70,7 +70,7 @@ message RunModuleTestResponse {
   int64 duration_ms = 3;
 
   // Optional output document from module processing.
-  optional ai.pipestream.data.v1.PipeDoc output_doc = 4;
+  ai.pipestream.data.v1.PipeDoc output_doc = 4;
 
   // Processor logs from the module call.
   repeated string processor_logs = 5;

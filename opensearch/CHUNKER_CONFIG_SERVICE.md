@@ -99,7 +99,7 @@ grpcurl -plaintext -d '{
     "preserveUrls": true,
     "cleanText": true
   }
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/CreateChunkerConfig
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/CreateChunkerConfig
 ```
 
 ### Get a Chunker Config
@@ -108,13 +108,13 @@ grpcurl -plaintext -d '{
 # By ID
 grpcurl -plaintext -d '{
   "id": "550e8400-e29b-41d4-a716-446655440000"
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/GetChunkerConfig
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/GetChunkerConfig
 
 # By name
 grpcurl -plaintext -d '{
   "id": "Standard 512-token chunks",
   "by_name": true
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/GetChunkerConfig
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/GetChunkerConfig
 ```
 
 ### List All Chunker Configs
@@ -122,7 +122,7 @@ grpcurl -plaintext -d '{
 ```bash
 grpcurl -plaintext -d '{
   "page_size": 50
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/ListChunkerConfigs
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/ListChunkerConfigs
 ```
 
 ### Update a Chunker Config
@@ -139,7 +139,7 @@ grpcurl -plaintext -d '{
     "preserveUrls": true,
     "cleanText": true
   }
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/UpdateChunkerConfig
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/UpdateChunkerConfig
 ```
 
 ### Delete a Chunker Config
@@ -147,7 +147,7 @@ grpcurl -plaintext -d '{
 ```bash
 grpcurl -plaintext -d '{
   "id": "550e8400-e29b-41d4-a716-446655440000"
-}' localhost:38103 ai.pipestream.opensearch.v1.ChunkerConfigService/DeleteChunkerConfig
+}' localhost:18103 ai.pipestream.opensearch.v1.ChunkerConfigService/DeleteChunkerConfig
 ```
 
 ## Integration with Pipeline
