@@ -103,6 +103,10 @@ message IndexDocumentRequest {
   optional string document_id = 3;
   // Optional routing value for controlling shard placement
   optional string routing = 4;
+  // Account ID for ownership and binding
+  optional string account_id = 5;
+  // DataSource ID for ownership and binding
+  optional string datasource_id = 6;
 }
 
 // Request to index any protobuf message type with dynamic schema mapping.
@@ -118,6 +122,10 @@ message IndexAnyDocumentRequest {
   optional string routing = 4;
   // ProtoFieldMapper rules for transforming protobuf fields to index fields
   repeated string field_mappings = 5;
+  // Account ID for ownership and binding
+  optional string account_id = 6;
+  // DataSource ID for ownership and binding
+  optional string datasource_id = 7;
 }
 
 // Response from indexing a strongly-typed OpenSearchDocument.
