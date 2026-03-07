@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// =============================================================================
+// VectorSetService — VectorSet Registry API
+// =============================================================================
+//
+// VectorSet is the canonical authority for the full semantic tuple:
+// (chunker config + embedding model + index + field + result set).
+// It defines what vector configuration is valid for a given index/field
+// and supersedes IndexEmbeddingBinding as the source of truth.
+//
+// IndexEmbeddingBinding remains as a backward-compatible read path during
+// the transition period. When both exist for the same (index, field, result_set),
+// VectorSet takes priority in resolution.
+//
+// Data flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "VectorSetService"
+//       CRUD[Create/Get/Update/Delete/List/Resolve]
+//       DB[(PostgreSQL vector_set)]
+//       CRUD --> DB
+//     end
+//     Admin[Admin UI] --> CRUD
+//     Pipeline[Pipeline Config] --> CRUD
+//     Resolver[EmbeddingBindingResolver] -.->|resolve dimensions| CRUD
+//     Sink[opensearch-sink] -.->|ensure schema| Resolver
+//   ```
+service VectorSetService {
+  // Create a new VectorSet.
+  // Validates that chunker_config_id and embedding_model_config_id exist.
+  // Denormalizes vector_dimensions from EmbeddingModelConfig.
+  rpc CreateVectorSet(CreateVectorSetRequest) returns (CreateVectorSetResponse);
+
+  // Retrieve a VectorSet by ID or name.
+  rpc GetVectorSet(GetVectorSetRequest) returns (GetVectorSetResponse);
+
+  // Update an existing VectorSet.
+  // index_name and field_name are NOT updatable (delete and recreate).
+  rpc UpdateVectorSet(UpdateVectorSetRequest) returns (UpdateVectorSetResponse);
+
+  // Delete a VectorSet by ID.
+  rpc DeleteVectorSet(DeleteVectorSetRequest) returns (DeleteVectorSetResponse);
+
+  // List VectorSets with optional filters and pagination.
+  rpc ListVectorSets(ListVectorSetsRequest) returns (ListVectorSetsResponse);
+
+  // Resolve: given (index_name, field_name, result_set_name), return the active VectorSet.
+  // Falls back to result_set_name="default" if no exact match found.
+  rpc ResolveVectorSet(ResolveVectorSetRequest) returns (ResolveVectorSetResponse);
+}
+
+// VectorSet represents the canonical semantic tuple linking chunker config,
+// embedding model, and target index/field. It is the authoritative record
+// for what vector configuration is valid for a given index location.
+message VectorSet {
+  // Unique identifier (UUID).
+  string id = 1;
+
+  // Human-readable name (unique).
+  string name = 2;
+
+  // FK to ChunkerConfig. Defines chunking strategy.
+  string chunker_config_id = 3;
+
+  // FK to EmbeddingModelConfig. Defines embedding model and dimensions.
+  string embedding_model_config_id = 4;
+
+  // Target OpenSearch index name.
+  string index_name = 5;
+
+  // Nested field name within the index (e.g. "embeddings").
+  string field_name = 6;
+
+  // Result set discriminator (e.g. "default", "title-only").
+  string result_set_name = 7;
+
+  // Source text field that is chunked (e.g. "body", "title").
+  string source_field = 8;
+
+  // Vector dimensions denormalized from EmbeddingModelConfig.dimensions.
+  // Populated on create/update; used for fast resolution without joining.
+  int32 vector_dimensions = 9;
+
+  // Timestamp when this VectorSet was created.
+  google.protobuf.Timestamp created_at = 10;
+
+  // Timestamp when this VectorSet was last updated.
+  google.protobuf.Timestamp updated_at = 11;
+
+  // Optional extensible metadata (JSONB).
+  optional google.protobuf.Struct metadata = 12;
+}
+
+// === Create ===
+
+message CreateVectorSetRequest {
+  // Optional ID (UUID). Server generates if empty.
+  optional string id = 1;
+
+  // Human-readable name (required, must be unique).
+  string name = 2;
+
+  // FK to ChunkerConfig (required, must exist).
+  string chunker_config_id = 3;
+
+  // FK to EmbeddingModelConfig (required, must exist).
+  string embedding_model_config_id = 4;
+
+  // Target OpenSearch index name (required).
+  string index_name = 5;
+
+  // Nested field name (required).
+  string field_name = 6;
+
+  // Result set name. Defaults to "default" if empty.
+  optional string result_set_name = 7;
+
+  // Source text field (required, e.g. "body", "title").
+  string source_field = 8;
+
+  // Optional metadata.
+  optional google.protobuf.Struct metadata = 9;
+}
+
+message CreateVectorSetResponse {
+  VectorSet vector_set = 1;
+}
+
+// === Get ===
+
+message GetVectorSetRequest {
+  // ID or name of the VectorSet to retrieve.
+  string id = 1;
+
+  // If true, id field is interpreted as a name lookup.
+  optional bool by_name = 2;
+}
+
+message GetVectorSetResponse {
+  VectorSet vector_set = 1;
+}
+
+// === Update ===
+
+message UpdateVectorSetRequest {
+  // ID of the VectorSet to update (required).
+  string id = 1;
+
+  // Optional new name.
+  optional string name = 2;
+
+  // Optional new chunker_config_id (must exist if provided).
+  optional string chunker_config_id = 3;
+
+  // Optional new embedding_model_config_id (must exist; re-denormalizes dimensions).
+  optional string embedding_model_config_id = 4;
+
+  // Optional new source_field.
+  optional string source_field = 5;
+
+  // Optional new result_set_name.
+  optional string result_set_name = 6;
+
+  // Optional new metadata.
+  optional google.protobuf.Struct metadata = 7;
+}
+
+message UpdateVectorSetResponse {
+  VectorSet vector_set = 1;
+}
+
+// === Delete ===
+
+message DeleteVectorSetRequest {
+  // ID of the VectorSet to delete.
+  string id = 1;
+}
+
+message DeleteVectorSetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// === List ===
+
+message ListVectorSetsRequest {
+  // Optional filter by index name.
+  optional string index_name = 1;
+
+  // Optional filter by chunker config ID.
+  optional string chunker_config_id = 2;
+
+  // Optional filter by embedding model config ID.
+  optional string embedding_model_config_id = 3;
+
+  // Page size (default: 20, max: 100).
+  int32 page_size = 4;
+
+  // Pagination token from previous response.
+  string page_token = 5;
+}
+
+message ListVectorSetsResponse {
+  repeated VectorSet vector_sets = 1;
+  string next_page_token = 2;
+}
+
+// === Resolve ===
+
+message ResolveVectorSetRequest {
+  // Target index name (required).
+  string index_name = 1;
+
+  // Nested field name (required).
+  string field_name = 2;
+
+  // Result set name. Defaults to "default" if empty.
+  // If no exact match, falls back to "default".
+  optional string result_set_name = 3;
+}
+
+message ResolveVectorSetResponse {
+  // The resolved VectorSet, if found.
+  VectorSet vector_set = 1;
+
+  // True if a VectorSet was found for the given parameters.
+  bool found = 2;
+}

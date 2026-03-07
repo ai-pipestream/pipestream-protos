@@ -4,6 +4,7 @@ package ai.pipestream.opensearch.v1;
 
 import "ai/pipestream/opensearch/v1/chunker_config.proto";
 import "ai/pipestream/opensearch/v1/embedding_config.proto";
+import "ai/pipestream/opensearch/v1/vector_set.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -15,8 +16,8 @@ option java_package = "ai.pipestream.opensearch.v1";
 //
 // This file defines the Kafka event schema for semantic metadata CRUD changes.
 // opensearch-manager (intelligence-manager) publishes these events when
-// ChunkerConfig, EmbeddingModelConfig, or IndexEmbeddingBinding entities are
-// created, updated, or deleted.
+// ChunkerConfig, EmbeddingModelConfig, IndexEmbeddingBinding, or VectorSet
+// entities are created, updated, or deleted.
 //
 // Topic: semantic-metadata-events (single topic; use event_type to discriminate)
 //
@@ -57,6 +58,11 @@ enum SemanticMetadataEventType {
   SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_CREATED = 7;
   SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_UPDATED = 8;
   SEMANTIC_METADATA_EVENT_TYPE_INDEX_EMBEDDING_BINDING_DELETED = 9;
+
+  // VectorSet events
+  SEMANTIC_METADATA_EVENT_TYPE_VECTOR_SET_CREATED = 10;
+  SEMANTIC_METADATA_EVENT_TYPE_VECTOR_SET_UPDATED = 11;
+  SEMANTIC_METADATA_EVENT_TYPE_VECTOR_SET_DELETED = 12;
 }
 
 // Envelope for semantic metadata change events.
@@ -77,6 +83,7 @@ message SemanticMetadataEvent {
     ChunkerConfig chunker_config = 4;
     EmbeddingModelConfig embedding_model_config = 5;
     IndexEmbeddingBinding index_embedding_binding = 6;
+    VectorSet vector_set = 10;
   }
 
   // Optional previous entity snapshot (for UPDATE events only).
@@ -85,5 +92,6 @@ message SemanticMetadataEvent {
     ChunkerConfig previous_chunker_config = 7;
     EmbeddingModelConfig previous_embedding_model_config = 8;
     IndexEmbeddingBinding previous_index_embedding_binding = 9;
+    VectorSet previous_vector_set = 11;
   }
 }
