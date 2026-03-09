@@ -25,6 +25,8 @@ service OpenSearchManagerService {
 
   // Document Operations (single documents)
   rpc IndexDocument(IndexDocumentRequest) returns (IndexDocumentResponse);
+  // Indexes a stream of documents for high-throughput bulk ingestion.
+  rpc StreamIndexDocuments(stream StreamIndexDocumentsRequest) returns (stream StreamIndexDocumentsResponse);
   // Indexes a document with dynamic schema.
   rpc IndexAnyDocument(IndexAnyDocumentRequest) returns (IndexAnyDocumentResponse);
   // Deletes a document from an index.
@@ -136,6 +138,37 @@ message IndexDocumentResponse {
   string document_id = 2;
   // Status message or error details
   string message = 3;
+}
+
+// Request to stream a strongly-typed OpenSearchDocument into an index.
+message StreamIndexDocumentsRequest {
+  // A unique ID for this specific request, sent by the client.
+  // This ID will be returned in the corresponding StreamIndexDocumentsResponse for correlation.
+  string request_id = 1;
+  // Name of the index to insert the document into
+  string index_name = 2;
+  // The document to index (using canonical OpenSearchDocument schema)
+  OpenSearchDocument document = 3;
+  // Optional document ID (if not provided, OpenSearch auto-generates one)
+  optional string document_id = 4;
+  // Optional routing value for controlling shard placement
+  optional string routing = 5;
+  // Account ID for ownership and binding
+  optional string account_id = 6;
+  // DataSource ID for ownership and binding
+  optional string datasource_id = 7;
+}
+
+// Response acknowledging the result of a single StreamIndexDocumentsRequest.
+message StreamIndexDocumentsResponse {
+  // The correlation ID from the StreamIndexDocumentsRequest.
+  string request_id = 1;
+  // Whether the document was indexed successfully
+  bool success = 2;
+  // The document ID that was indexed (auto-generated if not provided)
+  string document_id = 3;
+  // Status message or error details
+  string message = 4;
 }
 
 // Response from indexing a dynamically-typed document.
