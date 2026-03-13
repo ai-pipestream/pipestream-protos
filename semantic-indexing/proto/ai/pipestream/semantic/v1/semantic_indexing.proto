@@ -5,8 +5,8 @@ package ai.pipestream.semantic.v1;
 import "google/protobuf/struct.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.semantic.v1";
 option java_outer_classname = "SemanticIndexingProto";
+option java_package = "ai.pipestream.semantic.v1";
 
 // =============================================================================
 // SemanticChunkerService — Streaming chunker interface
