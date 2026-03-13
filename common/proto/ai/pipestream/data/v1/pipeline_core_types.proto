@@ -186,6 +186,13 @@ message SearchMetadata {
   //
   // Example: "file.pdf" from "/docs/legal/NY/file.pdf"
   optional string source_slug = 24;
+  // Vector set directives — the "recipe" for semantic indexing.
+  //
+  // Populated by the mapper step (via CEL selectors) to instruct the
+  // semantic manager on what text to chunk/embed and how.
+  // The semantic manager reads these, executes the cartesian product,
+  // and writes results into semantic_results above.
+  optional VectorSetDirectives vector_set_directives = 25;
 }
 
 // Collection of keywords extracted from a document.
@@ -905,4 +912,84 @@ message DlqMessage {
   bool quarantined = 11;
   // Timestamp when the message was quarantined (if applicable).
   google.protobuf.Timestamp quarantined_at = 12;
+}
+
+// =============================================================================
+// Vector Set Directives — Recipe for semantic indexing
+// =============================================================================
+//
+// Attached to a PipeDoc by the mapper step to instruct the semantic manager
+// on what text to chunk/embed and how. The semantic manager reads these
+// directives, executes the cartesian product of chunker × embedder configs,
+// and writes results into SemanticProcessingResult entries.
+//
+// Data flow:
+//   Mapper (CEL selectors → VectorDirective on doc) → SemanticManager (reads recipe, chunks, embeds)
+
+// Top-level container for all vector set directives on a document.
+message VectorSetDirectives {
+  // List of directives, each targeting a different source text.
+  repeated VectorDirective directives = 1;
+}
+
+// A single directive that describes what text to vectorize and how.
+//
+// The semantic manager produces the cartesian product:
+//   len(chunker_configs) × len(embedder_configs) SemanticProcessingResults.
+//
+// Chunking is deduplicated — if two directives share the same chunker config
+// and source text, the text is chunked only once.
+message VectorDirective {
+  // Human-readable label for the source text (e.g. "body", "abstract", "parsed_title").
+  // Used in field_name_template and for audit/traceability.
+  string source_label = 1;
+
+  // CEL expression or dot-path that extracts text from the PipeDoc.
+  //
+  // Examples:
+  //   "document.search_metadata.body"
+  //   "document.search_metadata.title"
+  //   "document.parsed_metadata['docling'].data.abstract_text"
+  //   "document.search_metadata.custom_fields['summary'].string_value"
+  string cel_selector = 2;
+
+  // Chunker configurations to apply to the extracted text.
+  // Each produces a different set of chunks.
+  repeated NamedChunkerConfig chunker_configs = 3;
+
+  // Embedder configurations to apply to each set of chunks.
+  // Each produces a different set of vectors.
+  repeated NamedEmbedderConfig embedder_configs = 4;
+
+  // Template for generating the result_set_name on SemanticProcessingResult.
+  //
+  // Available placeholders:
+  //   {source_label}  — from this directive's source_label
+  //   {chunker_id}    — from NamedChunkerConfig.config_id
+  //   {embedder_id}   — from NamedEmbedderConfig.config_id
+  //
+  // Default: "{source_label}_{chunker_id}_{embedder_id}"
+  optional string field_name_template = 5;
+}
+
+// A named chunker configuration with its opaque JSON config.
+message NamedChunkerConfig {
+  // Identifier for this chunker configuration (e.g. "sentence_v1", "token_256").
+  // Used in field_name_template and for deduplication.
+  string config_id = 1;
+
+  // The chunker's native configuration, forwarded as-is to the chunker module.
+  // This is the same JSON the chunker module expects in ProcessConfiguration.json_config.
+  google.protobuf.Struct config = 2;
+}
+
+// A named embedder configuration with its opaque JSON config.
+message NamedEmbedderConfig {
+  // Identifier for this embedder configuration (e.g. "minilm", "mpnet_base").
+  // Used in field_name_template and for deduplication.
+  string config_id = 1;
+
+  // The embedder's native configuration, forwarded as-is to the embedder module.
+  // This is the same JSON the embedder module expects in ProcessConfiguration.json_config.
+  google.protobuf.Struct config = 2;
 }
