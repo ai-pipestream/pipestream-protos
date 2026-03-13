@@ -3,6 +3,7 @@ syntax = "proto3";
 package ai.pipestream.semantic.v1;
 
 import "google/protobuf/struct.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "SemanticIndexingProto";
@@ -83,6 +84,17 @@ message StreamChunksResponse {
 
   // Optional metadata about this chunk.
   map<string, google.protobuf.Value> metadata = 11;
+
+  // NLP-derived analytics for this chunk's text.
+  optional ai.pipestream.data.v1.ChunkAnalytics chunk_analytics = 12;
+
+  // Document-level analytics for the full source text.
+  // Only populated on the last chunk (is_last=true) to avoid redundancy.
+  optional ai.pipestream.data.v1.DocumentAnalytics document_analytics = 13;
+
+  // Total number of chunks produced for this request.
+  // Only populated on the last chunk (is_last=true).
+  optional int32 total_chunks = 14;
 }
 
 // === Embedder Messages ===

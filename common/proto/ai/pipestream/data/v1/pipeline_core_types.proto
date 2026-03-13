@@ -193,6 +193,12 @@ message SearchMetadata {
   // The semantic manager reads these, executes the cartesian product,
   // and writes results into semantic_results above.
   optional VectorSetDirectives vector_set_directives = 25;
+
+  // Document-level analytics per (source_field, chunker_config) pair.
+  //
+  // One entry per unique chunking group — computed once from the full source text
+  // before chunking, then shared across all embedder results that use those chunks.
+  repeated SourceFieldAnalytics source_field_analytics = 26;
 }
 
 // Collection of keywords extracted from a document.
@@ -762,6 +768,8 @@ message SemanticChunk {
   ChunkEmbedding embedding_info = 3;
   // Chunk-specific metadata (e.g., page number, section).
   map<string, google.protobuf.Value> metadata = 4;
+  // NLP-derived analytics for this chunk's text content.
+  optional ChunkAnalytics chunk_analytics = 5;
 }
 
 // Complete result of semantic chunking and embedding process.
@@ -992,4 +1000,105 @@ message NamedEmbedderConfig {
   // The embedder's native configuration, forwarded as-is to the embedder module.
   // This is the same JSON the embedder module expects in ProcessConfiguration.json_config.
   google.protobuf.Struct config = 2;
+}
+
+// =============================================================================
+// Analytics Messages — NLP-derived text statistics
+// =============================================================================
+
+// Document-level analytics computed from the full source text before chunking.
+//
+// Produced once per (source_field, chunker_config) pair by the chunker module.
+// These stats describe the entire source text, not individual chunks.
+message DocumentAnalytics {
+  // Total number of tokens (words) in the source text.
+  int32 word_count = 1;
+  // Total number of characters in the source text.
+  int32 character_count = 2;
+  // Number of sentences detected by NLP sentence detector.
+  int32 sentence_count = 3;
+  // Mean token length across all tokens.
+  float average_word_length = 4;
+  // Mean number of tokens per sentence.
+  float average_sentence_length = 5;
+  // Type-to-Token Ratio: unique_tokens / total_tokens (0.0 to 1.0).
+  // Higher values indicate more diverse vocabulary.
+  float vocabulary_density = 6;
+  // Percentage of characters that are whitespace (0.0 to 1.0).
+  float whitespace_percentage = 7;
+  // Percentage of characters that are alphanumeric (0.0 to 1.0).
+  float alphanumeric_percentage = 8;
+  // Percentage of characters that are digits (0.0 to 1.0).
+  float digit_percentage = 9;
+  // Percentage of characters that are uppercase (0.0 to 1.0).
+  float uppercase_percentage = 10;
+  // Count of each punctuation character found in the text.
+  map<string, int32> punctuation_counts = 11;
+}
+
+// Per-chunk analytics computed from a single chunk's text content.
+//
+// Extends DocumentAnalytics with positional and structural features
+// that are specific to a chunk's role within the larger document.
+message ChunkAnalytics {
+  // Total number of tokens (words) in the chunk.
+  int32 word_count = 1;
+  // Total number of characters in the chunk.
+  int32 character_count = 2;
+  // Number of sentences in the chunk.
+  int32 sentence_count = 3;
+  // Mean token length.
+  float average_word_length = 4;
+  // Mean tokens per sentence.
+  float average_sentence_length = 5;
+  // Type-to-Token Ratio (0.0 to 1.0).
+  float vocabulary_density = 6;
+  // Percentage of whitespace characters (0.0 to 1.0).
+  float whitespace_percentage = 7;
+  // Percentage of alphanumeric characters (0.0 to 1.0).
+  float alphanumeric_percentage = 8;
+  // Percentage of digit characters (0.0 to 1.0).
+  float digit_percentage = 9;
+  // Percentage of uppercase characters (0.0 to 1.0).
+  float uppercase_percentage = 10;
+  // Count of each punctuation character.
+  map<string, int32> punctuation_counts = 11;
+
+  // --- Positional and structural features (chunk-specific) ---
+
+  // Whether this is the first chunk in the document.
+  bool is_first_chunk = 12;
+  // Whether this is the last chunk in the document.
+  bool is_last_chunk = 13;
+  // Normalized position within the document (0.0 = start, 1.0 = end).
+  float relative_position = 14;
+  // NLP-derived score indicating likelihood this chunk is a heading (0.0 to 1.0).
+  // Based on: short length, single sentence, capitalization patterns, no trailing punctuation.
+  float potential_heading_score = 15;
+  // Whether the chunk text matches a list item pattern (bullets, numbered lists).
+  bool list_item_indicator = 16;
+  // Whether the chunk contains URL placeholders (from URL preservation during chunking).
+  bool contains_url_placeholder = 17;
+}
+
+// Analytics for a single (source_field, chunker_config) pair.
+//
+// One entry per unique chunking group in SearchMetadata.
+// The document_analytics describe the full source text; total_chunks
+// records how many chunks were produced.
+message SourceFieldAnalytics {
+  // Source field that was analyzed (e.g. "body", "title").
+  string source_field = 1;
+  // Chunker configuration ID used for this analysis.
+  string chunk_config_id = 2;
+  // Document-level text analytics for the full source field content.
+  DocumentAnalytics document_analytics = 3;
+  // Number of chunks produced from this source field.
+  int32 total_chunks = 4;
+  // Average chunk size in characters.
+  float average_chunk_size = 5;
+  // Smallest chunk size in characters.
+  int32 min_chunk_size = 6;
+  // Largest chunk size in characters.
+  int32 max_chunk_size = 7;
 }
