@@ -57,6 +57,8 @@ message OwnershipContext {
   // Connector type that created this document (e.g., "s3", "file-crawler").
   // Optional since it's derivable from datasource, but useful for filtering.
   optional string connector_id = 3;
+  // Access Control Lists for document-level security.
+  repeated string acls = 4;
 }
 
 // Core document container for the pipeline processing system.

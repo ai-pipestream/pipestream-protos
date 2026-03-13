@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.v1";
+
+// Document Service provides a high-level "Card Catalog" view of logical documents.
+// It tracks the identity and lifecycle of a document as it moves through the pipeline DAG.
+service DocumentService {
+  // Saves a document to the repository, establishing its logical identity and recording its current state.
+  // This is the unified entry point for both Intake and Engine steps.
+  rpc SaveDocument(SaveDocumentRequest) returns (SaveDocumentResponse);
+
+  // Retrieves the logical document identity and its current status.
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+
+  // Retrieves the complete audit trail (history) of a document across all pipeline nodes.
+  // Supports DAG branching (e.g. parallel processing steps).
+  rpc GetDocumentAuditTrail(GetDocumentAuditTrailRequest) returns (GetDocumentAuditTrailResponse);
+
+  // Lists logical documents with optional filtering. Primary API for frontend document browsing.
+  rpc ListDocuments(ListDocumentsRequest) returns (ListDocumentsResponse);
+}
+
+// Request to save a document and its logical identity.
+message SaveDocumentRequest {
+  // The PipeDoc containing the document content and metadata.
+  ai.pipestream.data.v1.PipeDoc pipedoc = 1;
+  // Logical drive name where the document belongs.
+  string drive = 2;
+  // Optional graph location identifier (defaults to datasource_id if not set).
+  optional string graph_location_id = 3;
+  // Optional cluster identifier for cross-cluster tracking.
+  optional string cluster_id = 4;
+}
+
+// Response from saving a document.
+message SaveDocumentResponse {
+  // Unique repository node ID assigned to this specific state.
+  string node_id = 1;
+  // The stable logical document ID.
+  string doc_id = 2;
+  // Physical S3 key where bytes were stored (if persisted).
+  string s3_key = 3;
+  // Timestamp when the save occurred.
+  google.protobuf.Timestamp saved_at = 4;
+}
+
+// Request to retrieve a logical document by its ID.
+message GetDocumentRequest {
+  string doc_id = 1;
+  string account_id = 2;
+}
+
+// Response containing logical document metadata.
+message GetDocumentResponse {
+  string doc_id = 1;
+  string title = 2;
+  string filename = 3;
+  string content_type = 4;
+  int64 size_bytes = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  string account_id = 9;
+  string datasource_id = 10;
+}
+
+// Request to get the full audit trail of a document.
+message GetDocumentAuditTrailRequest {
+  string doc_id = 1;
+  string account_id = 2;
+}
+
+// Response containing the document's journey through the pipeline.
+message GetDocumentAuditTrailResponse {
+  string doc_id = 1;
+  // Flat list of all execution records across the DAG history.
+  repeated ai.pipestream.data.v1.StepExecutionRecord audit_entries = 2;
+}
+
+// Request to list documents for browsing.
+message ListDocumentsRequest {
+  string account_id = 1;
+  string datasource_id = 2;
+  string connector_id = 3;
+  string search_query = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+// Response containing a paginated list of documents.
+message ListDocumentsResponse {
+  repeated GetDocumentResponse documents = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
