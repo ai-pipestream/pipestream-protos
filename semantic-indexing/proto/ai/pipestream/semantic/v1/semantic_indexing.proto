@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package ai.pipestream.semantic.v1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.semantic.v1";
+option java_outer_classname = "SemanticIndexingProto";
+
+// =============================================================================
+// SemanticChunkerService — Streaming chunker interface
+// =============================================================================
+//
+// Server-streaming: client sends text + chunker config, server streams back
+// individual chunks. Enables pipelining to embedder as chunks arrive.
+service SemanticChunkerService {
+  rpc StreamChunks(StreamChunksRequest) returns (stream StreamChunksResponse);
+}
+
+// =============================================================================
+// SemanticEmbedderService — Streaming embedder interface
+// =============================================================================
+//
+// Bidirectional streaming: client pushes chunks as they arrive from chunker,
+// server batches internally for GPU efficiency and streams embedded results back.
+service SemanticEmbedderService {
+  rpc StreamEmbeddings(stream StreamEmbeddingsRequest) returns (stream StreamEmbeddingsResponse);
+}
+
+// === Chunker Messages ===
+
+message StreamChunksRequest {
+  // Correlation ID for this chunking request.
+  string request_id = 1;
+
+  // Document ID being chunked.
+  string doc_id = 2;
+
+  // Source field name (e.g. "body", "title").
+  string source_field_name = 3;
+
+  // The text content to chunk.
+  string text_content = 4;
+
+  // Chunker configuration as a Struct (parsed by the chunker into its native config).
+  google.protobuf.Struct chunker_config = 5;
+
+  // Chunker config ID (e.g. "sentence_splitter_v1").
+  string chunk_config_id = 6;
+}
+
+message StreamChunksResponse {
+  // Correlation ID from the request.
+  string request_id = 1;
+
+  // Document ID.
+  string doc_id = 2;
+
+  // Unique chunk identifier.
+  string chunk_id = 3;
+
+  // Zero-based chunk number within this request.
+  int32 chunk_number = 4;
+
+  // The chunk text content.
+  string text_content = 5;
+
+  // Character offset in the original text where this chunk starts.
+  int32 start_offset = 6;
+
+  // Character offset in the original text where this chunk ends.
+  int32 end_offset = 7;
+
+  // Chunker config ID that produced this chunk.
+  string chunk_config_id = 8;
+
+  // Source field name.
+  string source_field_name = 9;
+
+  // True if this is the last chunk for this request.
+  bool is_last = 10;
+
+  // Optional metadata about this chunk.
+  map<string, google.protobuf.Value> metadata = 11;
+}
+
+// === Embedder Messages ===
+
+message StreamEmbeddingsRequest {
+  // Correlation ID.
+  string request_id = 1;
+
+  // Document ID.
+  string doc_id = 2;
+
+  // Chunk identifier.
+  string chunk_id = 3;
+
+  // Text content to embed.
+  string text_content = 4;
+
+  // Chunker config ID that produced this chunk.
+  string chunk_config_id = 5;
+
+  // Embedding model identifier (e.g. "all-MiniLM-L6-v2").
+  string embedding_model_id = 6;
+
+  // Embedder configuration as a Struct.
+  google.protobuf.Struct embedder_config = 7;
+}
+
+message StreamEmbeddingsResponse {
+  // Correlation ID.
+  string request_id = 1;
+
+  // Document ID.
+  string doc_id = 2;
+
+  // Chunk identifier.
+  string chunk_id = 3;
+
+  // Chunker config ID.
+  string chunk_config_id = 4;
+
+  // Embedding model identifier.
+  string embedding_model_id = 5;
+
+  // The embedding vector.
+  repeated float vector = 6;
+
+  // Whether embedding succeeded.
+  bool success = 7;
+
+  // Error message if success is false.
+  string error_message = 8;
+}
