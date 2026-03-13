@@ -13,21 +13,21 @@ option java_package = "ai.pipestream.repository.v1";
 service DocumentService {
   // Saves a document to the repository, establishing its logical identity and recording its current state.
   // This is the unified entry point for both Intake and Engine steps.
-  rpc SaveDocument(SaveDocumentRequest) returns (SaveDocumentResponse);
+  rpc Save(SaveRequest) returns (SaveResponse);
 
   // Retrieves the logical document identity and its current status.
-  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+  rpc Get(GetRequest) returns (GetResponse);
 
   // Retrieves the complete audit trail (history) of a document across all pipeline nodes.
   // Supports DAG branching (e.g. parallel processing steps).
-  rpc GetDocumentAuditTrail(GetDocumentAuditTrailRequest) returns (GetDocumentAuditTrailResponse);
+  rpc GetAuditTrail(GetAuditTrailRequest) returns (GetAuditTrailResponse);
 
   // Lists logical documents with optional filtering. Primary API for frontend document browsing.
-  rpc ListDocuments(ListDocumentsRequest) returns (ListDocumentsResponse);
+  rpc List(ListRequest) returns (ListResponse);
 }
 
 // Request to save a document and its logical identity.
-message SaveDocumentRequest {
+message SaveRequest {
   // The PipeDoc containing the document content and metadata.
   ai.pipestream.data.v1.PipeDoc pipedoc = 1;
   // Logical drive name where the document belongs.
@@ -39,7 +39,7 @@ message SaveDocumentRequest {
 }
 
 // Response from saving a document.
-message SaveDocumentResponse {
+message SaveResponse {
   // Unique repository node ID assigned to this specific state.
   string node_id = 1;
   // The stable logical document ID.
@@ -51,13 +51,13 @@ message SaveDocumentResponse {
 }
 
 // Request to retrieve a logical document by its ID.
-message GetDocumentRequest {
+message GetRequest {
   string doc_id = 1;
   string account_id = 2;
 }
 
 // Response containing logical document metadata.
-message GetDocumentResponse {
+message GetResponse {
   string doc_id = 1;
   string title = 2;
   string filename = 3;
@@ -71,20 +71,20 @@ message GetDocumentResponse {
 }
 
 // Request to get the full audit trail of a document.
-message GetDocumentAuditTrailRequest {
+message GetAuditTrailRequest {
   string doc_id = 1;
   string account_id = 2;
 }
 
 // Response containing the document's journey through the pipeline.
-message GetDocumentAuditTrailResponse {
+message GetAuditTrailResponse {
   string doc_id = 1;
   // Flat list of all execution records across the DAG history.
   repeated ai.pipestream.data.v1.StepExecutionRecord audit_entries = 2;
 }
 
 // Request to list documents for browsing.
-message ListDocumentsRequest {
+message ListRequest {
   string account_id = 1;
   string datasource_id = 2;
   string connector_id = 3;
@@ -94,8 +94,8 @@ message ListDocumentsRequest {
 }
 
 // Response containing a paginated list of documents.
-message ListDocumentsResponse {
-  repeated GetDocumentResponse documents = 1;
+message ListResponse {
+  repeated GetResponse documents = 1;
   string next_page_token = 2;
   int32 total_count = 3;
 }
