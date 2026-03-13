@@ -252,6 +252,8 @@ message PipeDocUpdateNotification {
   string title = 9;
   // Document author from metadata (if available)
   string author = 10;
+  // Ownership tracking for security and access control.
+  ai.pipestream.data.v1.OwnershipContext ownership = 11;
 }
 
 // Event notification for ProcessRequest changes in the repository.
