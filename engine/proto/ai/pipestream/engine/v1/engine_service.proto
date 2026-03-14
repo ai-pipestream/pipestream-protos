@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.engine.v1;
 
+import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/struct.proto";
 
@@ -51,6 +52,12 @@ message ProcessNodeRequest {
   ai.pipestream.data.v1.PipeStream stream = 1;
   // Optional routing condition for dynamic next-node selection
   string routing_condition = 2;
+  // Optional inline node configuration for test mode.
+  // When present with is_test=true in stream metadata, the engine uses this
+  // node definition instead of looking up current_node_id from the graph cache.
+  // Enables testing with full engine semantics (pre/post mappings, CEL filters,
+  // module calls) without requiring a loaded pipeline graph.
+  optional ai.pipestream.config.v1.GraphNode node_override = 3;
 }
 
 // Response from processing a document at a node
