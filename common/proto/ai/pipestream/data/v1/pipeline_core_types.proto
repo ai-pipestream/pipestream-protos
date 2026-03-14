@@ -523,6 +523,19 @@ message StreamMetadata {
   // for hydration, routing, and custom connector settings.
   // Only present for streams that entered via intake connectors.
   optional IngestionConfig ingestion_config = 12;
+
+  // Whether this stream is a test run.
+  // When true, modules receive is_test=true on ProcessDataRequest.
+  // Processing follows the same logic but results are not counted as
+  // legitimate processing. Used for health checks and chain validation.
+  bool is_test = 13;
+
+  // Whether this stream is a dry run.
+  // When true, the engine calls each module in the pipeline to verify
+  // operational readiness but does not dispatch to downstream nodes via
+  // Kafka or persist results. Each node's audit trail is collected and
+  // returned. Used for end-to-end chain validation without side effects.
+  bool dry_run = 14;
 }
 
 // Reference to a document stored in the repository (S3 offload).

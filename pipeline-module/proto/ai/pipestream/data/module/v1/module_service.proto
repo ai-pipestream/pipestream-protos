@@ -155,6 +155,13 @@ message ProcessDataRequest {
   // Whether this is a test call that should not count as legitimate processing.
   // Test calls follow the same logic but may be used for validation/health checks.
   bool is_test = 6;
+
+  // Whether this is a dry run that should not produce side effects.
+  // When true, the engine will call each module in the chain to verify
+  // operational readiness but will not dispatch to downstream nodes via
+  // Kafka or persist results. The response will contain the full audit
+  // trail of what would have happened.
+  bool dry_run = 7;
 }
 
 // Response message for the ProcessData RPC.
