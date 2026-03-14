@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.semantic.v1;
 
-import "google/protobuf/struct.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/struct.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "SemanticIndexingProto";
