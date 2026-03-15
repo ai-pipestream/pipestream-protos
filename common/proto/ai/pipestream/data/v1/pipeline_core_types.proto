@@ -818,8 +818,8 @@ message SemanticProcessingResult {
 // Source of a log entry — distinguishes engine routing logs from module processing logs.
 enum LogEntrySource {
   LOG_ENTRY_SOURCE_UNSPECIFIED = 0;
-  LOG_ENTRY_ENGINE = 1;
-  LOG_ENTRY_MODULE = 2;
+  LOG_ENTRY_SOURCE_ENGINE = 1;
+  LOG_ENTRY_SOURCE_MODULE = 2;
 }
 
 // Severity level for a log entry.
