@@ -815,6 +815,50 @@ message SemanticProcessingResult {
   map<string, google.protobuf.Value> metadata = 7;
 }
 
+// Source of a log entry — distinguishes engine routing logs from module processing logs.
+enum LogEntrySource {
+  LOG_ENTRY_SOURCE_UNSPECIFIED = 0;
+  LOG_ENTRY_ENGINE = 1;
+  LOG_ENTRY_MODULE = 2;
+}
+
+// Severity level for a log entry.
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_INFO = 1;
+  LOG_LEVEL_WARN = 2;
+  LOG_LEVEL_ERROR = 3;
+  LOG_LEVEL_DEBUG = 4;
+}
+
+// Origin details when the log was produced by the engine.
+message EngineLogOrigin {
+  string node_id = 1;
+}
+
+// Origin details when the log was produced by a module.
+message ModuleLogOrigin {
+  string module_name = 1;
+  // Optional config identifier (e.g., chunker config_id or embedding model name).
+  optional string config_id = 2;
+}
+
+// Structured log entry for pipeline processing audit trails.
+message LogEntry {
+  LogEntrySource source = 1;
+  string message = 2;
+  int64 timestamp_epoch_ms = 3;
+  string doc_id = 4;
+  string stream_id = 5;
+  int32 step_index = 6;
+  LogLevel level = 9;
+
+  oneof origin {
+    EngineLogOrigin engine = 7;
+    ModuleLogOrigin module = 8;
+  }
+}
+
 // Execution record for a single pipeline processing step.
 //
 // Tracks the execution details, timing, status, and any errors for a step.
@@ -833,12 +877,15 @@ message StepExecutionRecord {
   //
   // Expected values: "SUCCESS", "FAILURE", "SKIPPED", "RETRYING", "DISPATCH_FAILURE"
   string status = 6;
-  // Logs from the processor for this step's execution.
-  repeated string processor_logs = 7;
+  // Structured log entries for this step's execution.
+  repeated LogEntry log_entries = 10;
   // Error information if status is "FAILURE".
   optional ErrorData error_info = 8;
   // Target node ID if status is "DISPATCH_FAILURE".
   optional string attempted_target_node_id = 9;
+
+  reserved 7;
+  reserved "processor_logs";
 }
 
 // Error information for a failed processing step.

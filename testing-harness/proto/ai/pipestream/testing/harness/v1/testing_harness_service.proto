@@ -72,8 +72,11 @@ message RunModuleTestResponse {
   // Optional output document from module processing.
   ai.pipestream.data.v1.PipeDoc output_doc = 4;
 
-  // Processor logs from the module call.
-  repeated string processor_logs = 5;
+  // Structured log entries from the module call.
+  repeated ai.pipestream.data.v1.LogEntry log_entries = 14;
+
+  reserved 5;
+  reserved "processor_logs";
 
   // Summaries to support lightweight UI rendering.
   google.protobuf.Struct input_summary = 6;
