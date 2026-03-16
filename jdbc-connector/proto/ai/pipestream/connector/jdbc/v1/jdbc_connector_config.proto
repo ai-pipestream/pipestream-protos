@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.jdbc.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "JdbcConnectorConfigProto";
+option java_package = "ai.pipestream.connector.jdbc.v1";
+
+// Sync mode for the JDBC connector.
+enum JdbcSyncMode {
+  // Scheduled polling with watermark-based incremental sync.
+  JDBC_SYNC_MODE_UNSPECIFIED = 0;
+
+  // Poll: run parent_query on a schedule, track _ps_watermark.
+  JDBC_SYNC_MODE_POLL = 1;
+
+  // CDC: embedded Debezium reads the database transaction log.
+  JDBC_SYNC_MODE_CDC = 2;
+}
+
+// Configuration for the JDBC connector.
+//
+// The connector executes SQL queries against a JDBC-compatible database and
+// maps result rows to PipeDoc using the _ps_ column naming convention:
+//
+//   _ps_doc_id       → PipeDoc.doc_id
+//   _ps_title        → search_metadata.title
+//   _ps_body         → search_metadata.body
+//   _ps_author       → single author
+//   _ps_authors      → multi-value authors (delimiter-separated)
+//   _ps_keywords     → keywords/tags (delimiter-separated)
+//   _ps_categories   → category tags (delimiter-separated)
+//   _ps_description  → description/summary
+//   _ps_source_uri   → search_metadata.source_uri
+//   _ps_language     → language hint
+//   _ps_created_at   → creation timestamp
+//   _ps_updated_at   → last modified timestamp
+//   _ps_watermark    → incremental sync high-water mark
+//   _ps_account_id   → ownership.account_id
+//   _ps_acl          → ownership ACLs (delimiter-separated)
+//   _ps_tags_{group} → named tag group (delimiter-separated)
+//   _ps_meta_{key}   → search_metadata.metadata[key]
+//
+// All non-_ps_ columns are packed into JdbcDocument as strongly typed JdbcColumnValues.
+message JdbcConnectorConfig {
+  // === Connection ===
+
+  // JDBC connection URL (e.g., "jdbc:postgresql://host:5432/mydb").
+  string connection_url = 1;
+
+  // JDBC driver class name (e.g., "org.postgresql.Driver").
+  // Auto-detected from connection_url if not specified.
+  string driver_class = 2;
+
+  // Database credentials.
+  string username = 3;
+
+  // Password or vault reference (e.g., "vault:secret/jdbc-connector#password").
+  string password = 4;
+
+  // === Queries ===
+
+  // Parent query — each row becomes a PipeDoc.
+  // Must include a column aliased as _ps_doc_id for document identity.
+  // Use _ps_ prefixed aliases to map columns to PipeDoc fields.
+  // Use ? placeholder for the watermark value in incremental mode.
+  string parent_query = 5;
+
+  // Optional child query — executed once per parent row.
+  // Use ? placeholder for the parent's _ps_doc_id value.
+  // Each child row becomes a natural chunk in the JdbcDocument.
+  // Use _ps_chunk_text for the chunk content column.
+  string child_query = 6;
+
+  // === Sync ===
+
+  // Sync mode: POLL (default) or CDC (Debezium).
+  JdbcSyncMode sync_mode = 10;
+
+  // Poll interval in seconds (POLL mode only, default: 300).
+  int32 poll_interval_seconds = 11;
+
+  // CDC table include list (CDC mode only, e.g., "public.articles").
+  string cdc_table_include = 12;
+
+  // CDC replication slot name (CDC mode only).
+  string cdc_slot_name = 13;
+
+  // === Processing ===
+
+  // Delimiter for multi-value _ps_ fields (default: ",").
+  string delimiter = 20;
+
+  // Max rows per poll batch (default: 500).
+  int32 batch_size = 21;
+
+  // Max child rows per parent (default: 1000, 0 = unlimited).
+  int32 max_children_per_parent = 22;
+
+  // === Intake ===
+
+  // Datasource ID for intake service authentication.
+  string datasource_id = 30;
+
+  // API key for intake service authentication.
+  string api_key = 31;
+
+  // Intake service URL (e.g., "http://connector-intake-service:8080").
+  string intake_service_url = 32;
+}
+
+// Connector state persisted between runs for incremental sync.
+message JdbcConnectorState {
+  // Last watermark value from the most recent successful poll.
+  string last_watermark_value = 1;
+
+  // SQL type of the watermark column (for proper parameterization).
+  int32 watermark_sql_type = 2;
+
+  // Timestamp of the last successful sync.
+  google.protobuf.Timestamp last_sync_at = 3;
+
+  // Total rows processed in the last sync.
+  int64 last_sync_row_count = 4;
+}

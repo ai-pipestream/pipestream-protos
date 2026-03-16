@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.jdbc.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "JdbcDocumentProto";
+option java_package = "ai.pipestream.connector.jdbc.v1";
+
+// Strongly typed column value from a JDBC ResultSet.
+// The oneof ensures native protobuf encoding for each SQL type.
+message JdbcColumnValue {
+  // Column name from ResultSetMetaData (non-_ps_ columns only).
+  string column_name = 1;
+
+  // java.sql.Types constant for the source SQL type.
+  int32 sql_type = 2;
+
+  oneof value {
+    string string_value = 3;
+    int64 int_value = 4;
+    double double_value = 5;
+    bool bool_value = 6;
+    bytes bytes_value = 7;
+    google.protobuf.Timestamp timestamp_value = 8;
+    float float_value = 9;
+    int32 int32_value = 10;
+  }
+
+  // True if the SQL value was NULL.
+  bool is_null = 11;
+}
+
+// A single row from a JDBC query result.
+message JdbcRow {
+  // All non-_ps_ prefixed columns from this row, strongly typed.
+  repeated JdbcColumnValue columns = 1;
+}
+
+// Complete JDBC document: parent row + optional child rows.
+// Packed into PipeDoc.structured_data as google.protobuf.Any.
+message JdbcDocument {
+  // Parent row — all non-_ps_ columns from the parent query.
+  JdbcRow parent = 1;
+
+  // Child rows from the child query (if configured).
+  // Each child row represents a natural chunk (e.g., case opinion, product review).
+  repeated JdbcRow children = 2;
+
+  // Source table or query identifier for provenance.
+  string source_table = 3;
+
+  // Total child row count (may differ from children.size if truncated).
+  int32 total_child_count = 4;
+}

@@ -32,6 +32,8 @@ modules:
     name: buf.build/pipestreamai/testing-harness
   - path: ui-ux/proto
     name: buf.build/pipestreamai/ui-ux
+  - path: jdbc-connector/proto
+    name: buf.build/pipestreamai/jdbc-connector
   - path: s3-connector/proto
     name: buf.build/pipestreamai/s3-connector
   - path: semantic-indexing/proto
