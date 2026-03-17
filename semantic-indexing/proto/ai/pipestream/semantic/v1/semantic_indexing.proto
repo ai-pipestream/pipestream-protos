@@ -27,6 +27,9 @@ service SemanticChunkerService {
 // server batches internally for GPU efficiency and streams embedded results back.
 service SemanticEmbedderService {
   rpc StreamEmbeddings(stream StreamEmbeddingsRequest) returns (stream StreamEmbeddingsResponse);
+
+  // Returns the list of embedding models and their current availability.
+  rpc ListEmbeddingModels(ListEmbeddingModelsRequest) returns (ListEmbeddingModelsResponse);
 }
 
 // === Chunker Messages ===
@@ -146,4 +149,45 @@ message StreamEmbeddingsResponse {
 
   // Error message if success is false.
   string error_message = 8;
+}
+
+// === ListEmbeddingModels Messages ===
+
+message ListEmbeddingModelsRequest {
+  // Optional: only return models that are currently ready.
+  bool ready_only = 1;
+}
+
+message ListEmbeddingModelsResponse {
+  // All known embedding models with their current status.
+  repeated EmbeddingModelInfo models = 1;
+
+  // Whether DJL Serving is reachable.
+  bool djl_serving_reachable = 2;
+}
+
+message EmbeddingModelInfo {
+  // Enum name (e.g. "ALL_MINILM_L6_V2").
+  string enum_name = 1;
+
+  // DJL Serving model name — the path in /predictions/{name}.
+  string model_name = 2;
+
+  // HuggingFace model identifier (e.g. "sentence-transformers/all-MiniLM-L6-v2").
+  string hugging_face_id = 3;
+
+  // Output vector dimensions.
+  int32 dimensions = 4;
+
+  // Whether this model is currently registered and ready in DJL Serving.
+  bool ready = 5;
+
+  // Prefix to prepend for query embeddings (empty if none).
+  string query_prefix = 6;
+
+  // Prefix to prepend for index/passage embeddings (empty if none).
+  string index_prefix = 7;
+
+  // Human-readable description.
+  string description = 8;
 }
