@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package ai.pipestream.shell.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "ai/pipestream/opensearch/v1/opensearch_manager.proto";
 import "grpc/health/v1/health.proto";
 
 option java_multiple_files = true;
@@ -14,6 +16,26 @@ service ShellService {
   // The server sends an initial snapshot (one update per service),
   // followed by incremental updates as health changes.
   rpc WatchHealth(WatchHealthRequest) returns (stream WatchHealthResponse);
+
+  // Search across all document uploads with UI-specific filtering.
+  // This aggregates data from OpenSearchManagerService.
+  rpc SearchDocuments(SearchDocumentsRequest) returns (SearchDocumentsResponse);
+
+  // Get detailed logical document information.
+  // Wraps PipeDocService and potentially others.
+  rpc GetDocumentDetails(GetDocumentDetailsRequest) returns (GetDocumentDetailsResponse);
+
+  // List all registered core services.
+  // Wraps PlatformRegistrationService.ListServices.
+  rpc ListUiServices(ListUiServicesRequest) returns (ListUiServicesResponse);
+
+  // List all available modules across the platform.
+  // Wraps PlatformRegistrationService.ListPlatformModules.
+  rpc ListUiModules(ListUiModulesRequest) returns (ListUiModulesResponse);
+
+  // Get configuration schema for a specific module.
+  // Wraps PipeStepProcessorService.GetServiceRegistration.
+  rpc GetUiModuleConfigSchema(GetUiModuleConfigSchemaRequest) returns (GetUiModuleConfigSchemaResponse);
 }
 
 message WatchHealthRequest {
@@ -26,4 +48,54 @@ message WatchHealthResponse {
   string target = 3; // resolved endpoint, e.g. host:port or "dynamic"
   grpc.health.v1.HealthCheckResponse.ServingStatus status = 4; // SERVING / NOT_SERVING / UNKNOWN
   string observed_at = 5; // ISO-8601 timestamp for the update
+}
+
+// SearchDocuments wraps the complex opensearch query into a UI-friendly format.
+message SearchDocumentsRequest {
+  string query = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+
+  // Optional filters
+  string connector_id = 4;
+  string mime_type = 5;
+}
+
+message SearchDocumentsResponse {
+  repeated ai.pipestream.opensearch.v1.DocumentUploadResult results = 1;
+  int64 total_count = 2;
+  string next_page_token = 3;
+}
+
+message GetDocumentDetailsRequest {
+  string doc_id = 1;
+}
+
+message GetDocumentDetailsResponse {
+  ai.pipestream.data.v1.PipeDoc document = 1;
+  // We can add more aggregated info here later (e.g. processing status)
+}
+
+message ListUiServicesRequest {
+  // Optional filters
+}
+
+message ListUiServicesResponse {
+  repeated string service_names = 1;
+}
+
+message ListUiModulesRequest {
+  // Optional filters could go here
+}
+
+message ListUiModulesResponse {
+  repeated string module_names = 1;
+}
+
+message GetUiModuleConfigSchemaRequest {
+  string module_name = 1;
+}
+
+message GetUiModuleConfigSchemaResponse {
+  string json_config_schema = 1;
 }
