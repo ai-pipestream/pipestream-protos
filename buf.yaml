@@ -10,6 +10,8 @@ modules:
     name: buf.build/pipestreamai/connector-types
   - path: design/proto
     name: buf.build/pipestreamai/design
+  - path: djl-serving/proto
+    name: buf.build/pipestreamai/djl-serving
   - path: engine/proto
     name: buf.build/pipestreamai/engine
   - path: engine-kafka-sidecar/proto
