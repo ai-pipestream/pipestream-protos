@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package ai.pipestream.djl.serving.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DjlModelServiceProto";
+option java_package = "ai.pipestream.djl.serving.v1";
+
+// Exposes runtime model availability and aggregated model health from DJL Serving.
+service DjlModelService {
+  // Returns expected models, observed runtime models, and aggregate model health.
+  rpc ListAvailableModels(ListAvailableModelsRequest) returns (ListAvailableModelsResponse);
+
+  // Returns aggregate health for all models or a selected subset.
+  rpc GetModelHealth(GetModelHealthRequest) returns (GetModelHealthResponse);
+}
+
+message ListAvailableModelsRequest {}
+
+message ListAvailableModelsResponse {
+  repeated string expected_models = 1;
+  repeated string observed_models = 2;
+  repeated ModelHealth model_health = 3;
+  int32 instances_checked = 4;
+  int32 instances_reachable = 5;
+  bool discovery_successful = 6;
+  google.protobuf.Timestamp observed_at = 7;
+  repeated string unresolved_errors = 8;
+}
+
+message GetModelHealthRequest {
+  // Optional model filter. If empty, all expected models are returned.
+  repeated string model_names = 1;
+
+  // Whether to include models that are observed but not part of expected_models.
+  bool include_unexpected_models = 2;
+}
+
+message GetModelHealthResponse {
+  repeated ModelHealth model_health = 1;
+  int32 instances_checked = 2;
+  int32 instances_reachable = 3;
+  bool discovery_successful = 4;
+  google.protobuf.Timestamp observed_at = 5;
+  repeated string unresolved_errors = 6;
+}
+
+enum ModelAggregateHealthStatus {
+  MODEL_AGGREGATE_HEALTH_STATUS_UNSPECIFIED = 0;
+  MODEL_AGGREGATE_HEALTH_STATUS_HEALTHY = 1;
+  MODEL_AGGREGATE_HEALTH_STATUS_DEGRADED = 2;
+  MODEL_AGGREGATE_HEALTH_STATUS_UNAVAILABLE = 3;
+  MODEL_AGGREGATE_HEALTH_STATUS_UNKNOWN = 4;
+}
+
+message ModelHealth {
+  string model_name = 1;
+  bool expected = 2;
+  ModelAggregateHealthStatus status = 3;
+  int32 instances_checked = 4;
+  int32 instances_reachable = 5;
+  int32 instances_reporting = 6;
+  int32 healthy_instances = 7;
+  google.protobuf.Timestamp observed_at = 8;
+  string message = 9;
+}
