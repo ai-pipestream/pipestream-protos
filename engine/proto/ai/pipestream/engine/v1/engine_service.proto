@@ -62,7 +62,7 @@ message ProcessNodeRequest {
 
 // Response from processing a document at a node.
 // This is a lightweight ack — downstream routing is fire-and-forget,
-// so the caller does not receive the updated stream back.
+// so the caller does not receive the full updated stream back.
 message ProcessNodeResponse {
   // Whether the node accepted and processed the document
   bool success = 1;
@@ -70,6 +70,10 @@ message ProcessNodeResponse {
   string message = 2;
   // Server timestamp when processing completed (epoch millis)
   int64 completed_at = 5;
+  // Output document from module processing (only populated in test mode
+  // with node_override, so chain tests can feed output to the next step).
+  // NOT populated during normal pipeline processing.
+  optional ai.pipestream.data.v1.PipeDoc output_doc = 6;
   // Reserved field numbers for removed fields (updated_stream, metrics)
   reserved 3, 4;
   reserved "updated_stream", "metrics";
