@@ -75,6 +75,14 @@ message ProcessNodeResponse {
   // with node_override, so chain tests can feed output to the next step).
   // NOT populated during normal pipeline processing.
   optional ai.pipestream.data.v1.PipeDoc output_doc = 6;
+  // Module and engine log entries from this processing step.
+  // Includes the module's audit trail (e.g., "Chunked 5 chunks in 42ms")
+  // and engine-level logs (filter results, mapping info, timing).
+  repeated ai.pipestream.data.v1.LogEntry log_entries = 7;
+  // Module implementation ID that handled this step (e.g., "chunker", "embedder").
+  optional string module_id = 8;
+  // Processing duration in milliseconds (convenience — also derivable from completed_at - request time).
+  optional int64 processing_time_ms = 9;
   // Reserved field numbers for removed fields (updated_stream, metrics)
   reserved 3, 4;
   reserved "updated_stream", "metrics";

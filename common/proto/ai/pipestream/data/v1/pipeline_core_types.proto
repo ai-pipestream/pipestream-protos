@@ -883,6 +883,9 @@ message StepExecutionRecord {
   optional ErrorData error_info = 8;
   // Target node ID if status is "DISPATCH_FAILURE".
   optional string attempted_target_node_id = 9;
+  // Module implementation ID that handled this step (e.g., "chunker", "embedder").
+  // Stored inline so the history is self-contained without requiring a graph lookup.
+  optional string module_id = 11;
 
   reserved 7;
   reserved "processor_logs";
