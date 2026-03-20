@@ -254,6 +254,9 @@ message PipeDocUpdateNotification {
   string author = 10;
   // Ownership tracking for security and access control.
   ai.pipestream.data.v1.OwnershipContext ownership = 11;
+
+  // Optional per-datasource retention hint (days) for index lifecycle; mirrors RepositoryEvent when set.
+  optional int32 retention_intent_days = 12;
 }
 
 // Event notification for ProcessRequest changes in the repository.

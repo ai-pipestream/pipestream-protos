@@ -42,6 +42,9 @@ message IntakeRepoEvent {
 
   // Optional free-form text reason (especially useful for DELETED/cleanup paths).
   optional string message = 11;
+
+  // Optional per-datasource retention hint (days) for OpenSearch ILM; default 30 when unset downstream.
+  optional int32 retention_intent_days = 12;
 }
 
 // Supported intake lifecycle intents.

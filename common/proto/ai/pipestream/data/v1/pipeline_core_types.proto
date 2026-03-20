@@ -549,11 +549,11 @@ message DocumentReference {
   // The logical document identifier that persists across all versions/hops.
   // Deterministic: hash(datasource_id + source_doc_id)
   string doc_id = 1;
-  // Node that produced this version (determines storage location).
+  // Graph address for repository hydration (storage coordinate).
   //
-  // Identifies exactly which node produced the version of the document being referenced.
-  // This is critical for fetching the correct state from the Repository.
-  string source_node_id = 2;
+  // Initial intake: typically equals ownership.datasource_id. After pipeline routing:
+  // graph node identifier. Used with doc_id and account_id to resolve PipeDocRecord / object key.
+  string graph_address_id = 2;
   // Account context for multi-tenant lookup.
   //
   // Ensures that hydration requests are scoped to the correct tenant,

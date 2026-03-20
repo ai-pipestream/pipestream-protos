@@ -31,6 +31,12 @@ message RepositoryEvent {
 
   SourceContext source = 5; // Who/what/where initiated this
 
+  // Datasource scope for logical document identity (composite uniqueness with account_id + document_id).
+  string datasource_id = 6;
+
+  // Optional per-datasource retention hint (days) for OpenSearch ILM / archival jobs; default 30 if unset.
+  optional int32 retention_intent_days = 7;
+
   // The actual state change
   oneof operation {
     Created created = 10;

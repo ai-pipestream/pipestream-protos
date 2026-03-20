@@ -108,6 +108,21 @@ message ListPipeDocsRequest {
   string continuation_token = 4;
 }
 
+// Delete every persisted graph state for this logical document (same account + datasource).
+message DeletePipeDocRequest {
+  string doc_id = 1;
+  string account_id = 2;
+  string datasource_id = 3;
+  // When true, attempt removal of underlying storage objects; when false, metadata-only delete.
+  bool purge_storage = 4;
+}
+
+message DeletePipeDocResponse {
+  bool success = 1;
+  string message = 2;
+  int32 pipedocs_removed = 3;
+}
+
 // Response containing a paginated list of PipeDoc metadata entries.
 message ListPipeDocsResponse {
   // List of PipeDoc metadata objects
@@ -173,9 +188,13 @@ service PipeDocService {
 
   // Retrieve a complete PipeDoc using a DocumentReference.
   // This is the preferred method for Engine hydration when documents are referenced
-  // via doc_id, source_node_id, and account_id rather than repository node ID.
+  // via doc_id, graph_address_id, and account_id rather than repository node ID.
   // Loads the full document content from S3 based on logical identifiers.
   rpc GetPipeDocByReference(GetPipeDocByReferenceRequest) returns (GetPipeDocByReferenceResponse);
+
+  // Delete all PipeDocRecords (and logical Document row) for a logical document within account + datasource.
+  // Emits RepositoryEvent deleted and PipeDocUpdateNotification DELETED per storage node. Idempotent.
+  rpc DeletePipeDoc(DeletePipeDocRequest) returns (DeletePipeDocResponse);
 
   // List PipeDocs with optional filtering by drive and connector.
   // Returns lightweight metadata without full document content. Supports pagination.
