@@ -30,7 +30,7 @@ message IntakeRepoEvent {
   // Deterministic datasource identifier for intake routing.
   string datasource_id = 7;
 
-  // Optional logical source node. For this WIP path this is typically "connector-intake".
+  // Graph address for repository hydration (same as datasource_id for initial intake; matches PipeDocRecord.graph_address_id).
   string source_node_id = 8;
 
   // Version marker from repository event/source object store.
