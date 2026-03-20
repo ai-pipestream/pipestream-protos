@@ -73,6 +73,16 @@ service PlatformRegistrationService {
   // Retrieves either a specific version or the latest schema for a connector.
   // Returns JSON Schema used for validating connector configuration.
   rpc GetConnectorSchema(GetConnectorSchemaRequest) returns (GetConnectorSchemaResponse);
+
+  // Update the Consul tags for a previously registered service instance.
+  //
+  // Allows services to advertise dynamic capabilities (e.g., which embedding
+  // models are currently loaded and ready) without re-registering. The platform
+  // merges the provided tags into the existing Consul registration.
+  //
+  // Intended for use cases where readiness changes at runtime, such as an
+  // embedder instance finishing model loading and advertising "model:minilm".
+  rpc UpdateTags(UpdateTagsRequest) returns (UpdateTagsResponse);
 }
 
 // Type of service being registered.
@@ -600,4 +610,31 @@ message ModuleSchemaVersion {
   map<string, string> metadata = 3;
   // Optional version description or changelog.
   optional string description = 4;
+}
+
+// Request to update Consul tags for a registered service instance.
+//
+// Identifies the instance by its Consul service ID (returned during
+// registration) and provides the complete set of tags that should replace
+// the current tags in Consul.
+message UpdateTagsRequest {
+  // Consul service ID of the instance to update (e.g., "embedder-172-17-0-1-19003").
+  string service_id = 1;
+  // Complete set of tags to apply. Replaces any existing tags in Consul.
+  //
+  // Convention for model availability tags: "model:<serving_name>"
+  // (e.g., "model:minilm", "model:e5_large_v2").
+  repeated string tags = 2;
+}
+
+// Response from tag update operation.
+message UpdateTagsResponse {
+  // Whether the tag update was applied successfully.
+  bool success = 1;
+  // Human-readable status or error message.
+  string message = 2;
+  // Tags now active on the instance after the update.
+  repeated string applied_tags = 3;
+  // Timestamp when the update was applied.
+  google.protobuf.Timestamp updated_at = 4;
 }
