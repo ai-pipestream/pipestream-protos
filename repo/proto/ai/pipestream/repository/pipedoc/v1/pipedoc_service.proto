@@ -108,19 +108,45 @@ message ListPipeDocsRequest {
   string continuation_token = 4;
 }
 
-// Delete every persisted graph state for this logical document (same account + datasource).
-message DeletePipeDocRequest {
+// Logical delete for one document identity: all PipeDoc rows + catalog row for (account, datasource, doc_id).
+message DeleteLogicalDocumentCommand {
   string doc_id = 1;
   string account_id = 2;
   string datasource_id = 3;
+}
+
+// Per repository node affected by a delete (audit, downstream indexing, future per-node notes).
+message RemovedPipeDocNode {
+  // Repository storage node id (UUID string).
+  string node_id = 1;
+  // Optional note for this node (e.g. co-deleted orphans); reserved for future structured fields.
+  optional string detail = 2;
+}
+
+// Result of a completed DeletePipeDoc RPC (use gRPC status for transport/errors).
+enum DeletePipeDocOutcome {
+  DELETE_PIPE_DOC_OUTCOME_UNSPECIFIED = 0;
+  // At least one pipedoc row removed and/or document catalog row removed.
+  DELETE_PIPE_DOC_OUTCOME_REMOVED = 1;
+  // Idempotent: no matching rows (no work performed).
+  DELETE_PIPE_DOC_OUTCOME_NOTHING_TO_REMOVE = 2;
+}
+
+message DeletePipeDocRequest {
+  oneof command {
+    DeleteLogicalDocumentCommand logical_document = 1;
+  }
   // When true, attempt removal of underlying storage objects; when false, metadata-only delete.
-  bool purge_storage = 4;
+  bool purge_storage = 10;
+  // When false (default), response may include removed_nodes (omit for large batches if added later).
+  bool omit_removed_nodes = 11;
 }
 
 message DeletePipeDocResponse {
-  bool success = 1;
-  string message = 2;
-  int32 pipedocs_removed = 3;
+  DeletePipeDocOutcome outcome = 1;
+  int32 pipedocs_removed = 2;
+  repeated RemovedPipeDocNode removed_nodes = 3;
+  string message = 4;
 }
 
 // Response containing a paginated list of PipeDoc metadata entries.
@@ -192,7 +218,7 @@ service PipeDocService {
   // Loads the full document content from S3 based on logical identifiers.
   rpc GetPipeDocByReference(GetPipeDocByReferenceRequest) returns (GetPipeDocByReferenceResponse);
 
-  // Delete all PipeDocRecords (and logical Document row) for a logical document within account + datasource.
+  // Delete by command (see DeletePipeDocRequest.command). Logical document: all PipeDoc rows + catalog row.
   // Emits RepositoryEvent deleted and PipeDocUpdateNotification DELETED per storage node. Idempotent.
   rpc DeletePipeDoc(DeletePipeDocRequest) returns (DeletePipeDocResponse);
 
