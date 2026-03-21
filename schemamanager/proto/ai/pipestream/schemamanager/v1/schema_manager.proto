@@ -27,6 +27,13 @@ message EnsureNestedEmbeddingsFieldExistsRequest {
 
   // The definition for the 'vector' field that will live inside the nested objects.
   VectorFieldDefinition vector_field_definition = 3;
+
+  // When vector_field_definition has no positive dimension, resolve from a registered VectorSet id.
+  optional string resolve_vector_set_id = 4;
+
+  // Alternative inline resolution: both chunker and embedding config ids must be set.
+  optional string resolve_chunker_config_id = 5;
+  optional string resolve_embedding_model_config_id = 6;
 }
 
 // Defines the configuration for a knn_vector field.

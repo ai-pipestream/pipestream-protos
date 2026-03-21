@@ -63,6 +63,12 @@ message SemanticVectorSet {
 
   // The actual embeddings produced by this combination.
   repeated OpenSearchEmbedding embeddings = 4;
+
+  // When set, indexing resolves the registered VectorSet (dims, binding) by id.
+  optional string vector_set_id = 5;
+
+  // Target nested OpenSearch field for KNN payloads; should match VectorSet.field_name when using vector_set_id.
+  optional string nested_field_name = 6;
 }
 
 // The canonical representation of a single vector embedding and its associated metadata.

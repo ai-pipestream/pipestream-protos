@@ -1041,6 +1041,12 @@ message VectorDirective {
   //
   // Default: "{source_label}_{chunker_id}_{embedder_id}"
   optional string field_name_template = 5;
+
+  // When set, resolution uses this registered VectorSet; inline chunker/embedder/cel may be omitted.
+  optional string vector_set_id = 6;
+
+  // Pipeline graph node id for audit only (does not affect resolution).
+  optional string provenance_graph_node_id = 7;
 }
 
 // A named chunker configuration with its opaque JSON config.

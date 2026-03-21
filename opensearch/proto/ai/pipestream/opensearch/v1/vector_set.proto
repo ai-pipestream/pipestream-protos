@@ -57,6 +57,17 @@ service VectorSetService {
   // Resolve: given (index_name, field_name, result_set_name), return the active VectorSet.
   // Falls back to result_set_name="default" if no exact match found.
   rpc ResolveVectorSet(ResolveVectorSetRequest) returns (ResolveVectorSetResponse);
+
+  // Resolve from a document directive: registered id OR inline tuple (ephemeral protobuf).
+  rpc ResolveVectorSetFromDirective(ResolveVectorSetFromDirectiveRequest) returns (ResolveVectorSetFromDirectiveResponse);
+}
+
+// Origin of a VectorSet row or ephemeral tuple.
+enum VectorSetProvenance {
+  VECTOR_SET_PROVENANCE_UNSPECIFIED = 0;
+  VECTOR_SET_PROVENANCE_REGISTERED = 1;
+  VECTOR_SET_PROVENANCE_INLINE = 2;
+  VECTOR_SET_PROVENANCE_MATERIALIZED = 3;
 }
 
 // VectorSet represents the canonical semantic tuple linking chunker config,
@@ -125,11 +136,20 @@ message CreateVectorSetRequest {
   // Result set name. Defaults to "default" if empty.
   optional string result_set_name = 7;
 
-  // Source text field (required, e.g. "body", "title").
+  // Deprecated: prefer source_cel. If both are set, they must match.
   string source_field = 8;
 
   // Optional metadata.
   optional google.protobuf.Struct metadata = 9;
+
+  optional string source_cel = 10;
+
+  optional VectorSetProvenance provenance = 11;
+
+  optional string owner_type = 12;
+  optional string owner_id = 13;
+
+  optional string content_signature = 14;
 }
 
 message CreateVectorSetResponse {
@@ -173,6 +193,13 @@ message UpdateVectorSetRequest {
 
   // Optional new metadata.
   optional google.protobuf.Struct metadata = 7;
+
+  optional string source_cel = 8;
+
+  optional VectorSetProvenance provenance = 9;
+
+  optional string owner_type = 10;
+  optional string owner_id = 11;
 }
 
 message UpdateVectorSetResponse {
@@ -235,4 +262,28 @@ message ResolveVectorSetResponse {
 
   // True if a VectorSet was found for the given parameters.
   bool found = 2;
+}
+
+// === Resolve from directive (id or inline) ===
+
+message InlineVectorSetSpec {
+  string chunker_config_id = 1;
+  string embedding_model_config_id = 2;
+  string field_name = 3;
+  string result_set_name = 4;
+  string source_cel = 5;
+  optional string index_name = 6;
+}
+
+message ResolveVectorSetFromDirectiveRequest {
+  oneof spec {
+    string vector_set_id = 1;
+    InlineVectorSetSpec inline = 2;
+  }
+}
+
+message ResolveVectorSetFromDirectiveResponse {
+  VectorSet vector_set = 1;
+  bool resolved = 2;
+  string resolution_notes = 3;
 }
