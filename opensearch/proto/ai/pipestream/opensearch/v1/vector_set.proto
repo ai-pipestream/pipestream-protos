@@ -95,7 +95,7 @@ message VectorSet {
   // Result set discriminator (e.g. "default", "title-only").
   string result_set_name = 7;
 
-  // Source text field that is chunked (e.g. "body", "title").
+  // Legacy short name; mirrored from source_cel for backward compatibility.
   string source_field = 8;
 
   // Vector dimensions denormalized from EmbeddingModelConfig.dimensions.
@@ -110,6 +110,16 @@ message VectorSet {
 
   // Optional extensible metadata (JSONB).
   optional google.protobuf.Struct metadata = 12;
+
+  VectorSetProvenance provenance = 13;
+
+  // CEL expression (or legacy short path) for source text selection.
+  string source_cel = 14;
+
+  optional string owner_type = 15;
+  optional string owner_id = 16;
+
+  optional string content_signature = 17;
 }
 
 // === Create ===
