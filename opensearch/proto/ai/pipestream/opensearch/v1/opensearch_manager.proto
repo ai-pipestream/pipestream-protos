@@ -38,6 +38,8 @@ service OpenSearchManagerService {
   rpc GetIndexStats(GetIndexStatsRequest) returns (GetIndexStatsResponse);
   // Lists all OpenSearch indices.
   rpc ListIndices(ListIndicesRequest) returns (ListIndicesResponse);
+  // Returns a simplified field-level mapping for an index (for admin UI).
+  rpc GetIndexMapping(GetIndexMappingRequest) returns (GetIndexMappingResponse);
 
   // Domain-Specific Search Operations
   rpc SearchFilesystemMeta(SearchFilesystemMetaRequest) returns (SearchFilesystemMetaResponse);
@@ -60,6 +62,8 @@ message CreateIndexRequest {
   optional string document_type = 3;
   // Optional custom OpenSearch index settings (shards, replicas, etc.)
   optional google.protobuf.Struct settings = 4;
+  // Nested field name for kNN vector mapping (e.g. "embeddings"). Defaults to "embeddings" if unset.
+  optional string vector_field_name = 5;
 }
 
 // Response from index creation operation.
@@ -256,6 +260,15 @@ message ListIndicesResponse {
   repeated OpenSearchIndexInfo indices = 1;
 }
 
+// Semantic vector field bound to an index (from VectorSet / DB), store-agnostic.
+message VectorFieldSummary {
+  string vector_set_id = 1;
+  string vector_set_name = 2;
+  string field_name = 3;
+  string result_set_name = 4;
+  int32 dimensions = 5;
+}
+
 // Basic information about a single OpenSearch index.
 message OpenSearchIndexInfo {
   // Name of the index
@@ -266,6 +279,19 @@ message OpenSearchIndexInfo {
   int64 size_in_bytes = 3;
   // Index health status (green, yellow, red)
   string status = 4;
+  // VectorSet-backed bindings for this index (empty if none in DB)
+  repeated VectorFieldSummary vector_fields = 5;
+}
+
+// Request to retrieve a simplified mapping for an index.
+message GetIndexMappingRequest {
+  string index_name = 1;
+}
+
+// Response with mapping shape aligned to admin REST: { "indexName": { "field": { "type": "..." } } } inside `mappings`.
+message GetIndexMappingResponse {
+  string index_name = 1;
+  google.protobuf.Struct mappings = 2;
 }
 
 // === Domain-Specific Search Messages ===
