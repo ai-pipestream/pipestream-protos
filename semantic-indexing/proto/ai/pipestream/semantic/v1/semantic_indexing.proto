@@ -166,6 +166,19 @@ message ListEmbeddingModelsResponse {
   bool djl_serving_reachable = 2;
 }
 
+// Lifecycle status of an embedding model.
+enum EmbeddingModelStatus {
+  // Default/unset — treat as UNAVAILABLE.
+  EMBEDDING_MODEL_STATUS_UNSPECIFIED = 0;
+  // Model is loaded on the serving backend and accepting predictions.
+  EMBEDDING_MODEL_STATUS_READY = 1;
+  // Model is known and has a registration URI but is not currently loaded.
+  // Can be loaded on demand via the serving backend's management API.
+  EMBEDDING_MODEL_STATUS_LOADABLE = 2;
+  // Model cannot be served: no configuration, backend unreachable, or load failed.
+  EMBEDDING_MODEL_STATUS_UNAVAILABLE = 3;
+}
+
 message EmbeddingModelInfo {
   // Enum name (e.g. "ALL_MINILM_L6_V2").
   string enum_name = 1;
@@ -179,8 +192,8 @@ message EmbeddingModelInfo {
   // Output vector dimensions.
   int32 dimensions = 4;
 
-  // Whether this model is currently registered and ready in DJL Serving.
-  bool ready = 5;
+  // Current lifecycle status of this model.
+  EmbeddingModelStatus status = 5;
 
   // Prefix to prepend for query embeddings (empty if none).
   string query_prefix = 6;
