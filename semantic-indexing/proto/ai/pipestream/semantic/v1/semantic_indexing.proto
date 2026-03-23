@@ -170,13 +170,16 @@ message ListEmbeddingModelsResponse {
 enum EmbeddingModelStatus {
   // Default/unset — treat as UNAVAILABLE.
   EMBEDDING_MODEL_STATUS_UNSPECIFIED = 0;
-  // Model is loaded on the serving backend and accepting predictions.
+  // Model is loaded on the serving backend, predictions verified working.
   EMBEDDING_MODEL_STATUS_READY = 1;
   // Model is known and has a registration URI but is not currently loaded.
   // Can be loaded on demand via the serving backend's management API.
   EMBEDDING_MODEL_STATUS_LOADABLE = 2;
-  // Model cannot be served: no configuration, backend unreachable, or load failed.
+  // Model cannot be served: no configuration or backend unreachable.
   EMBEDDING_MODEL_STATUS_UNAVAILABLE = 3;
+  // Model is loaded on the serving backend but predictions fail
+  // (e.g. incompatible handler, device mismatch, out of memory).
+  EMBEDDING_MODEL_STATUS_ERROR = 4;
 }
 
 message EmbeddingModelInfo {
@@ -203,4 +206,7 @@ message EmbeddingModelInfo {
 
   // Human-readable description.
   string description = 8;
+
+  // Error message when status is ERROR (empty otherwise).
+  string error_message = 9;
 }
