@@ -34,6 +34,16 @@ enum E2EIntakeMode {
   E2E_INTAKE_MODE_HTTP = 2;
 }
 
+// Transport type for edges between pipeline nodes.
+enum E2ETransportType {
+  E2E_TRANSPORT_TYPE_UNSPECIFIED = 0;
+  // Direct gRPC calls between nodes (engine calls modules directly).
+  E2E_TRANSPORT_TYPE_GRPC = 1;
+  // Kafka messaging (engine saves to S3, publishes reference to Kafka,
+  // sidecar hydrates and calls processNode). This is the production path.
+  E2E_TRANSPORT_TYPE_KAFKA = 2;
+}
+
 // Request to run a full end-to-end pipeline test.
 message RunE2EPipelineTestRequest {
   // Sample document names from the sidecar's built-in sample-data directory.
@@ -62,6 +72,11 @@ message RunE2EPipelineTestRequest {
   // Optional: semantic manager configuration override.
   // If not set, the default pipeline config is used.
   optional google.protobuf.Struct semantic_config = 7;
+
+  // Transport type for edges between pipeline nodes.
+  // Default: GRPC (direct calls). Set to KAFKA to test the production
+  // path with S3 storage, Kafka pub/sub, and sidecar hydration.
+  E2ETransportType transport_type = 8;
 }
 
 // Streamed response for each step of the E2E pipeline test.
