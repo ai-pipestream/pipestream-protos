@@ -19,6 +19,11 @@ service ModuleTestingSidecarService {
   // Creates account → graph → datasource → uploads document(s) → polls OpenSearch → cleans up.
   // Streams status updates per step so the client can display progress in real time.
   rpc RunE2EPipelineTest(RunE2EPipelineTestRequest) returns (stream RunE2EPipelineTestResponse);
+
+  // Executes a JDBC crawl end-to-end test.
+  // Creates account → graph → configs → datasource → bind → triggers JDBC crawl →
+  // streams crawl progress → polls OpenSearch for expected count → verifies sample → cleans up.
+  rpc RunJdbcCrawlTest(RunJdbcCrawlTestRequest) returns (stream RunE2EPipelineTestResponse);
 }
 
 // =====================================================================
@@ -110,6 +115,41 @@ message RunE2EPipelineTestResponse {
 
   // When this status was emitted.
   google.protobuf.Timestamp timestamp = 10;
+}
+
+// =====================================================================
+// JDBC Crawl Test
+// =====================================================================
+
+// Request to run a JDBC crawl end-to-end test.
+message RunJdbcCrawlTestRequest {
+  // Crawl definition name matching jdbc-connector config (e.g., "opinions").
+  string crawl_name = 1;
+
+  // Expected document count in OpenSearch after crawl completes.
+  // The poll step waits until this many documents are indexed.
+  int32 expected_doc_count = 2;
+
+  // Optional: use an existing account instead of creating one.
+  optional string account_id = 3;
+
+  // Whether to clean up all created resources after the test.
+  bool skip_cleanup = 4;
+
+  // Max seconds to wait for crawl completion + OpenSearch indexing.
+  // Default: 300 (5 minutes for large crawls).
+  optional int32 polling_timeout_seconds = 5;
+
+  // Transport type for graph edges.
+  E2ETransportType transport_type = 6;
+
+  // OpenSearch index name for the crawled documents.
+  // If empty, defaults to "test-jdbc-{account_id}".
+  optional string index_name = 7;
+
+  // Number of sample documents to verify after indexing.
+  // Default: 5. Each sample is checked for title, body, and vectors.
+  optional int32 verify_sample_count = 8;
 }
 
 // Outcome of a single E2E step.
