@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+package ai.pipestream.connector.jdbc.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "JdbcCrawlEventsProto";
+option java_package = "ai.pipestream.connector.jdbc.v1";
+
+// Crawl mode for the JDBC connector.
+enum JdbcCrawlMode {
+  JDBC_CRAWL_MODE_UNSPECIFIED = 0;
+  JDBC_CRAWL_MODE_POLLING = 1;
+  JDBC_CRAWL_MODE_LIVE = 2;
+}
+
+// Source classification for a crawl job.
+enum JdbcCrawlSource {
+  JDBC_CRAWL_SOURCE_UNSPECIFIED = 0;
+  JDBC_CRAWL_SOURCE_INITIAL = 1;
+  JDBC_CRAWL_SOURCE_INCREMENTAL = 2;
+  JDBC_CRAWL_SOURCE_LIVE = 3;
+}
+
+// Status of a crawl job.
+enum JdbcCrawlJobStatus {
+  JDBC_CRAWL_JOB_STATUS_UNSPECIFIED = 0;
+  JDBC_CRAWL_JOB_STATUS_COMPLETED = 1;
+  JDBC_CRAWL_JOB_STATUS_FAILED = 2;
+}
+
+// Event type for crawl status messages.
+enum JdbcCrawlEventType {
+  JDBC_CRAWL_EVENT_TYPE_UNSPECIFIED = 0;
+  JDBC_CRAWL_EVENT_TYPE_COMPLETION = 1;
+  JDBC_CRAWL_EVENT_TYPE_DELETE = 2;
+}
+
+// Published to jdbc-crawl-triggers topic.
+// External start requests from gRPC or future CDC.
+message JdbcCrawlTrigger {
+  string trigger_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string datasource_id = 3;
+  string crawl_name = 4;
+  JdbcCrawlMode crawl_mode = 5;
+  int32 fan_out_count = 6;
+  string api_key = 7;
+  string request_id = 8;
+}
+
+// Published to jdbc-crawl-jobs topic.
+// Fan-out sub-crawl assignments.
+message JdbcCrawlJob {
+  string job_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string datasource_id = 3;
+  string crawl_name = 4;
+  JdbcCrawlMode crawl_mode = 5;
+  int32 sub_crawl_index = 6;
+  int32 total_sub_crawls = 7;
+  int32 hash_modulus = 8;
+  int32 hash_remainder = 9;
+  JdbcCrawlSource crawl_source = 10;
+  string api_key = 11;
+}
+
+// Published to jdbc-crawl-status topic.
+// Completion events, delete events.
+message JdbcCrawlStatus {
+  string job_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string datasource_id = 3;
+  string crawl_name = 4;
+  int32 sub_crawl_index = 5;
+  JdbcCrawlJobStatus status = 6;
+  int64 row_count = 7;
+  string error_message = 8;
+  JdbcCrawlEventType event_type = 9;
+  repeated string deleted_doc_ids = 10;
+}
+
+// Overall crawl lifecycle phase.
+enum JdbcCrawlPhase {
+  JDBC_CRAWL_PHASE_UNSPECIFIED = 0;
+  JDBC_CRAWL_PHASE_ACCEPTED = 1;
+  JDBC_CRAWL_PHASE_DISPATCHING = 2;
+  JDBC_CRAWL_PHASE_RUNNING = 3;
+  JDBC_CRAWL_PHASE_COMPLETED = 4;
+  JDBC_CRAWL_PHASE_FAILED = 5;
+}
+
+// gRPC control service for the JDBC connector.
+service JdbcConnectorControlService {
+  // Trigger a crawl for a named crawl definition.
+  rpc StartCrawl(JdbcStartCrawlRequest) returns (JdbcStartCrawlResponse);
+
+  // Server-streaming: subscribe to live crawl status updates.
+  // The stream emits an update whenever a sub-crawl completes/fails,
+  // a delete event fires, or the overall crawl finishes.
+  rpc StreamCrawlStatus(StreamCrawlStatusRequest) returns (stream CrawlStatusUpdate);
+
+  // Unary: get current snapshot of a crawl's progress.
+  rpc GetCrawlStatus(GetCrawlStatusRequest) returns (CrawlStatusSnapshot);
+
+  // Unary: list all active (in-progress) crawls.
+  rpc ListActiveCrawls(ListActiveCrawlsRequest) returns (ListActiveCrawlsResponse);
+}
+
+// --- StartCrawl ---
+
+message JdbcStartCrawlRequest {
+  // Crawl name matching a configured crawl definition (required).
+  string crawl_name = 1;
+  // Crawl mode override (optional, defaults to config value).
+  JdbcCrawlMode crawl_mode = 2;
+  // Fan-out count override (optional, defaults to config value).
+  int32 fan_out_count = 3;
+  // Client-provided request identifier (for idempotency).
+  string request_id = 4;
+}
+
+message JdbcStartCrawlResponse {
+  bool accepted = 1;
+  string message = 2;
+  string request_id = 3;
+  string trigger_id = 4;
+  google.protobuf.Timestamp accepted_at = 5;
+}
+
+// --- StreamCrawlStatus ---
+
+message StreamCrawlStatusRequest {
+  // Optional filter: only stream updates for this trigger.
+  string trigger_id = 1;
+  // Optional filter: only stream updates for this crawl name.
+  string crawl_name = 2;
+}
+
+// Streamed to the client whenever progress changes.
+message CrawlStatusUpdate {
+  string trigger_id = 1;
+  string crawl_name = 2;
+  string datasource_id = 3;
+  JdbcCrawlPhase phase = 4;
+
+  // Sub-crawl detail (set when a sub-crawl completes/fails).
+  int32 sub_crawl_index = 5;
+  int32 total_sub_crawls = 6;
+  JdbcCrawlJobStatus sub_crawl_status = 7;
+  int64 sub_crawl_row_count = 8;
+  string error_message = 9;
+
+  // Running totals.
+  int32 completed_sub_crawls = 10;
+  int32 failed_sub_crawls = 11;
+  int64 total_row_count = 12;
+
+  // For delete events.
+  JdbcCrawlEventType event_type = 13;
+  int32 deleted_doc_count = 14;
+
+  google.protobuf.Timestamp timestamp = 15;
+}
+
+// --- GetCrawlStatus ---
+
+message GetCrawlStatusRequest {
+  // Look up by trigger ID.
+  string trigger_id = 1;
+}
+
+message CrawlStatusSnapshot {
+  bool found = 1;
+  string trigger_id = 2;
+  string crawl_name = 3;
+  string datasource_id = 4;
+  JdbcCrawlPhase phase = 5;
+  int32 total_sub_crawls = 6;
+  int32 completed_sub_crawls = 7;
+  int32 failed_sub_crawls = 8;
+  int64 total_row_count = 9;
+  google.protobuf.Timestamp started_at = 10;
+  repeated SubCrawlSnapshot sub_crawls = 11;
+}
+
+message SubCrawlSnapshot {
+  int32 sub_crawl_index = 1;
+  JdbcCrawlJobStatus status = 2;
+  int64 row_count = 3;
+  string error_message = 4;
+}
+
+// --- ListActiveCrawls ---
+
+message ListActiveCrawlsRequest {
+  // Optional filter by crawl name.
+  string crawl_name = 1;
+}
+
+message ListActiveCrawlsResponse {
+  repeated CrawlStatusSnapshot crawls = 1;
+}
