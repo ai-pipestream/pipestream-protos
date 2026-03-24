@@ -360,6 +360,12 @@ message DatasourceInstance {
   // Tier 2: Per-node configuration.
   NodeConfig node_config = 4;
 
+  // Graph this datasource instance belongs to.
+  string graph_id = 5;
+
+  // Graph version this instance is bound to.
+  int64 graph_version = 6;
+
   // Per-node configuration for datasource instance (Tier 2).
   //
   // Contains optional overrides of Tier 1 config and node-specific hints.

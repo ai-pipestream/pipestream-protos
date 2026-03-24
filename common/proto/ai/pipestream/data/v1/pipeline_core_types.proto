@@ -536,6 +536,15 @@ message StreamMetadata {
   // Kafka or persist results. Each node's audit trail is collected and
   // returned. Used for end-to-end chain validation without side effects.
   bool dry_run = 14;
+
+  // Pipeline graph this stream is flowing through.
+  // Set by engine during IntakeHandoff from DatasourceInstance binding.
+  // Enables graph-scoped cache lookups so multiple active pipelines with
+  // the same node IDs route documents through the correct graph config.
+  string graph_id = 15;
+
+  // Version of the pipeline graph at the time the stream was created.
+  int64 graph_version = 16;
 }
 
 // Reference to a document stored in the repository (S3 offload).
@@ -886,6 +895,9 @@ message StepExecutionRecord {
   // Module implementation ID that handled this step (e.g., "chunker", "embedder").
   // Stored inline so the history is self-contained without requiring a graph lookup.
   optional string module_id = 11;
+  // Pipeline graph that owned the node at execution time.
+  // Enables per-graph audit trail queries across shared nodes.
+  optional string graph_id = 12;
 
   reserved 7;
   reserved "processor_logs";
