@@ -25,6 +25,8 @@ message ValidateNodeRequest {
   ValidationMode mode = 2;
   // Cluster ID context for validation
   string cluster_id = 3;
+  // Graph ID to validate the node against. Required for graph-scoped lookups.
+  string graph_id = 4;
 }
 
 // Request to validate a complete pipeline graph
