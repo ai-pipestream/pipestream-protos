@@ -106,6 +106,15 @@ service JdbcConnectorControlService {
 
   // Unary: list all active (in-progress) crawls.
   rpc ListActiveCrawls(ListActiveCrawlsRequest) returns (ListActiveCrawlsResponse);
+
+  // Create or update a crawl definition at runtime.
+  rpc CreateCrawlDefinition(CreateCrawlDefinitionRequest) returns (CreateCrawlDefinitionResponse);
+
+  // Delete a crawl definition by name.
+  rpc DeleteCrawlDefinition(DeleteCrawlDefinitionRequest) returns (DeleteCrawlDefinitionResponse);
+
+  // List all crawl definitions (config-seeded and runtime-created).
+  rpc ListCrawlDefinitions(ListCrawlDefinitionsRequest) returns (ListCrawlDefinitionsResponse);
 }
 
 // --- StartCrawl ---
@@ -201,4 +210,98 @@ message ListActiveCrawlsRequest {
 
 message ListActiveCrawlsResponse {
   repeated CrawlStatusSnapshot crawls = 1;
+}
+
+// --- CreateCrawlDefinition ---
+
+// Creates or updates a crawl definition at runtime.
+// Stored in the connector's own database alongside config-seeded definitions.
+message CreateCrawlDefinitionRequest {
+  // Unique crawl name (used to start/reference the crawl).
+  string crawl_name = 1;
+
+  // SQL query returning PipeDoc rows. Use _ps_ column aliases.
+  // Use ? placeholder for watermark in incremental mode.
+  string parent_query = 2;
+
+  // Optional child SQL query executed per parent row.
+  // Use ? placeholder for parent's _ps_doc_id.
+  string child_query = 3;
+
+  // Datasource ID for intake authentication (from connector-admin).
+  string datasource_id = 4;
+
+  // API key for intake authentication (from connector-admin).
+  string api_key = 5;
+
+  // Target database JDBC URL. If empty, uses the connector's default target.
+  string target_jdbc_url = 6;
+
+  // Target database username. If empty, uses the connector's default target.
+  string target_username = 7;
+
+  // Target database password. If empty, uses the connector's default target.
+  string target_password = 8;
+
+  // Source table name for provenance tracking.
+  string source_table = 9;
+
+  // Poll interval in seconds (0 = one-shot only).
+  int32 poll_interval_seconds = 10;
+
+  // Delimiter for multi-value _ps_ fields (default: ",").
+  string delimiter = 11;
+
+  // Max rows per batch (default: 500).
+  int32 batch_size = 12;
+
+  // Max child rows per parent (default: 1000).
+  int32 max_children_per_parent = 13;
+
+  // Fan-out count (0 = no fan-out).
+  int32 fan_out_count = 14;
+
+  // Whether the crawl is enabled (default: true).
+  bool enabled = 15;
+
+  // Crawl mode: "polling" or "live".
+  string crawl_mode = 16;
+}
+
+message CreateCrawlDefinitionResponse {
+  bool success = 1;
+  string message = 2;
+  string crawl_name = 3;
+}
+
+// --- DeleteCrawlDefinition ---
+
+message DeleteCrawlDefinitionRequest {
+  string crawl_name = 1;
+}
+
+message DeleteCrawlDefinitionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// --- ListCrawlDefinitions ---
+
+message ListCrawlDefinitionsRequest {}
+
+message ListCrawlDefinitionsResponse {
+  repeated CrawlDefinitionInfo definitions = 1;
+}
+
+message CrawlDefinitionInfo {
+  string crawl_name = 1;
+  string parent_query = 2;
+  string child_query = 3;
+  string datasource_id = 4;
+  string source_table = 5;
+  int32 poll_interval_seconds = 6;
+  bool enabled = 7;
+  string crawl_mode = 8;
+  bool seeded_from_config = 9;
+  string status = 10;
 }
