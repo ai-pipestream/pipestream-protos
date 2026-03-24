@@ -231,9 +231,9 @@ message CreateCrawlDefinitionRequest {
   // Datasource ID for intake authentication (from connector-admin).
   string datasource_id = 4;
 
-  // API key is read from the x-api-key gRPC header, not sent in the body.
-  reserved 5;
-  reserved "api_key";
+  // API key for intake authentication.
+  // Prefer x-api-key gRPC header; falls back to this field for programmatic clients.
+  string api_key = 5;
 
   // Target database JDBC URL. If empty, uses the connector's default target.
   string target_jdbc_url = 6;
