@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.repository.filesystem.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -20,7 +21,7 @@ message SourceContext {
   string session_id = 6; // For grouping related operations
 }
 
-// Lean repository event - state changes only
+// Repository event — carries enough data for the catalog index without callbacks.
 message RepositoryEvent {
   // Deterministic: hash(document_id + operation + timestamp_millis)
   string event_id = 1;
@@ -37,6 +38,11 @@ message RepositoryEvent {
   // Optional per-datasource retention hint (days) for OpenSearch ILM / archival jobs; default 30 if unset.
   optional int32 retention_intent_days = 7;
 
+  // Ownership for document-level security (ACLs, connector origin).
+  // account_id and datasource_id are duplicated here for convenience;
+  // the OwnershipContext adds connector_id and acls.
+  ai.pipestream.data.v1.OwnershipContext ownership = 8;
+
   // The actual state change
   oneof operation {
     Created created = 10;
@@ -44,29 +50,39 @@ message RepositoryEvent {
     Deleted deleted = 12;
   }
 
-  // Minimal metadata for created documents
+  // Document created in the repository.
   message Created {
-    string s3_key = 1; // Full S3 key: connectors/{connector_id}/{document_id}.pb
+    string storage_key = 1; // Storage key within the drive (e.g., connectors/{connector_id}/{document_id}.pb)
     int64 size = 2; // File size in bytes
     string content_hash = 3; // SHA-256 for deduplication
-    string s3_version_id = 4; // S3 version for this creation
-    string bucket_name = 5; // S3 Bucket Name
+    string storage_version_id = 4; // Storage version for this creation
+    string drive_name = 5; // Drive that holds this document
+
+    // Catalog metadata — enough to index without a callback
+    string name = 6; // Document name / filename
+    string path = 7; // Full path within the drive
+    string content_type = 8; // MIME type (e.g., "application/pdf", "text/plain")
   }
 
-  // Minimal metadata for updates
+  // Document updated in the repository.
   message Updated {
-    string s3_key = 1; // Full S3 key (may have changed if connector changed)
+    string storage_key = 1; // Storage key (may change if connector changed)
     int64 size = 2; // New size
     string content_hash = 3; // New SHA-256 hash
-    string s3_version_id = 4; // New S3 version
+    string storage_version_id = 4; // New storage version
     string previous_version_id = 5; // What we replaced
-    string bucket_name = 6; // S3 Bucket Name
+    string drive_name = 6; // Drive that holds this document
+
+    // Catalog metadata
+    string name = 7; // Document name / filename
+    string path = 8; // Full path within the drive
+    string content_type = 9; // MIME type
   }
 
-  // Minimal reason for deletion
+  // Document deleted from the repository.
   message Deleted {
     string reason = 1; // Why it was deleted
-    bool purged = 2; // If true, S3 object was also deleted
+    bool purged = 2; // If true, storage object was also deleted
   }
 }
 
