@@ -196,6 +196,9 @@ message DoclingDocument {
   // Map of page numbers to page metadata.
   // Key is the page number (as string), value contains size and image info.
   map<string, PageItem> pages = 12;
+
+  // The furniture group containing headers, footers, page numbers, etc.
+  optional GroupItem furniture = 13;
 }
 
 // DocumentOrigin contains metadata about the source document file.
