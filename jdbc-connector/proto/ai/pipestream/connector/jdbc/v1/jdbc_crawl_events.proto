@@ -94,15 +94,15 @@ enum JdbcCrawlPhase {
 // gRPC control service for the JDBC connector.
 service JdbcConnectorControlService {
   // Trigger a crawl for a named crawl definition.
-  rpc StartCrawl(JdbcStartCrawlRequest) returns (JdbcStartCrawlResponse);
+  rpc StartCrawl(StartCrawlRequest) returns (StartCrawlResponse);
 
   // Server-streaming: subscribe to live crawl status updates.
   // The stream emits an update whenever a sub-crawl completes/fails,
   // a delete event fires, or the overall crawl finishes.
-  rpc StreamCrawlStatus(StreamCrawlStatusRequest) returns (stream CrawlStatusUpdate);
+  rpc StreamCrawlStatus(StreamCrawlStatusRequest) returns (stream StreamCrawlStatusResponse);
 
   // Unary: get current snapshot of a crawl's progress.
-  rpc GetCrawlStatus(GetCrawlStatusRequest) returns (CrawlStatusSnapshot);
+  rpc GetCrawlStatus(GetCrawlStatusRequest) returns (GetCrawlStatusResponse);
 
   // Unary: list all active (in-progress) crawls.
   rpc ListActiveCrawls(ListActiveCrawlsRequest) returns (ListActiveCrawlsResponse);
@@ -119,7 +119,7 @@ service JdbcConnectorControlService {
 
 // --- StartCrawl ---
 
-message JdbcStartCrawlRequest {
+message StartCrawlRequest {
   // Crawl name matching a configured crawl definition (required).
   string crawl_name = 1;
   // Crawl mode override (optional, defaults to config value).
@@ -130,7 +130,7 @@ message JdbcStartCrawlRequest {
   string request_id = 4;
 }
 
-message JdbcStartCrawlResponse {
+message StartCrawlResponse {
   bool accepted = 1;
   string message = 2;
   string request_id = 3;
@@ -148,7 +148,7 @@ message StreamCrawlStatusRequest {
 }
 
 // Streamed to the client whenever progress changes.
-message CrawlStatusUpdate {
+message StreamCrawlStatusResponse {
   string trigger_id = 1;
   string crawl_name = 2;
   string datasource_id = 3;
@@ -180,7 +180,7 @@ message GetCrawlStatusRequest {
   string trigger_id = 1;
 }
 
-message CrawlStatusSnapshot {
+message GetCrawlStatusResponse {
   bool found = 1;
   string trigger_id = 2;
   string crawl_name = 3;
@@ -209,7 +209,7 @@ message ListActiveCrawlsRequest {
 }
 
 message ListActiveCrawlsResponse {
-  repeated CrawlStatusSnapshot crawls = 1;
+  repeated GetCrawlStatusResponse crawls = 1;
 }
 
 // --- CreateCrawlDefinition ---

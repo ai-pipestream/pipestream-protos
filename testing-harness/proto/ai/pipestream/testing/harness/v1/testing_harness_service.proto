@@ -23,7 +23,7 @@ service ModuleTestingSidecarService {
   // Executes a JDBC crawl end-to-end test.
   // Creates account → graph → configs → datasource → bind → triggers JDBC crawl →
   // streams crawl progress → polls OpenSearch for expected count → verifies sample → cleans up.
-  rpc RunJdbcCrawlTest(RunJdbcCrawlTestRequest) returns (stream RunE2EPipelineTestResponse);
+  rpc RunJdbcCrawlTest(RunJdbcCrawlTestRequest) returns (stream RunJdbcCrawlTestResponse);
 }
 
 // =====================================================================
@@ -114,6 +114,21 @@ message RunE2EPipelineTestResponse {
   repeated ai.pipestream.data.v1.LogEntry log_entries = 9;
 
   // When this status was emitted.
+  google.protobuf.Timestamp timestamp = 10;
+}
+
+// Streamed response for each step of the JDBC crawl test.
+// Same structure as RunE2EPipelineTestResponse; separate type for buf lint compliance.
+message RunJdbcCrawlTestResponse {
+  string step_id = 1;
+  string step_name = 2;
+  int32 step_number = 3;
+  int32 total_steps = 4;
+  E2EStepOutcome outcome = 5;
+  string message = 6;
+  int64 duration_ms = 7;
+  google.protobuf.Struct details = 8;
+  repeated ai.pipestream.data.v1.LogEntry log_entries = 9;
   google.protobuf.Timestamp timestamp = 10;
 }
 
