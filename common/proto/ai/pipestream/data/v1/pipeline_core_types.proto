@@ -899,6 +899,11 @@ message StepExecutionRecord {
   // Enables per-graph audit trail queries across shared nodes.
   optional string graph_id = 12;
 
+  // Document and stream context — makes the record self-contained for pipeline event indexing.
+  optional string document_id = 13;
+  optional string account_id = 14;
+  optional string stream_id = 15;
+
   reserved 7;
   reserved "processor_logs";
 }
