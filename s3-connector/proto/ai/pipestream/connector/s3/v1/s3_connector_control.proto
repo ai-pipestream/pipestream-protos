@@ -17,6 +17,10 @@ service S3ConnectorControlService {
   // Stream all file locations in a bucket/prefix. Terminates after listing is complete.
   // Use for discovering files before triggering a crawl, or for E2E test orchestration.
   rpc StreamFileLocations(StreamFileLocationsRequest) returns (stream StreamFileLocationsResponse);
+  // Upload a file to an S3 bucket. Used by E2E tests to seed test data.
+  rpc UploadTestFile(UploadTestFileRequest) returns (UploadTestFileResponse);
+  // Delete a file from an S3 bucket. Used by E2E tests to clean up seeded data.
+  rpc DeleteTestFile(DeleteTestFileRequest) returns (DeleteTestFileResponse);
 }
 
 message StartCrawlRequest {
@@ -30,6 +34,8 @@ message StartCrawlRequest {
   string prefix = 4;
   // Client-provided request identifier (for idempotency).
   string request_id = 5;
+  // Optional API key for authenticating with the connector admin service.
+  string api_key = 6;
 }
 
 message StartCrawlResponse {
@@ -125,4 +131,50 @@ message S3FileLocation {
   string content_type = 5;
   // Full S3 URI (e.g., "s3://docling/dpbench/pdfs/doc_001.pdf").
   string source_url = 6;
+}
+
+// Request to upload a test file to an S3 bucket.
+// Used by E2E tests to seed data into a bucket before triggering a crawl.
+message UploadTestFileRequest {
+  // S3 connection configuration.
+  S3ConnectionConfig connection_config = 1;
+  // Bucket name (required).
+  string bucket = 2;
+  // Object key to write (e.g., "test-data/doc_001.pdf").
+  string key = 3;
+  // Raw file bytes to upload.
+  bytes content = 4;
+  // MIME type of the content (e.g., "application/pdf", "text/plain").
+  string content_type = 5;
+}
+
+// Response from uploading a test file.
+message UploadTestFileResponse {
+  // Whether the upload succeeded.
+  bool success = 1;
+  // Error message (if success is false).
+  string error_message = 2;
+  // ETag of the uploaded object as returned by S3.
+  string etag = 3;
+  // Number of bytes written.
+  int64 size_bytes = 4;
+}
+
+// Request to delete a test file from an S3 bucket.
+// Used by E2E tests to clean up seeded test data after a crawl.
+message DeleteTestFileRequest {
+  // S3 connection configuration.
+  S3ConnectionConfig connection_config = 1;
+  // Bucket name (required).
+  string bucket = 2;
+  // Object key to delete (e.g., "test-data/doc_001.pdf").
+  string key = 3;
+}
+
+// Response from deleting a test file.
+message DeleteTestFileResponse {
+  // Whether the deletion succeeded.
+  bool success = 1;
+  // Error message (if success is false).
+  string error_message = 2;
 }
