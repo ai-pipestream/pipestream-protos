@@ -14,6 +14,9 @@ service S3ConnectorControlService {
   rpc StartCrawl(StartCrawlRequest) returns (StartCrawlResponse);
   // Test connectivity and optionally count documents in a bucket.
   rpc TestBucketCrawl(TestBucketCrawlRequest) returns (TestBucketCrawlResponse);
+  // Stream all file locations in a bucket/prefix. Terminates after listing is complete.
+  // Use for discovering files before triggering a crawl, or for E2E test orchestration.
+  rpc StreamFileLocations(StreamFileLocationsRequest) returns (stream StreamFileLocationsResponse);
 }
 
 message StartCrawlRequest {
@@ -86,4 +89,40 @@ message TestBucketCrawlResponse {
   repeated string sample_object_keys = 4;
   // Test completion timestamp.
   google.protobuf.Timestamp tested_at = 5;
+}
+
+// Request to stream all file locations in a bucket/prefix.
+message StreamFileLocationsRequest {
+  // S3 connection configuration.
+  S3ConnectionConfig connection_config = 1;
+  // Bucket name (required).
+  string bucket = 2;
+  // Optional prefix filter (e.g., "dpbench/pdfs/").
+  string prefix = 3;
+  // Optional file extension filter (e.g., ".pdf", ".txt"). Empty means all files.
+  string extension_filter = 4;
+  // Maximum number of files to return (0 for unlimited).
+  int32 max_files = 5;
+}
+
+// Streamed response wrapping a file location.
+message StreamFileLocationsResponse {
+  // The file location data.
+  S3FileLocation file = 1;
+}
+
+// A single file in an S3 bucket.
+message S3FileLocation {
+  // Full object key (e.g., "dpbench/pdfs/doc_001.pdf").
+  string key = 1;
+  // File size in bytes.
+  int64 size_bytes = 2;
+  // Last modified timestamp.
+  google.protobuf.Timestamp last_modified = 3;
+  // Derived filename from the key (e.g., "doc_001.pdf").
+  string filename = 4;
+  // MIME type inferred from extension (e.g., "application/pdf").
+  string content_type = 5;
+  // Full S3 URI (e.g., "s3://docling/dpbench/pdfs/doc_001.pdf").
+  string source_url = 6;
 }
