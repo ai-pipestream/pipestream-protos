@@ -164,25 +164,41 @@ message ProcessDataRequest {
   bool dry_run = 7;
 }
 
+// Processing outcome for a module step.
+enum ProcessingOutcome {
+  PROCESSING_OUTCOME_UNSPECIFIED = 0;
+  // All requested operations completed.
+  PROCESSING_OUTCOME_SUCCESS = 1;
+  // Some operations completed, some failed. Document was processed but is incomplete.
+  // Check partial_failure_details for what was missed.
+  PROCESSING_OUTCOME_PARTIAL = 2;
+  // Module failed entirely. Document was not processed.
+  PROCESSING_OUTCOME_FAILURE = 3;
+  // Module decided to skip this document (e.g., no body text to chunk).
+  PROCESSING_OUTCOME_SKIPPED = 4;
+}
+
 // Response message for the ProcessData RPC.
 // This is returned by the gRPC Service Implementation back to the engine.
-// Renamed to avoid confusion with engine ProcessResponse.
 message ProcessDataResponse {
-  // Outcome: True if this step's processing was successful, false otherwise.
-  bool success = 1;
+  // Processing outcome.
+  ProcessingOutcome outcome = 6;
 
   // Output Data: The modified or newly created PipeDoc.
-  // either remains unchanged or that this step does not modify the PipeDoc directly.
-  // The Blob is part of the PipeDoc.
   optional ai.pipestream.data.v1.PipeDoc output_doc = 2;
 
-  // Error Details: Structured error information from *this processor* if success is false.
-  // This is for errors specific to the processor's execution logic.
-  optional google.protobuf.Struct error_details = 3; // Using Struct for flexibility.
+  // Error Details: Structured error information if outcome is FAILURE.
+  optional google.protobuf.Struct error_details = 3;
 
   // Structured log entries from this processor step.
   repeated ai.pipestream.data.v1.LogEntry log_entries = 5;
 
+  // What failed in a PARTIAL outcome. Each entry describes one failed operation.
+  // e.g., "paraphrase-MiniLM-L3-v2: model unavailable", "token-500-50 x mpnet: embedding timeout"
+  repeated string partial_failure_details = 7;
+
+  reserved 1; // was bool success
+  reserved "success";
   reserved 4;
   reserved "processor_logs";
 }
