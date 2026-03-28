@@ -314,18 +314,18 @@ message ProcessResponseUpdateNotification {
 }
 
 // ============================================================================
-// REDIS HOT CACHE — S3 FLUSH EVENTS
+// REDIS HOT CACHE — STORAGE FLUSH EVENTS
 // ============================================================================
 
 // Emitted by the repository service when a document is stored in Redis
 // (redis-buffered mode). The flusher consumer reads the document from Redis
-// and writes it to S3 asynchronously.
+// and persists it to durable storage asynchronously.
 message CacheFlushEvent {
   // PipeDocRecord node_id (deterministic UUID).
   string node_id = 1;
-  // S3 object key where the protobuf bytes should be written.
+  // Storage object key where the protobuf bytes should be written.
   string object_key = 2;
-  // Drive name for resolving the S3 bucket.
+  // Drive name for resolving the storage backend.
   string drive_name = 3;
   // Account ID for drive resolution.
   string account_id = 4;
