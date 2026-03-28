@@ -47,11 +47,46 @@ message StreamChunksRequest {
   // The text content to chunk.
   string text_content = 4;
 
-  // Chunker configuration as a Struct (parsed by the chunker into its native config).
+  // DEPRECATED: Use chunk_configs for multi-config requests.
   google.protobuf.Struct chunker_config = 5;
 
-  // Chunker config ID (e.g. "sentence_splitter_v1").
+  // DEPRECATED: Use chunk_configs for multi-config requests.
   string chunk_config_id = 6;
+
+  // Multiple chunk configurations. When populated, NLP runs once and each config
+  // is applied independently. Responses are tagged with chunk_config_id.
+  // Takes precedence over the legacy single-config fields (5, 6).
+  repeated ChunkConfigEntry chunk_configs = 7;
+}
+
+// Typed chunker configuration — replaces opaque Struct.
+// The semantic-manager converts its JSON config to this proto before calling the chunker.
+message ChunkerConfig {
+  // Chunking algorithm: TOKEN (default), SENTENCE, CHARACTER.
+  ChunkAlgorithm algorithm = 1;
+  // Number of units (tokens, sentences, or characters) per chunk.
+  int32 chunk_size = 2;
+  // Number of overlapping units between consecutive chunks.
+  int32 chunk_overlap = 3;
+  // Whether to clean/normalize text before chunking (collapse whitespace, normalize newlines).
+  bool clean_text = 4;
+  // Whether to detect and preserve URLs during chunking.
+  bool preserve_urls = 5;
+}
+
+enum ChunkAlgorithm {
+  CHUNK_ALGORITHM_UNSPECIFIED = 0;
+  CHUNK_ALGORITHM_TOKEN = 1;
+  CHUNK_ALGORITHM_SENTENCE = 2;
+  CHUNK_ALGORITHM_CHARACTER = 3;
+}
+
+// Entry in a multi-config chunking request.
+message ChunkConfigEntry {
+  // Chunker config ID (e.g. "sentence_10_3", "token_500_50").
+  string chunk_config_id = 1;
+  // Typed chunker configuration.
+  ChunkerConfig config = 2;
 }
 
 message StreamChunksResponse {
@@ -98,6 +133,10 @@ message StreamChunksResponse {
   // Total number of chunks produced for this request.
   // Only populated on the last chunk (is_last=true).
   optional int32 total_chunks = 14;
+
+  // Full NLP analysis of the source document text.
+  // Only populated on the last chunk (is_last=true) to avoid redundancy.
+  optional ai.pipestream.data.v1.NlpDocumentAnalysis nlp_analysis = 15;
 }
 
 // === Embedder Messages ===

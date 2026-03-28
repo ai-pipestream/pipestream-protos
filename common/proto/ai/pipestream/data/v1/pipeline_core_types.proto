@@ -822,6 +822,10 @@ message SemanticProcessingResult {
   repeated SemanticChunk chunks = 6;
   // Processing run metadata (e.g., model version, execution time).
   map<string, google.protobuf.Value> metadata = 7;
+
+  // Full NLP analysis of the source text. Computed once per document by the chunker.
+  // Enables downstream consumers to access sentence spans, POS data, language, etc.
+  optional NlpDocumentAnalysis nlp_analysis = 8;
 }
 
 // Source of a log entry — distinguishes engine routing logs from module processing logs.
@@ -1120,6 +1124,20 @@ message DocumentAnalytics {
   float uppercase_percentage = 10;
   // Count of each punctuation character found in the text.
   map<string, int32> punctuation_counts = 11;
+
+  // ISO-639-3 language code detected by NLP.
+  string detected_language = 12;
+  // Language detection confidence (0.0 to 1.0).
+  float language_confidence = 13;
+  // POS-derived ratios (0.0 to 1.0).
+  float noun_density = 14;
+  float verb_density = 15;
+  float adjective_density = 16;
+  float content_word_ratio = 17;
+  // Number of unique lemmas (dictionary forms).
+  int32 unique_lemma_count = 18;
+  // Lexical density: content words / total words.
+  float lexical_density = 19;
 }
 
 // Per-chunk analytics computed from a single chunk's text content.
@@ -1165,6 +1183,16 @@ message ChunkAnalytics {
   bool list_item_indicator = 16;
   // Whether the chunk contains URL placeholders (from URL preservation during chunking).
   bool contains_url_placeholder = 17;
+
+  // POS-derived ratios for this chunk (0.0 to 1.0).
+  float noun_density = 18;
+  float verb_density = 19;
+  float adjective_density = 20;
+  float content_word_ratio = 21;
+  // Unique lemma count in this chunk.
+  int32 unique_lemma_count = 22;
+  // Lexical density for this chunk.
+  float lexical_density = 23;
 }
 
 // Analytics for a single (source_field, chunker_config) pair.
@@ -1187,4 +1215,38 @@ message SourceFieldAnalytics {
   int32 min_chunk_size = 6;
   // Largest chunk size in characters.
   int32 max_chunk_size = 7;
+}
+
+// =============================================================================
+// NLP Analysis Messages — Full NLP pass results
+// =============================================================================
+
+// Full NLP analysis of the source text, computed once by the chunker.
+// Returned on the last chunk response. Preserved on SemanticProcessingResult
+// for downstream consumers (smart chunking, centroid computation, search relevance).
+message NlpDocumentAnalysis {
+  // Detected sentences with their character offsets in the source text.
+  repeated SentenceSpan sentences = 1;
+  // ISO-639-3 language code (e.g. "eng", "deu", "fra").
+  string detected_language = 2;
+  // Language detection confidence (0.0 to 1.0).
+  float language_confidence = 3;
+  // Total token count.
+  int32 total_tokens = 4;
+  // POS tag distribution ratios (0.0 to 1.0 each).
+  float noun_density = 5;
+  float verb_density = 6;
+  float adjective_density = 7;
+  float adverb_density = 8;
+  float content_word_ratio = 9;
+  // Lemma-derived stats.
+  int32 unique_lemma_count = 10;
+  float lexical_density = 11;
+}
+
+// A detected sentence with its character offsets.
+message SentenceSpan {
+  string text = 1;
+  int32 start_offset = 2;
+  int32 end_offset = 3;
 }
