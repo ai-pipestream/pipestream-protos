@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.connector.intake.v1;
 
+import "ai/pipestream/connector/intake/v1/document_upload.proto";
 import "ai/pipestream/connector/v1/connector_types.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/struct.proto";
@@ -10,11 +11,47 @@ import "google/protobuf/timestamp.proto";
 option java_multiple_files = true;
 option java_package = "ai.pipestream.connector.intake.v1";
 
-// ============================================
-// CONNECTOR-INTAKE-SERVICE
-// Handles authentication, account lookup, metadata enrichment
-// Agnostic to connector type (filesystem, database, API, etc.)
-// ============================================
+// Connector Intake Service Definition
+//
+// This service provides the primary entry point for document ingestion into the AI Pipestream platform.
+// It handles authentication, account verification, metadata enrichment, and routing to the storage layer.
+//
+// The service is designed to be connector-agnostic, supporting diverse data sources including
+// relational databases (JDBC), cloud storage (S3), and custom API integrations.
+//
+// High-Level Data Flow:
+// ====================
+//
+// ```mermaid
+// graph LR
+//     subgraph "Connectors"
+//         JDBC[JDBC Connector]
+//         S3[S3 Crawler]
+//         API[Custom API]
+//     end
+//
+//     subgraph "Intake Layer"
+//         INTAKE[Connector Intake Service]
+//         handshake[Stream Handshake]
+//         validate[Auth & Policy Validation]
+//     end
+//
+//     subgraph "Downstream"
+//         REPO[Repository Service]
+//         ENGINE[Pipeline Engine]
+//         KAFKA[Event Bus]
+//     end
+//
+//     JDBC -- "Bidi Stream" --> INTAKE
+//     S3 -- "Unary Blob" --> INTAKE
+//     API -- "Unary PipeDoc" --> INTAKE
+//
+//     INTAKE --> handshake
+//     handshake --> validate
+//     validate --> REPO
+//     validate --> ENGINE
+//     INTAKE -- "Delete Event" --> KAFKA
+// ```
 
 // High-throughput document ingestion service for all connector types.
 //
@@ -22,28 +59,46 @@ option java_package = "ai.pipestream.connector.intake.v1";
 // It handles authentication, account verification, metadata enrichment, and routing to the repository layer.
 // Supports both structured PipeDoc uploads and raw blob uploads with automatic wrapping.
 service ConnectorIntakeService {
-  // 1. The "Power User" path: Client sends a full PipeDoc
+  // 1. The "Power User" path: Client sends a full PipeDoc.
   // Best for internal services, advanced connectors, or "Box.com" style integrations
-  // where the client already knows the structure.
+  // where the client already knows the document structure.
   rpc UploadPipeDoc(UploadPipeDocRequest) returns (UploadPipeDocResponse);
 
-  // 2. The "Simple" path: Client sends raw bytes (Blob) + minimal metadata
-  // Best for "I just have a file" scenarios. Intake constructs the PipeDoc wrapper.
+  // 2. The "Simple" path: Client sends raw bytes (Blob) + minimal metadata.
+  // Best for "I just have a file" scenarios. Intake constructs the PipeDoc wrapper
+  // and extracts basic metadata (filename, mime-type).
   rpc UploadBlob(UploadBlobRequest) returns (UploadBlobResponse);
 
-  // Register a new crawl session (Async/Background only)
+  // 3. High-Performance Streaming path: Bidirectional stream for documents and deletes.
+  // Best for high-volume connectors (JDBC, S3 crawler) to eliminate unary overhead.
+  //
+  // Implementation Note: This stream is stateful. The first message must contain
+  // StreamContext to establish the identity and datasource for the entire session.
+  rpc UploadPipeDocStream(stream UploadPipeDocStreamRequest) returns (stream UploadPipeDocStreamResponse);
+
+  // 4. Single Document Deletion: Request a document be removed from the platform.
+  // This call is asynchronous; it validates the request and publishes a deletion
+  // event to the downstream system for processing.
+  rpc DeletePipeDoc(DeletePipeDocRequest) returns (DeletePipeDocResponse);
+
+  // Register a new crawl session (Async/Background only).
+  // Sessions allow the platform to track crawl progress, manage heartbeats,
+  // and perform orphan detection upon completion.
   rpc StartCrawlSession(StartCrawlSessionRequest) returns (StartCrawlSessionResponse);
 
-  // End a crawl session (for cleanup, orphan detection)
+  // End a crawl session (for cleanup, orphan detection).
+  // Once a session is ended, the platform calculates delta summaries and
+  // optionally triggers deletion of documents no longer present in the source.
   rpc EndCrawlSession(EndCrawlSessionRequest) returns (EndCrawlSessionResponse);
 
-  // Heartbeat to keep session alive
+  // Heartbeat to keep session alive.
+  // If a session expires due to lack of heartbeats, it may be marked as failed
+  // or orphaned by the platform monitoring system.
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }
 
 // ============================================
 // DATASOURCE ADMIN SERVICE
-// Manages DataSources (account + connector type bindings)
 // ============================================
 
 // Administrative operations for datasource lifecycle management.
@@ -52,37 +107,37 @@ service ConnectorIntakeService {
 // Connector types are pre-seeded templates (e.g., "s3", "file-crawler").
 // DataSource = Account + Connector Type + API Key + Configuration.
 service DataSourceAdminService {
-  // Create a new datasource for an account
+  // Create a new datasource for an account.
   rpc CreateDataSource(CreateDataSourceRequest) returns (CreateDataSourceResponse);
 
-  // Update datasource configuration
+  // Update datasource configuration (metadata, rate limits, etc.).
   rpc UpdateDataSource(UpdateDataSourceRequest) returns (UpdateDataSourceResponse);
 
-  // Get datasource details
+  // Get datasource details and current status.
   rpc GetDataSource(GetDataSourceRequest) returns (GetDataSourceResponse);
 
-  // Validate API key for a datasource
+  // Validate API key for a datasource without initiating a crawl.
   rpc ValidateApiKey(ValidateApiKeyRequest) returns (ValidateApiKeyResponse);
 
-  // List all datasources for an account
+  // List all datasources for an account with optional status filtering.
   rpc ListDataSources(ListDataSourcesRequest) returns (ListDataSourcesResponse);
 
-  // Enable/disable a datasource
+  // Enable/disable a datasource to pause/resume ingestion.
   rpc SetDataSourceStatus(SetDataSourceStatusRequest) returns (SetDataSourceStatusResponse);
 
-  // Delete a datasource (soft delete)
+  // Delete a datasource (soft delete). ASSOCIATED DATA IS NOT AUTOMATICALLY DELETED.
   rpc DeleteDataSource(DeleteDataSourceRequest) returns (DeleteDataSourceResponse);
 
-  // Generate new API key for a datasource
+  // Generate new API key for a datasource and invalidate the old one.
   rpc RotateApiKey(RotateApiKeyRequest) returns (RotateApiKeyResponse);
 
-  // Get crawl history for a datasource
+  // Get crawl history for a datasource (past session summaries).
   rpc GetCrawlHistory(GetCrawlHistoryRequest) returns (GetCrawlHistoryResponse);
 
-  // List available connector types (pre-seeded templates)
+  // List available connector types (pre-seeded templates) in the system.
   rpc ListConnectorTypes(ListConnectorTypesRequest) returns (ListConnectorTypesResponse);
 
-  // Get connector type details
+  // Get connector type details including schema and capabilities.
   rpc GetConnectorType(GetConnectorTypeRequest) returns (GetConnectorTypeResponse);
 }
 
@@ -189,11 +244,6 @@ message DataSourceConfig {
     // Hydration/dehydration policies - uses shared type from core types.
     ai.pipestream.data.v1.HydrationConfig hydration_config = 4;
 
-    // Note: StorageConfig is NOT here - storage details are managed by repository-service
-    // via the Drive entity (FilesystemService). DataSource in datasource-admin only has
-    // drive_name (string reference). Drive contains: bucket_name, region, credentials_ref,
-    // kms_encryption, s3_credentials, bucket_config, etc. (all managed by repository-service).
-
     // Custom connector-specific config (ONLY field validated against JSON Schema).
     // Examples: Wikipedia connector might have "parse_images", "include_history_metadata", "extract_urls"
     // This is the only JSON Schema-validated configuration.
@@ -212,9 +262,6 @@ message DataSourceConfig {
 
     // Conditional persistence rules.
     int32 max_inline_size_bytes = 2; // Max size before forcing persistence (e.g., 1MB).
-
-    // Future: Document type-based persistence rules.
-    // map<string, bool> persist_by_document_type = 3;
   }
 
   // Configuration for document retention policies.
