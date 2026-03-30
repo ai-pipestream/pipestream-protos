@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "ai/pipestream/data/v1/pipeline_core_types.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "OpenSearchDocumentProto";
