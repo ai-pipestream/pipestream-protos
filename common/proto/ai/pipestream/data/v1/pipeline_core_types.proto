@@ -545,6 +545,11 @@ message StreamMetadata {
 
   // Version of the pipeline graph at the time the stream was created.
   int64 graph_version = 16;
+
+  // Crawl identifier from the connector that initiated this stream.
+  // Set by intake from the connector's crawl request (e.g., JDBC trigger_id, S3 request_id).
+  // Enables filtering pipeline events by crawl run for telemetry and debugging.
+  optional string crawl_id = 17;
 }
 
 // Reference to a document stored in the repository (S3 offload).
@@ -907,6 +912,8 @@ message StepExecutionRecord {
   optional string document_id = 13;
   optional string account_id = 14;
   optional string stream_id = 15;
+  // Crawl identifier — links this step to the connector crawl run that initiated the stream.
+  optional string crawl_id = 16;
 
   reserved 7;
   reserved "processor_logs";
