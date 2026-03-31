@@ -172,6 +172,24 @@ message RunJdbcCrawlTestRequest {
   // Number of sample documents to verify after indexing.
   // Default: 5. Each sample is checked for title, body, and vectors.
   optional int32 verify_sample_count = 8;
+
+  // External DB support: when true, uses jdbc_url/username/password instead of local test DB.
+  // The jdbc-connector datasource config is registered via REST API at runtime.
+  bool use_external_db = 9;
+
+  // JDBC connection URL for external DB (e.g., "jdbc:postgresql://host:5433/courtlistener?sslmode=require").
+  // Only used when use_external_db is true.
+  optional string jdbc_url = 10;
+
+  // Username for external DB connection.
+  optional string jdbc_username = 11;
+
+  // Password for external DB connection.
+  optional string jdbc_password = 12;
+
+  // Maximum number of parent documents to crawl. Appended as LIMIT to parent query.
+  // 0 or unset = unlimited (crawl entire table).
+  optional int32 max_documents = 13;
 }
 
 // =====================================================================
