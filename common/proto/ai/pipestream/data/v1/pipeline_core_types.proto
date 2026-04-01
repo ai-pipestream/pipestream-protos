@@ -785,6 +785,24 @@ message ChunkEmbedding {
   optional string chunk_config_id = 7;
 }
 
+// Metadata for centroid (averaged) vector result sets.
+// Present when a SemanticProcessingResult contains computed centroids
+// rather than direct embeddings from an embedding model.
+message CentroidMetadata {
+  // Granularity level of this centroid.
+  // Values: "sentence", "paragraph_centroid", "section_centroid", "document_centroid"
+  string granularity = 1;
+
+  // How many source vectors were averaged to produce this centroid.
+  int32 source_vector_count = 2;
+
+  // Section title (for section_centroid granularity, from DocOutline).
+  optional string section_title = 3;
+
+  // Section heading depth (for section_centroid granularity).
+  optional int32 section_depth = 4;
+}
+
 // Single semantic chunk with its text and embedding.
 message SemanticChunk {
   // Unique identifier for this chunk within its parent result.
@@ -831,6 +849,11 @@ message SemanticProcessingResult {
   // Full NLP analysis of the source text. Computed once per document by the chunker.
   // Enables downstream consumers to access sentence spans, POS data, language, etc.
   optional NlpDocumentAnalysis nlp_analysis = 8;
+
+  // Centroid metadata — present when this result set contains computed centroids
+  // (averaged vectors) rather than direct embedding model output.
+  // Granularity levels: paragraph_centroid, section_centroid, document_centroid.
+  optional CentroidMetadata centroid_metadata = 9;
 }
 
 // Source of a log entry — distinguishes engine routing logs from module processing logs.

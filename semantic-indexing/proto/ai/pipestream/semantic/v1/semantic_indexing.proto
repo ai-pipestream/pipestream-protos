@@ -62,7 +62,7 @@ message StreamChunksRequest {
 // Typed chunker configuration — replaces opaque Struct.
 // The semantic-manager converts its JSON config to this proto before calling the chunker.
 message ChunkerConfig {
-  // Chunking algorithm: TOKEN (default), SENTENCE, CHARACTER.
+  // Chunking algorithm: TOKEN (default), SENTENCE, CHARACTER, SEMANTIC.
   ChunkAlgorithm algorithm = 1;
   // Number of units (tokens, sentences, or characters) per chunk.
   int32 chunk_size = 2;
@@ -72,6 +72,45 @@ message ChunkerConfig {
   bool clean_text = 4;
   // Whether to detect and preserve URLs during chunking.
   bool preserve_urls = 5;
+  // Semantic chunking configuration (only used when algorithm = CHUNK_ALGORITHM_SEMANTIC).
+  optional SemanticChunkingConfig semantic_config = 6;
+}
+
+// Configuration for semantic (topic-boundary) chunking.
+// Used when algorithm = CHUNK_ALGORITHM_SEMANTIC.
+// The semantic manager uses sentence embeddings to detect topic shifts,
+// then groups sentences into coherent chunks.
+message SemanticChunkingConfig {
+  // Absolute similarity cutoff (0.0-1.0). Break when consecutive sentence
+  // similarity drops below this value. Default: 0.5.
+  float similarity_threshold = 1;
+
+  // Break at the bottom N% of similarity transitions (0-100).
+  // Combined with similarity_threshold when both are set. Default: 20.
+  int32 percentile_threshold = 2;
+
+  // Minimum sentences per semantic chunk. Small chunks are merged with
+  // their most-similar neighbor. Default: 2.
+  int32 min_chunk_sentences = 3;
+
+  // Maximum sentences per semantic chunk. Large chunks are split at
+  // the lowest internal similarity point. Default: 30.
+  int32 max_chunk_sentences = 4;
+
+  // Embedding model for sentence boundary detection. Can differ from
+  // the indexing model (use a fast small model here). If not set,
+  // uses the first embedder_config from the directive.
+  optional string sentence_embedding_model = 5;
+
+  // Whether to store sentence-level vectors as a separate result set.
+  // These are the raw sentence embeddings from the boundary detection pass.
+  // Default: true.
+  bool store_sentence_vectors = 6;
+
+  // Whether to compute and store centroid vectors (paragraph, section, document).
+  // Centroids are computed by averaging sentence vectors — zero extra embedding cost.
+  // Default: true.
+  bool compute_centroids = 7;
 }
 
 enum ChunkAlgorithm {
@@ -79,6 +118,9 @@ enum ChunkAlgorithm {
   CHUNK_ALGORITHM_TOKEN = 1;
   CHUNK_ALGORITHM_SENTENCE = 2;
   CHUNK_ALGORITHM_CHARACTER = 3;
+  // Semantic chunking: sentence-level embedding similarity for topic boundary detection.
+  // Handled by the semantic manager orchestrator, not the chunker module.
+  CHUNK_ALGORITHM_SEMANTIC = 4;
 }
 
 // Entry in a multi-config chunking request.
