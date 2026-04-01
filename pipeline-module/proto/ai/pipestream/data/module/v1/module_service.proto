@@ -22,6 +22,33 @@ service PipeStepProcessorService {
 
   // Returns static registration information about this module with optional health check
   rpc GetServiceRegistration(GetServiceRegistrationRequest) returns (GetServiceRegistrationResponse);
+
+  // Live-swap the external backend endpoint (e.g., DJL Serving URL, Docling URL).
+  // If the new endpoint fails a health probe, the module rolls back to the previous
+  // endpoint and returns success=false with the error. Modules without an external
+  // backend return UNIMPLEMENTED.
+  rpc UpdateBackendEndpoint(UpdateBackendEndpointRequest) returns (UpdateBackendEndpointResponse);
+}
+
+// Request to live-swap a module's external backend endpoint.
+message UpdateBackendEndpointRequest {
+  // The new endpoint URL (e.g., "http://new-djl-host:8080").
+  string endpoint_url = 1;
+  // Optional: which backend to update if a module has multiple (e.g., "djl-serving", "docling").
+  // If empty, updates the module's primary/only backend.
+  string backend_id = 2;
+}
+
+// Response after attempting a backend endpoint swap.
+message UpdateBackendEndpointResponse {
+  // Whether the new endpoint is now active.
+  bool success = 1;
+  // The endpoint URL that is currently active (new URL on success, previous URL on rollback).
+  string active_endpoint_url = 2;
+  // The previous endpoint URL before this call.
+  string previous_endpoint_url = 3;
+  // Error message if the swap failed and was rolled back.
+  string error_message = 4;
 }
 
 // Request for module registration, optionally includes test data for health check
