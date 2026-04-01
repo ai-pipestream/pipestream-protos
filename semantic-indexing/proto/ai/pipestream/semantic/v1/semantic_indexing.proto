@@ -111,6 +111,21 @@ message SemanticChunkingConfig {
   // Centroids are computed by averaging sentence vectors — zero extra embedding cost.
   // Default: true.
   bool compute_centroids = 7;
+
+  // Preferred order for resolving document section structure.
+  // Used for section centroid computation. Tries each source in order,
+  // uses the first one that has a DocOutline with sections.
+  // Default: TIKA first, then DOCLING.
+  repeated SectionSource section_source_priority = 8;
+}
+
+// Source for document section/outline structure.
+enum SectionSource {
+  SECTION_SOURCE_UNSPECIFIED = 0;
+  // Use DocOutline from Tika metadata extraction.
+  SECTION_SOURCE_TIKA = 1;
+  // Use DocOutline from Docling document structure analysis.
+  SECTION_SOURCE_DOCLING = 2;
 }
 
 enum ChunkAlgorithm {

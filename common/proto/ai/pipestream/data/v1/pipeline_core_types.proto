@@ -248,6 +248,11 @@ message Section {
   optional int32 page_start = 10;
   // Ending page number if known (PDF/EPUB).
   optional int32 page_end = 11;
+  // Character offset in the source text where this section starts.
+  // Used for section-level vector centroids and search result highlighting.
+  optional int32 char_start_offset = 12;
+  // Character offset in the source text where this section ends.
+  optional int32 char_end_offset = 13;
 }
 
 // Reference to a link discovered within a document.
