@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package ai.pipestream.data.module.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BackendEndpointServiceProto";
+option java_package = "ai.pipestream.data.module.v1";
+
+// Optional service for modules that depend on external backends (DJL Serving,
+// Docling, etc.). Allows live-swapping the backend URL without restarting the
+// module. Health-checks the new endpoint before committing; rolls back on failure.
+//
+// Only implement this if your module has an external backend. Modules without
+// one (chunker, semantic-manager, opensearch-sink, proxy, etc.) should NOT
+// implement this service.
+service BackendEndpointService {
+  // Live-swap the external backend endpoint.
+  // The module health-probes the new URL before activating it.
+  // On probe failure, rolls back to the previous URL and returns success=false.
+  rpc UpdateBackendEndpoint(UpdateBackendEndpointRequest) returns (UpdateBackendEndpointResponse);
+
+  // Returns the current backend endpoint(s) and their health status.
+  rpc GetBackendEndpoints(GetBackendEndpointsRequest) returns (GetBackendEndpointsResponse);
+}
+
+// Request to live-swap a module's external backend endpoint.
+message UpdateBackendEndpointRequest {
+  // The new endpoint URL (e.g., "http://new-djl-host:8080").
+  string endpoint_url = 1;
+  // Which backend to update if a module has multiple (e.g., "djl-serving", "docling").
+  // If empty, updates the module's primary/only backend.
+  string backend_id = 2;
+}
+
+// Response after attempting a backend endpoint swap.
+message UpdateBackendEndpointResponse {
+  // Whether the new endpoint is now active.
+  bool success = 1;
+  // The endpoint URL that is currently active (new URL on success, previous URL on rollback).
+  string active_endpoint_url = 2;
+  // The previous endpoint URL before this call.
+  string previous_endpoint_url = 3;
+  // Error message if the swap failed and was rolled back.
+  string error_message = 4;
+}
+
+// Request to list current backend endpoints.
+message GetBackendEndpointsRequest {}
+
+// Response listing all external backend endpoints for this module.
+message GetBackendEndpointsResponse {
+  repeated BackendEndpointInfo endpoints = 1;
+}
+
+// Information about a single external backend endpoint.
+message BackendEndpointInfo {
+  // Backend identifier (e.g., "djl-serving", "docling").
+  string backend_id = 1;
+  // Current active URL.
+  string endpoint_url = 2;
+  // Whether the backend is currently reachable.
+  bool healthy = 3;
+  // Human-readable description.
+  string description = 4;
+}
