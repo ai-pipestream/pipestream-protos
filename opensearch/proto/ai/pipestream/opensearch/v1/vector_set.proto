@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
+import "ai/pipestream/opensearch/v1/opensearch_document.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -120,6 +121,11 @@ message VectorSet {
   optional string owner_id = 16;
 
   optional string content_signature = 17;
+
+  // Semantic path: FK to SemanticConfig. Null for standard chunking VectorSets.
+  optional string semantic_config_id = 18;
+  // Granularity within a semantic config family.
+  optional SemanticGranularity granularity = 19;
 }
 
 // === Create ===
@@ -131,8 +137,8 @@ message CreateVectorSetRequest {
   // Human-readable name (required, must be unique).
   string name = 2;
 
-  // FK to ChunkerConfig (required, must exist).
-  string chunker_config_id = 3;
+  // FK to ChunkerConfig. Required for standard VectorSets, omitted for semantic.
+  optional string chunker_config_id = 3;
 
   // FK to EmbeddingModelConfig (required, must exist).
   string embedding_model_config_id = 4;
@@ -160,6 +166,8 @@ message CreateVectorSetRequest {
   optional string owner_id = 13;
 
   optional string content_signature = 14;
+  optional string semantic_config_id = 15;
+  optional SemanticGranularity granularity = 16;
 }
 
 message CreateVectorSetResponse {

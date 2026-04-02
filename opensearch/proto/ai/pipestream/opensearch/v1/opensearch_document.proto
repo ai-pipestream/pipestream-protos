@@ -80,6 +80,20 @@ message SemanticVectorSet {
 
   // Target nested OpenSearch field for KNN payloads; should match VectorSet.field_name when using vector_set_id.
   optional string nested_field_name = 6;
+
+  // Semantic path: references a pre-registered semantic config.
+  optional string semantic_config_id = 7;
+  // Granularity of vectors in this set (semantic path only).
+  optional SemanticGranularity granularity = 8;
+}
+
+enum SemanticGranularity {
+  SEMANTIC_GRANULARITY_UNSPECIFIED = 0;
+  SEMANTIC_GRANULARITY_SEMANTIC_CHUNK = 1;
+  SEMANTIC_GRANULARITY_SENTENCE = 2;
+  SEMANTIC_GRANULARITY_PARAGRAPH = 3;
+  SEMANTIC_GRANULARITY_SECTION = 4;
+  SEMANTIC_GRANULARITY_DOCUMENT = 5;
 }
 
 // The canonical representation of a single vector embedding and its associated metadata.

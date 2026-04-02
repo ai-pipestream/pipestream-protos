@@ -859,6 +859,12 @@ message SemanticProcessingResult {
   // (averaged vectors) rather than direct embedding model output.
   // Granularity levels: paragraph_centroid, section_centroid, document_centroid.
   optional CentroidMetadata centroid_metadata = 9;
+
+  // Semantic config reference — present when this result was produced by semantic chunking.
+  optional string semantic_config_id = 10;
+  // Granularity of this result set (semantic path only).
+  // Uses string values: SEMANTIC_CHUNK, SENTENCE, PARAGRAPH, SECTION, DOCUMENT
+  optional string semantic_granularity = 11;
 }
 
 // Source of a log entry — distinguishes engine routing logs from module processing logs.

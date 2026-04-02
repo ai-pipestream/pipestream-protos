@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// =============================================================================
+// SemanticConfigService — Semantic Chunking Configuration Registry API
+// =============================================================================
+//
+// This file defines the gRPC service and messages for managing semantic
+// chunking configurations. SemanticConfigService is the registry where semantic
+// chunking strategy configurations are stored and looked up by the semantic
+// chunker module, pipelines, and indexing logic.
+//
+// A SemanticConfig defines how sentence-level embedding similarity detects
+// topic boundaries, which granularities to produce (sentence, paragraph,
+// section, document), and which embedding model to use for all vector types.
+//
+// On creation, child VectorSets are eagerly created for each enabled
+// granularity. Document flow resolves these by (semantic_config_id, granularity).
+//
+// Data flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "SemanticConfigService"
+//       CRUD[Create/Get/Delete/List]
+//       DB[(PostgreSQL semantic_config)]
+//       CRUD --> DB
+//     end
+//     Admin[Admin UI] --> CRUD
+//     Pipeline[Pipeline Config] --> CRUD
+//     SemanticChunker[module-semantic-chunker] -.->|resolve config| CRUD
+//     Indexer[Indexing Logic] -.->|resolve semantic_config_id| CRUD
+//     VectorSet[VectorSetService] -.->|child vector sets| CRUD
+//   ```
+//
+// See INTEGRATION_ALIGNMENT.md for module-semantic-chunker integration details.
+service SemanticConfigService {
+  // Create a new semantic chunking configuration.
+  // Child VectorSets are eagerly created for each enabled granularity.
+  rpc CreateSemanticConfig(CreateSemanticConfigRequest) returns (CreateSemanticConfigResponse);
+
+  // Retrieve a semantic chunking configuration by ID or name.
+  // Use by_name=true to lookup by name instead of ID.
+  rpc GetSemanticConfig(GetSemanticConfigRequest) returns (GetSemanticConfigResponse);
+
+  // List all semantic chunking configurations with pagination support.
+  // Results are ordered by created_at descending (newest first).
+  rpc ListSemanticConfigs(ListSemanticConfigsRequest) returns (ListSemanticConfigsResponse);
+
+  // Delete a semantic chunking configuration by ID.
+  // This operation will fail if the config is referenced by any active pipeline.
+  rpc DeleteSemanticConfig(DeleteSemanticConfigRequest) returns (DeleteSemanticConfigResponse);
+}
+
+// SemanticConfig represents a stored semantic chunking strategy configuration.
+// Boundary detection is driven by cosine similarity of sentence embeddings;
+// when similarity drops below the threshold a new chunk begins.
+message SemanticConfig {
+  // Unique identifier for this semantic configuration (UUID).
+  string id = 1;
+
+  // Human-readable name for this semantic configuration.
+  // Used for display in UI and pipeline configuration.
+  // Example: "Default semantic chunker — 80th-pct boundary"
+  string name = 2;
+
+  // Stable configuration identifier derived from configuration parameters.
+  // Used in SemanticProcessingResult.semantic_config_id for traceability.
+  // Example: "semantic-minilm-0.75-p80"
+  string config_id = 3;
+
+  // Foreign key to EmbeddingModelConfig — single model used for all granularities.
+  // All child VectorSets share this embedding model.
+  string embedding_model_id = 4;
+
+  // Cosine similarity threshold below which a new semantic chunk begins.
+  // Range: 0.0–1.0. Lower values produce larger chunks.
+  // Example: 0.75
+  float similarity_threshold = 5;
+
+  // Percentile of pairwise sentence similarities used as a dynamic boundary
+  // threshold. Applied when similarity_threshold is 0.0.
+  // Range: 0–100. Example: 80 means boundary at the 80th percentile.
+  int32 percentile_threshold = 6;
+
+  // Minimum number of sentences that must appear in a single semantic chunk.
+  // Prevents excessively small chunks from being emitted.
+  // Example: 2
+  int32 min_chunk_sentences = 7;
+
+  // Maximum number of sentences allowed in a single semantic chunk.
+  // Forces a boundary if the limit is reached regardless of similarity.
+  // Example: 30
+  int32 max_chunk_sentences = 8;
+
+  // If true, per-sentence embedding vectors are stored in addition to
+  // chunk-level centroids. Increases storage but enables fine-grained retrieval.
+  bool store_sentence_vectors = 9;
+
+  // If true, centroid vectors are computed for each chunk granularity level
+  // (paragraph, section, document) and stored in their respective VectorSets.
+  bool compute_centroids = 10;
+
+  // Extensibility bag for additional parameters such as section_source_priority,
+  // language hints, or future chunking strategy flags.
+  optional google.protobuf.Struct config_json = 11;
+
+  // Timestamp when this configuration was created.
+  google.protobuf.Timestamp created_at = 12;
+
+  // Timestamp when this configuration was last updated.
+  google.protobuf.Timestamp updated_at = 13;
+
+  // IDs of child VectorSets created eagerly during registration.
+  // One VectorSet is created per enabled granularity (sentence, paragraph,
+  // section, document).
+  repeated string vector_set_ids = 14;
+}
+
+// === SemanticConfig CRUD messages ===
+
+// Request to create a new semantic chunking configuration.
+message CreateSemanticConfigRequest {
+  // Optional ID for the configuration (UUID).
+  // If omitted, server generates a new UUID.
+  optional string id = 1;
+
+  // Human-readable name for this configuration (required).
+  // Must be unique across all semantic configs.
+  string name = 2;
+
+  // Stable configuration identifier (optional).
+  // If omitted, server derives from parameters in the form:
+  // semantic-{embedding_model_id}-{similarity_threshold}-p{percentile_threshold}
+  optional string config_id = 3;
+
+  // Foreign key to EmbeddingModelConfig (required).
+  // All child VectorSets created on registration will use this model.
+  string embedding_model_id = 4;
+
+  // Cosine similarity threshold for boundary detection (optional).
+  // Server default: 0.75. Mutually exclusive with percentile_threshold.
+  optional float similarity_threshold = 5;
+
+  // Percentile-based dynamic boundary threshold (optional).
+  // Server default: 0 (disabled). Mutually exclusive with similarity_threshold.
+  optional int32 percentile_threshold = 6;
+
+  // Minimum sentences per chunk (optional).
+  // Server default: 2.
+  optional int32 min_chunk_sentences = 7;
+
+  // Maximum sentences per chunk (optional).
+  // Server default: 30.
+  optional int32 max_chunk_sentences = 8;
+
+  // Whether to store per-sentence embedding vectors (required).
+  bool store_sentence_vectors = 9;
+
+  // Whether to compute and store centroid vectors per granularity (required).
+  bool compute_centroids = 10;
+
+  // Optional additional parameters as a JSON structure.
+  optional google.protobuf.Struct config_json = 11;
+
+  // CEL expression used as the source field selector for child VectorSets.
+  // Example: "document.body" or "chunk.text"
+  string source_cel = 12;
+}
+
+// Response from creating a semantic chunking configuration.
+message CreateSemanticConfigResponse {
+  // The created semantic configuration with generated timestamps and
+  // populated vector_set_ids for all eagerly created child VectorSets.
+  SemanticConfig config = 1;
+}
+
+// Request to retrieve a semantic chunking configuration.
+message GetSemanticConfigRequest {
+  // ID or name of the configuration to retrieve (required).
+  // Interpretation depends on the by_name flag.
+  string id = 1;
+
+  // If true, id field is interpreted as a name lookup.
+  // If false (default), id field is interpreted as UUID lookup.
+  optional bool by_name = 2;
+}
+
+// Response from retrieving a semantic chunking configuration.
+message GetSemanticConfigResponse {
+  // The requested semantic chunking configuration.
+  SemanticConfig config = 1;
+}
+
+// Request to list semantic chunking configurations with pagination.
+message ListSemanticConfigsRequest {
+  // Maximum number of configurations to return per page.
+  // Default: 50, Maximum: 100.
+  int32 page_size = 1;
+
+  // Pagination token from a previous ListSemanticConfigsResponse.
+  // Omit or use empty string for the first page.
+  string page_token = 2;
+}
+
+// Response from listing semantic chunking configurations.
+message ListSemanticConfigsResponse {
+  // List of semantic chunking configurations for the current page.
+  // Ordered by created_at descending (newest first).
+  repeated SemanticConfig configs = 1;
+
+  // Token for retrieving the next page of results.
+  // Empty string indicates no more pages are available.
+  string next_page_token = 2;
+}
+
+// Request to delete a semantic chunking configuration.
+message DeleteSemanticConfigRequest {
+  // ID of the configuration to delete (required, UUID).
+  string id = 1;
+}
+
+// Response from deleting a semantic chunking configuration.
+message DeleteSemanticConfigResponse {
+  // True if deletion was successful, false otherwise.
+  bool success = 1;
+
+  // Status message or error details.
+  // Example: "Configuration deleted successfully"
+  // Example error: "Cannot delete: configuration is referenced by 2 active pipelines"
+  string message = 2;
+}
