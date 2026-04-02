@@ -89,6 +89,11 @@ message RunE2EPipelineTestRequest {
   // Default: GRPC (direct calls). Set to KAFKA to test the production
   // path with S3 storage, Kafka pub/sub, and sidecar hydration.
   E2ETransportType transport_type = 8;
+
+  // Whether to include a semantic chunking directive alongside standard chunking.
+  // When true, adds a SEMANTIC algorithm directive that uses sentence-level
+  // embedding similarity for topic boundary detection, plus centroid vectors.
+  bool include_semantic_chunking = 9;
 }
 
 // Streamed response for each step of the E2E pipeline test.
@@ -190,6 +195,15 @@ message RunJdbcCrawlTestRequest {
   // Maximum number of parent documents to crawl. Appended as LIMIT to parent query.
   // 0 or unset = unlimited (crawl entire table).
   optional int32 max_documents = 13;
+
+  // Optional: semantic manager configuration override.
+  // If not set, the default 2x2 matrix config is used.
+  optional google.protobuf.Struct semantic_config = 14;
+
+  // Whether to include a semantic chunking directive alongside standard chunking.
+  // When true, adds a SEMANTIC algorithm directive that uses sentence-level
+  // embedding similarity for topic boundary detection, plus centroid vectors.
+  bool include_semantic_chunking = 15;
 }
 
 // =====================================================================
@@ -232,6 +246,15 @@ message RunS3CrawlTestRequest {
   // Expected number of documents in OpenSearch after crawl completes.
   // The poll step waits until this many documents are indexed.
   optional int32 expected_doc_count = 10;
+
+  // Optional: semantic manager configuration override.
+  // If not set, the default 2x2 matrix config is used.
+  optional google.protobuf.Struct semantic_config = 11;
+
+  // Whether to include a semantic chunking directive alongside standard chunking.
+  // When true, adds a SEMANTIC algorithm directive that uses sentence-level
+  // embedding similarity for topic boundary detection, plus centroid vectors.
+  bool include_semantic_chunking = 12;
 }
 
 // Streamed response for each step of the S3 crawl test.
