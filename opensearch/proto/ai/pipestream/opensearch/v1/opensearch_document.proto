@@ -96,6 +96,18 @@ enum SemanticGranularity {
   SEMANTIC_GRANULARITY_DOCUMENT = 5;
 }
 
+// Strategy for how document embeddings are physically stored in OpenSearch.
+enum IndexingStrategy {
+  // Default/unspecified: all embeddings as nested objects in the parent document.
+  INDEXING_STRATEGY_UNSPECIFIED = 0;
+  // One flat index per chunk config. Multiple embedding model columns per row.
+  // Enables cross-model scoring on the same chunk without joins.
+  INDEXING_STRATEGY_CHUNK_COMBINED = 1;
+  // One flat index per (chunk config × embedding model). Single vector column per row.
+  // Maximum isolation. Simplest mapping and queries.
+  INDEXING_STRATEGY_SEPARATE_INDICES = 2;
+}
+
 // The canonical representation of a single vector embedding and its associated metadata.
 // This is the object that gets stored in the 'nested' field in OpenSearch.
 message OpenSearchEmbedding {
@@ -120,4 +132,72 @@ message OpenSearchEmbedding {
 
   // Per-chunk analytics (positional features, text stats, POS ratios)
   optional ai.pipestream.data.v1.ChunkAnalytics chunk_analytics = 7;
+}
+
+// Base document for flat indexing strategies (CHUNK_COMBINED, SEPARATE_INDICES).
+// Contains all searchable metadata but no embedding vectors.
+// Vectors live in separate chunk indices referenced by chunk_indices.
+message OpenSearchDocumentMap {
+  string original_doc_id = 1;
+  string doc_type = 2;
+  string created_by = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp last_modified_at = 5;
+  optional string source_uri = 6;
+  optional string source_mime_type = 7;
+  optional string title = 8;
+  optional string body = 9;
+  repeated string tags = 10;
+  optional string revision_id = 11;
+  google.protobuf.Struct custom_fields = 12;
+  repeated ai.pipestream.data.v1.SourceFieldAnalytics source_field_analytics = 13;
+  optional ai.pipestream.data.v1.NlpDocumentAnalysis nlp_analysis = 14;
+  // ACL context for security filtering — opensearch-manager decides how to apply these
+  google.protobuf.Struct acl = 15;
+  // References to chunk indices that hold this document's vectors
+  repeated ChunkIndexReference chunk_indices = 16;
+}
+
+// Reference to a chunk index that holds vectors for a specific chunking strategy.
+message ChunkIndexReference {
+  string index_name = 1;
+  string chunk_config_id = 2;
+  int32 chunk_count = 3;
+  repeated string embedding_models = 4;
+}
+
+// Flat chunk document for CHUNK_COMBINED and SEPARATE_INDICES strategies.
+// Each row represents one chunk with denormalized parent metadata for
+// filterability without joins back to the base document.
+message OpenSearchChunkDocument {
+  // Parent document reference
+  string doc_id = 1;
+  string title = 2;
+  optional string source_uri = 3;
+  string doc_type = 4;
+  // ACL context (denormalized from parent for security filtering)
+  google.protobuf.Struct acl = 5;
+  // Chunk identity
+  string source_field = 6;
+  string chunk_config_id = 7;
+  int32 chunk_index = 8;
+  string source_text = 9;
+  bool is_primary = 10;
+  // Position in source document
+  optional int32 char_start_offset = 11;
+  optional int32 char_end_offset = 12;
+  optional string sentence_id = 13;
+  optional string paragraph_id = 14;
+  // Per-chunk analytics
+  optional ai.pipestream.data.v1.ChunkAnalytics chunk_analytics = 15;
+  // Embedding vectors keyed by embedding model ID.
+  // CHUNK_COMBINED: multiple entries (one per model)
+  // SEPARATE_INDICES: single entry
+  map<string, FloatVector> embeddings = 16;
+}
+
+// A vector of float values. Used as map values since protobuf maps
+// cannot directly contain repeated fields.
+message FloatVector {
+  repeated float values = 1;
 }
