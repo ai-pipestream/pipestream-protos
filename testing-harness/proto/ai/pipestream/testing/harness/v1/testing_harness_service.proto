@@ -31,6 +31,16 @@ service ModuleTestingSidecarService {
   // triggers S3 crawl → streams crawl progress → polls OpenSearch for expected count →
   // verifies sample → cleans up seeded files → cleans up resources.
   rpc RunS3CrawlTest(RunS3CrawlTestRequest) returns (stream RunS3CrawlTestResponse);
+
+  // Executes a transport-layer test that validates document routing without
+  // heavyweight processing. Uses ECHO modules as pass-through hops and the
+  // sidecar's own test-processor as the terminal counter.
+  //
+  // Routing test graph:  ECHO-1 → ECHO-2 → SIDECAR
+  // Parser test graph:   PARSER → ECHO → SIDECAR
+  //
+  // Streams step-by-step progress and reports per-node document counts.
+  rpc RunTransportTest(RunTransportTestRequest) returns (stream RunTransportTestResponse);
 }
 
 // =====================================================================
@@ -378,4 +388,124 @@ message RunModuleTestResponse {
   int64 elapsed_ms = 11;
   string error_code = 12;
   repeated string errors = 13;
+}
+
+// =====================================================================
+// Transport Test
+// =====================================================================
+
+// Type of transport test to execute.
+enum TransportTestType {
+  TRANSPORT_TEST_TYPE_UNSPECIFIED = 0;
+  // Engine routing test: ECHO-1 → ECHO-2 → SIDECAR.
+  // Pure routing — no parsing, no semantic processing, no indexing.
+  TRANSPORT_TEST_TYPE_ROUTING = 1;
+  // Parser transport test: PARSER → ECHO → SIDECAR.
+  // Validates parsing + routing for binary files (S3 only).
+  TRANSPORT_TEST_TYPE_PARSER = 2;
+}
+
+// Connector type for the transport test data source.
+enum TransportTestConnectorType {
+  TRANSPORT_TEST_CONNECTOR_TYPE_UNSPECIFIED = 0;
+  // JDBC connector — crawls rows from a relational database.
+  TRANSPORT_TEST_CONNECTOR_TYPE_JDBC = 1;
+  // S3 connector — crawls objects from an S3-compatible bucket.
+  TRANSPORT_TEST_CONNECTOR_TYPE_S3 = 2;
+}
+
+// Request to run a transport-layer validation test.
+// Tests document routing through ECHO hops to the sidecar's own test-processor,
+// which counts received documents in-process for exact validation.
+message RunTransportTestRequest {
+  // Which test topology to use.
+  TransportTestType test_type = 1;
+
+  // Which connector feeds documents into the pipeline.
+  // ROUTING test supports both JDBC and S3.
+  // PARSER test requires S3 (binary files need parsing).
+  TransportTestConnectorType connector_type = 2;
+
+  // Transport type for edges between pipeline nodes.
+  E2ETransportType transport_type = 3;
+
+  // Expected number of documents the crawl should produce.
+  // The test fails if the sidecar receives fewer than this count.
+  int32 expected_doc_count = 4;
+
+  // Max seconds to wait for all documents to arrive at the sidecar.
+  // Default: 300 (5 minutes).
+  optional int32 polling_timeout_seconds = 5;
+
+  // Whether to skip cleanup of created resources after the test.
+  bool skip_cleanup = 6;
+
+  // Optional: use an existing account instead of creating one.
+  optional string account_id = 7;
+
+  // ── JDBC connector options (used when connector_type = JDBC) ──
+
+  // Use an external database instead of the local courtlistener_test DB.
+  bool use_external_db = 10;
+
+  // JDBC connection URL for external DB.
+  optional string jdbc_url = 11;
+
+  // Username for external DB connection.
+  optional string jdbc_username = 12;
+
+  // Password for external DB connection.
+  optional string jdbc_password = 13;
+
+  // Maximum parent documents to crawl (0 = unlimited).
+  optional int32 max_documents = 14;
+
+  // ── S3 connector options (used when connector_type = S3) ──
+
+  // S3 connection configuration (endpoint, region, credentials).
+  ai.pipestream.connector.s3.v1.S3ConnectionConfig s3_connection_config = 20;
+
+  // S3 bucket name to crawl.
+  string s3_bucket = 21;
+
+  // Optional prefix filter within the bucket.
+  string s3_prefix = 22;
+
+  // Upload sample documents to the bucket before crawling.
+  bool hydrate_sample_data = 23;
+}
+
+// Streamed response for each step of the transport test.
+message RunTransportTestResponse {
+  // Step identifier.
+  string step_id = 1;
+
+  // Human-readable step name.
+  string step_name = 2;
+
+  // Step number (1-based).
+  int32 step_number = 3;
+
+  // Total steps in this test run.
+  int32 total_steps = 4;
+
+  // Step outcome.
+  E2EStepOutcome outcome = 5;
+
+  // Human-readable message.
+  string message = 6;
+
+  // Duration of this step in milliseconds.
+  int64 duration_ms = 7;
+
+  // Step-specific details.
+  // For validate_counts, includes per-node document counts:
+  //   { "echo-1": { "expected": 1000, "actual": 1000, "pass": true }, ... }
+  google.protobuf.Struct details = 8;
+
+  // Log entries from this step.
+  repeated ai.pipestream.data.v1.LogEntry log_entries = 9;
+
+  // When this status was emitted.
+  google.protobuf.Timestamp timestamp = 10;
 }
