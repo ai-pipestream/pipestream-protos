@@ -64,7 +64,7 @@ message EmbeddingModelConfig {
   optional google.protobuf.Struct metadata = 7;
 
   // Serving configuration — added for DB-driven model registry
-  string endpoint_url = 8; // Full URL to POST to, e.g. https://djl.rokkon.com/predictions/minilm
+  string endpoint_url = 8; // Full URL to POST to, e.g. http://djl-serving:8080/predictions/minilm
   string serving_name = 9; // Model path segment used in the endpoint, e.g. "minilm"
   string query_prefix = 10; // Prefix for query embeddings, e.g. "query: " for E5 models
   string index_prefix = 11; // Prefix for index/passage embeddings, e.g. "passage: "
