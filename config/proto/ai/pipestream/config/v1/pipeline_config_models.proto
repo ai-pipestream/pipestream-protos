@@ -75,14 +75,18 @@ message PipelineGraph {
   int64 version = 10;
 }
 
-// Graph node representing an individual processing step.
+// Graph node representing an individual processing step within a pipeline.
 //
-// Nodes exist independently and can be referenced DNS-style by globally unique IDs.
+// A node is a configured instance of a module. Multiple nodes can reference the same
+// module with different configurations (e.g., two parser steps with different settings).
 // Supports both production deployment and frontend design/simulation modes.
 message GraphNode {
-  // Globally unique identifier in format cluster_id.node_name (e.g., "prod.chunker-v1").
+  // Local identifier for this node within its graph (e.g., "parser", "echo-1", "chunker-v2").
+  // Must be unique within the graph. The globally unique address is derived at runtime as
+  // pipestream.{graph.cluster_id}.{graph.graph_id}.{node_id}.
   string node_id = 1;
-  // Cluster this node belongs to.
+  // Deprecated: cluster is inherited from the parent PipelineGraph.
+  // Kept for wire compatibility. Ignored by the engine at runtime.
   string cluster_id = 2;
   // Human-readable node name.
   string name = 3;
@@ -97,9 +101,9 @@ message GraphNode {
   // Operating mode (design or production).
   NodeMode mode = 9;
 
-  // Kafka input topic (production mode only). Typically matches node_id (e.g., "prod.chunker-v1").
+  // Optional Kafka topic override. If empty, derived as pipestream.{cluster}.{graph}.{nodeId}.
   string kafka_input_topic = 10;
-  // Auto-generated repository path (production mode only) in format /clusters/{cluster_id}/nodes/{node_id}.
+  // Optional repository path override. If empty, derived as /clusters/{cluster}/graphs/{graph}/nodes/{nodeId}.
   string repository_path = 11;
 
   // Design mode configuration for frontend simulation.
