@@ -116,6 +116,12 @@ message IndexDocumentRequest {
   optional string account_id = 5;
   // DataSource ID for ownership and binding
   optional string datasource_id = 6;
+  // Strategy for embedding storage. Default (UNSPECIFIED) preserves current nested behavior.
+  IndexingStrategy indexing_strategy = 7;
+  // For CHUNK_COMBINED / SEPARATE_INDICES: base document with chunk index references.
+  optional OpenSearchDocumentMap document_map = 8;
+  // For CHUNK_COMBINED / SEPARATE_INDICES: flat chunk documents with embeddings.
+  repeated OpenSearchChunkDocument chunk_documents = 9;
 }
 
 // Request to index any protobuf message type with dynamic schema mapping.
@@ -164,6 +170,8 @@ message StreamIndexDocumentsRequest {
   optional string account_id = 6;
   // DataSource ID for ownership and binding
   optional string datasource_id = 7;
+  // Strategy for embedding storage. Default (UNSPECIFIED) preserves current nested behavior.
+  IndexingStrategy indexing_strategy = 8;
 }
 
 // Response acknowledging the result of a single StreamIndexDocumentsRequest.
