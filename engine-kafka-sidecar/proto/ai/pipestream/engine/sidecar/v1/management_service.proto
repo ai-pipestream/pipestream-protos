@@ -8,6 +8,8 @@ option java_package = "ai.pipestream.engine.sidecar.v1";
 
 // Management service for controlling the Kafka Sidecar instance.
 // Provides visibility into active leases and control over consumption.
+// Each pipeline graph gets its own isolated Kafka consumer with independent
+// max.poll.records and consumer group (pipestream-sidecar-{clusterId}).
 service SidecarManagementService {
   // Get all active topic leases held by this sidecar.
   rpc GetLeases(GetLeasesRequest) returns (GetLeasesResponse);
@@ -17,6 +19,13 @@ service SidecarManagementService {
 
   // Resume consumption for a specific topic.
   rpc ResumeConsumption(ResumeConsumptionRequest) returns (ResumeConsumptionResponse);
+
+  // Get the consumer configuration for a specific graph (or all graphs).
+  rpc GetConsumerConfig(GetConsumerConfigRequest) returns (GetConsumerConfigResponse);
+
+  // Update the consumer configuration for a specific graph.
+  // Recreates the consumer with the new settings. In-flight records are drained first.
+  rpc SetConsumerConfig(SetConsumerConfigRequest) returns (SetConsumerConfigResponse);
 }
 
 // Request to get active leases. Currently empty.
@@ -42,6 +51,10 @@ message LeaseInfo {
   string status = 4;
   // The number of retry attempts for the current message.
   int32 retry_count = 5;
+  // The cluster ID this topic belongs to (derived from topic name).
+  string cluster_id = 6;
+  // The consumer group this topic is assigned to.
+  string consumer_group = 7;
 }
 
 // Request to pause consumption for a topic.
@@ -70,4 +83,48 @@ message ResumeConsumptionResponse {
   bool success = 1;
   // Informational message or error description.
   string message = 2;
+}
+
+// Request to get consumer configuration. If cluster_id is empty, returns all graphs.
+message GetConsumerConfigRequest {
+  // Optional cluster ID to filter. Empty = return all.
+  string cluster_id = 1;
+}
+
+// Response containing consumer configuration per graph.
+message GetConsumerConfigResponse {
+  // Configuration per graph consumer.
+  repeated GraphConsumerConfig configs = 1;
+}
+
+// Consumer configuration for a specific graph.
+message GraphConsumerConfig {
+  // The cluster ID (graph identifier).
+  string cluster_id = 1;
+  // The consumer group ID for this graph.
+  string consumer_group = 2;
+  // Max records fetched per poll cycle. Controls throughput vs backpressure.
+  int32 max_poll_records = 3;
+  // Topics subscribed to by this graph's consumer.
+  repeated string topics = 4;
+  // Current in-flight record count for this consumer.
+  int32 in_flight_count = 5;
+}
+
+// Request to update consumer configuration for a graph.
+message SetConsumerConfigRequest {
+  // The cluster ID (graph identifier) to configure.
+  string cluster_id = 1;
+  // New max.poll.records value. 0 = use default.
+  int32 max_poll_records = 2;
+}
+
+// Response for setting consumer configuration.
+message SetConsumerConfigResponse {
+  // Whether the operation was successful.
+  bool success = 1;
+  // Informational message or error description.
+  string message = 2;
+  // The applied configuration after the change.
+  GraphConsumerConfig applied_config = 3;
 }
