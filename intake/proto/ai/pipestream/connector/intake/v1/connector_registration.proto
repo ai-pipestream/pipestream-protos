@@ -19,6 +19,13 @@ option java_package = "ai.pipestream.connector.intake.v1";
 // Note: Strongly-typed Tier 1 config (persistence/retention/encryption/hydration) is protobuf-based and
 // is not represented as JSON Schema. JSON Schema is used ONLY for connector-specific custom config.
 service ConnectorRegistrationService {
+  // Create a new connector type (e.g., "jdbc", "confluence").
+  // connector_id is generated deterministically from connector_type.
+  rpc CreateConnectorType(CreateConnectorTypeRequest) returns (CreateConnectorTypeResponse);
+
+  // Delete a connector type. Fails if any DataSource references it.
+  rpc DeleteConnectorType(DeleteConnectorTypeRequest) returns (DeleteConnectorTypeResponse);
+
   // Create a new schema version for a connector type.
   rpc CreateConnectorConfigSchema(CreateConnectorConfigSchemaRequest) returns (CreateConnectorConfigSchemaResponse);
 
@@ -136,4 +143,49 @@ message SetConnectorCustomConfigSchemaResponse {
   bool success = 1;
   string message = 2;
   ai.pipestream.connector.v1.Connector connector = 3;
+}
+
+// ============================================
+// CONNECTOR TYPE CRUD
+// ============================================
+
+// Request to create a new connector type.
+message CreateConnectorTypeRequest {
+  // Required. Unique type name (e.g., "jdbc", "confluence", "sharepoint").
+  // The connector_id is generated deterministically: UUID(connector_type.bytes).
+  string connector_type = 1;
+  // Required. Human-readable display name.
+  string name = 2;
+  // Optional. Description of the connector type.
+  string description = 3;
+  // Optional. Defaults to MANAGEMENT_TYPE_UNMANAGED.
+  ai.pipestream.connector.v1.ManagementType management_type = 4;
+  // Optional. UI display name (defaults to name if not set).
+  string display_name = 5;
+  // Optional. Owner of the connector type.
+  string owner = 6;
+  // Optional. Documentation URL.
+  string documentation_url = 7;
+  // Optional. Tags for categorization.
+  repeated string tags = 8;
+}
+
+// Response from creating a connector type.
+message CreateConnectorTypeResponse {
+  bool success = 1;
+  string message = 2;
+  // The created connector with its generated connector_id.
+  ai.pipestream.connector.v1.Connector connector = 3;
+}
+
+// Request to delete a connector type.
+message DeleteConnectorTypeRequest {
+  // The connector_id to delete.
+  string connector_id = 1;
+}
+
+// Response from deleting a connector type.
+message DeleteConnectorTypeResponse {
+  bool success = 1;
+  string message = 2;
 }
