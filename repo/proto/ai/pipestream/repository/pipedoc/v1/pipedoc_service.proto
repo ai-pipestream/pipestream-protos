@@ -37,6 +37,13 @@ message SavePipeDocRequest {
 
   // Additional key-value metadata to associate with this document
   map<string, string> metadata = 6;
+
+  // Pipeline graph ID that produced this document (optional).
+  // Used to construct the S3 key path for pipeline-processed documents:
+  //   {accountId}/pipeline/{graphId}/{docId}/{nodeId}/{uuid}.pb
+  // Enables prefix-delete of all documents produced by a specific graph.
+  // Should be set for engine saves; omitted for intake.
+  optional string graph_id = 8;
 }
 
 // Response containing details about the saved PipeDoc and its storage location.
