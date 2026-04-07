@@ -279,14 +279,11 @@ enum EmbeddingModelStatus {
 }
 
 message EmbeddingModelInfo {
-  // Enum name (e.g. "ALL_MINILM_L6_V2").
-  string enum_name = 1;
-
-  // DJL Serving model name — the path in /predictions/{name}.
-  string model_name = 2;
-
-  // HuggingFace model identifier (e.g. "sentence-transformers/all-MiniLM-L6-v2").
-  string hugging_face_id = 3;
+  // Primary identifier for this model — the canonical name used in pipeline config
+  // and embedding requests. Consumers should use this when referencing the model.
+  string enum_name = 1 [deprecated = true]; // Deprecated: use identifier instead
+  string model_name = 2; // DJL Serving model name — the path in /predictions/{name}
+  string hugging_face_id = 3; // Full HuggingFace model identifier
 
   // Output vector dimensions.
   int32 dimensions = 4;
@@ -305,4 +302,16 @@ message EmbeddingModelInfo {
 
   // Error message when status is ERROR (empty otherwise).
   string error_message = 9;
+
+  // Primary model identifier — the canonical name to use in pipeline config.
+  // This is the config key (e.g. "minilm", "mpnet", "bge-m3").
+  string identifier = 10;
+
+  // All name variants that resolve to this model. Consumers should check
+  // requested model IDs against this set for validation. Includes: config key,
+  // serving name, full HuggingFace ID, and short HuggingFace name.
+  repeated string aliases = 11;
+
+  // Maximum input token length the model supports (0 = unknown/unlimited).
+  int32 max_tokens = 12;
 }

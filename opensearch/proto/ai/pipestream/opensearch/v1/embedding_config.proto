@@ -57,11 +57,20 @@ service EmbeddingConfigService {
 message EmbeddingModelConfig {
   string id = 1;
   string name = 2;
-  string model_identifier = 3;
+  string model_identifier = 3; // HuggingFace ID or external model identifier (provenance only)
   optional int32 dimensions = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
   optional google.protobuf.Struct metadata = 7;
+
+  // Serving configuration — added for DB-driven model registry
+  string endpoint_url = 8; // Full URL to POST to, e.g. http://djl-serving:8080/predictions/minilm
+  string serving_name = 9; // Model path segment used in the endpoint, e.g. "minilm"
+  string query_prefix = 10; // Prefix for query embeddings, e.g. "query: " for E5 models
+  string index_prefix = 11; // Prefix for index/passage embeddings, e.g. "passage: "
+  bool enabled = 12; // Whether this model is available for use
+  string tls_config_name = 13; // Maps to quarkus.tls.{name} for SSL connections
+  string provider = 14; // Provider type: "djl-serving", "openai", "custom"
 }
 
 message CreateEmbeddingModelConfigRequest {
@@ -70,6 +79,13 @@ message CreateEmbeddingModelConfigRequest {
   string model_identifier = 3;
   optional int32 dimensions = 4;
   optional google.protobuf.Struct metadata = 5;
+  optional string endpoint_url = 6;
+  optional string serving_name = 7;
+  optional string query_prefix = 8;
+  optional string index_prefix = 9;
+  optional bool enabled = 10;
+  optional string tls_config_name = 11;
+  optional string provider = 12;
 }
 
 message CreateEmbeddingModelConfigResponse {
@@ -91,6 +107,13 @@ message UpdateEmbeddingModelConfigRequest {
   optional string model_identifier = 3;
   optional int32 dimensions = 4;
   optional google.protobuf.Struct metadata = 5;
+  optional string endpoint_url = 6;
+  optional string serving_name = 7;
+  optional string query_prefix = 8;
+  optional string index_prefix = 9;
+  optional bool enabled = 10;
+  optional string tls_config_name = 11;
+  optional string provider = 12;
 }
 
 message UpdateEmbeddingModelConfigResponse {
