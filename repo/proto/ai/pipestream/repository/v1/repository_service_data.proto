@@ -257,6 +257,16 @@ message PipeDocUpdateNotification {
 
   // Optional per-datasource retention hint (days) for index lifecycle; mirrors RepositoryEvent when set.
   optional int32 retention_intent_days = 12;
+
+  // Drive type: "intake" or "pipeline". Indicates whether this is a source document
+  // from connector upload or a derived document from graph processing.
+  string drive_type = 13;
+
+  // Graph ID that produced this document (empty for intake documents).
+  string graph_id = 14;
+
+  // Cluster ID where this document was processed (empty for intake documents).
+  string cluster_id = 15;
 }
 
 // Event notification for ProcessRequest changes in the repository.
@@ -329,4 +339,14 @@ message CacheFlushEvent {
   string drive_name = 3;
   // Account ID for drive resolution.
   string account_id = 4;
+  // Document ID for S3 metadata tagging.
+  string doc_id = 5;
+  // Connector ID for S3 metadata tagging.
+  string connector_id = 6;
+  // Datasource ID for S3 metadata tagging.
+  string datasource_id = 7;
+  // Cluster ID for S3 metadata tagging (optional).
+  optional string cluster_id = 8;
+  // Graph ID for S3 metadata tagging (optional).
+  optional string graph_id = 9;
 }
