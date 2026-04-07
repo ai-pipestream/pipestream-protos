@@ -329,4 +329,14 @@ message CacheFlushEvent {
   string drive_name = 3;
   // Account ID for drive resolution.
   string account_id = 4;
+  // Document ID for S3 metadata tagging.
+  string doc_id = 5;
+  // Connector ID for S3 metadata tagging.
+  string connector_id = 6;
+  // Datasource ID for S3 metadata tagging.
+  string datasource_id = 7;
+  // Cluster ID for S3 metadata tagging (optional).
+  optional string cluster_id = 8;
+  // Graph ID for S3 metadata tagging (optional).
+  optional string graph_id = 9;
 }
