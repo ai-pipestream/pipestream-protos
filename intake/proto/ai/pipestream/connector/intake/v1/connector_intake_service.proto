@@ -139,6 +139,10 @@ service DataSourceAdminService {
 
   // Get connector type details including schema and capabilities.
   rpc GetConnectorType(GetConnectorTypeRequest) returns (GetConnectorTypeResponse);
+
+  // Delete all datasources whose account_id starts with the given prefix.
+  // Intended for cleaning up test data (e.g., prefix = "jdbc-e2e-" or "transport-e2e-").
+  rpc CleanupTestDataSources(CleanupTestDataSourcesRequest) returns (CleanupTestDataSourcesResponse);
 }
 
 // ============================================
@@ -735,4 +739,21 @@ message CrawlSessionSummary {
   string status = 9;
   // Additional metadata as key-value pairs.
   map<string, string> metadata = 10;
+}
+
+// --- CleanupTestDataSources ---
+
+message CleanupTestDataSourcesRequest {
+  // Prefix to match against account_id (e.g., "jdbc-e2e-" or "transport-e2e-").
+  // All datasources whose account_id starts with this prefix will be hard-deleted.
+  string account_id_prefix = 1;
+}
+
+message CleanupTestDataSourcesResponse {
+  bool success = 1;
+  string message = 2;
+  // Number of datasources deleted.
+  int32 datasources_deleted = 3;
+  // IDs of deleted datasources.
+  repeated string deleted_datasource_ids = 4;
 }

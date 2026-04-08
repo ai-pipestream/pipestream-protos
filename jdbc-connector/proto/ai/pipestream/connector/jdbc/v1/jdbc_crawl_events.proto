@@ -115,6 +115,10 @@ service JdbcConnectorControlService {
 
   // List all crawl definitions (config-seeded and runtime-created).
   rpc ListCrawlDefinitions(ListCrawlDefinitionsRequest) returns (ListCrawlDefinitionsResponse);
+
+  // Delete all crawl definitions whose crawl_name starts with the given prefix.
+  // Intended for cleaning up test data (e.g., prefix = "e2e-").
+  rpc CleanupTestCrawls(CleanupTestCrawlsRequest) returns (CleanupTestCrawlsResponse);
 }
 
 // --- StartCrawl ---
@@ -305,4 +309,25 @@ message CrawlDefinitionInfo {
   string crawl_mode = 8;
   bool seeded_from_config = 9;
   string status = 10;
+}
+
+// --- CleanupTestCrawls ---
+
+message CleanupTestCrawlsRequest {
+  // Prefix to match against crawl_name (e.g., "e2e-" or "test-").
+  // All crawl definitions whose name starts with this prefix will be deleted.
+  string crawl_name_prefix = 1;
+  // If true, also delete the associated datasources via connector-admin.
+  bool delete_datasources = 2;
+}
+
+message CleanupTestCrawlsResponse {
+  bool success = 1;
+  string message = 2;
+  // Number of crawl definitions deleted.
+  int32 crawls_deleted = 3;
+  // Number of datasources deleted (if delete_datasources was true).
+  int32 datasources_deleted = 4;
+  // Names of deleted crawl definitions.
+  repeated string deleted_crawl_names = 5;
 }
