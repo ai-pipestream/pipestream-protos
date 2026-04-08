@@ -214,6 +214,30 @@ message RunJdbcCrawlTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 15;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  // Controls shards, replicas, refresh interval, and HNSW parameters.
+  // If not set, opensearch-manager defaults apply (from application.properties).
+  optional OpenSearchIndexSettings opensearch_settings = 16;
+}
+
+// OpenSearch index creation settings for performance tuning.
+// See: https://docs.opensearch.org/latest/vector-search/performance-tuning-indexing/
+message OpenSearchIndexSettings {
+  // Number of primary shards for chunk indices. More = parallel HNSW construction. Default: 8.
+  optional int32 number_of_shards = 1;
+
+  // Number of replicas. 0 during bulk indexing avoids duplicate HNSW graph construction.
+  optional int32 number_of_replicas = 2;
+
+  // Refresh interval. "-1" disables during bulk indexing to avoid tiny segments. Default: "-1".
+  optional string refresh_interval = 3;
+
+  // HNSW ef_construction: graph build quality. Lower = faster indexing. Default: 100.
+  optional int32 ef_construction = 4;
+
+  // HNSW m: bidirectional links per node. Default: 16.
+  optional int32 hnsw_m = 5;
 }
 
 // =====================================================================
