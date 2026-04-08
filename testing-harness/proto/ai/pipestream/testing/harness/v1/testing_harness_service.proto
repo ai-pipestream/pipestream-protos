@@ -105,6 +105,17 @@ message RunE2EPipelineTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 9;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  optional OpenSearchIndexSettings opensearch_settings = 10;
+
+  // OpenSearch bulk indexing queue configuration for this test run.
+  // If set, calls UpdateBulkConfig on opensearch-manager before the test starts.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 11;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport_type = KAFKA.
+  int32 kafka_partitions = 12;
 }
 
 // Streamed response for each step of the E2E pipeline test.
@@ -300,6 +311,18 @@ message RunS3CrawlTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 12;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  // Controls shards, replicas, refresh interval, and HNSW parameters.
+  optional OpenSearchIndexSettings opensearch_settings = 13;
+
+  // OpenSearch bulk indexing queue configuration for this test run.
+  // If set, calls UpdateBulkConfig on opensearch-manager before the crawl starts.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 14;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport_type = KAFKA.
+  int32 kafka_partitions = 15;
 }
 
 // Streamed response for each step of the S3 crawl test.
