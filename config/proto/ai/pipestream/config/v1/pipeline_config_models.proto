@@ -147,6 +147,15 @@ message GraphNode {
   // When true, the document is persisted to the repository even if the module
   // processing encounters an error. Useful for debugging and reprocessing.
   bool save_on_error = 19;
+
+  // Number of Kafka partitions for this node's processing topic.
+  //
+  // Only relevant when this node is the target of at least one MESSAGING edge.
+  // More partitions enable higher parallelism across sidecar consumers.
+  // If 0 or unset, defaults to pipestream.kafka.default-partitions (engine config, default 4).
+  // Once the topic exists, this value is NOT used to alter it — changing partitions
+  // on an existing topic requires a separate admin operation.
+  int32 kafka_partitions = 20;
 }
 
 // Dead Letter Queue configuration for handling failed messages.
