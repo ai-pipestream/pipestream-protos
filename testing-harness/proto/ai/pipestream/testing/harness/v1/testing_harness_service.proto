@@ -5,6 +5,7 @@ package ai.pipestream.testing.harness.v1;
 import "ai/pipestream/connector/s3/v1/s3_connector_control.proto";
 import "ai/pipestream/data/module/v1/module_service.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "ai/pipestream/opensearch/v1/opensearch_manager.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -104,6 +105,17 @@ message RunE2EPipelineTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 9;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  optional OpenSearchIndexSettings opensearch_settings = 10;
+
+  // OpenSearch bulk indexing queue configuration for this test run.
+  // If set, calls UpdateBulkConfig on opensearch-manager before the test starts.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 11;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport_type = KAFKA.
+  int32 kafka_partitions = 12;
 }
 
 // Streamed response for each step of the E2E pipeline test.
@@ -214,6 +226,40 @@ message RunJdbcCrawlTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 15;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  // Controls shards, replicas, refresh interval, and HNSW parameters.
+  // If not set, opensearch-manager defaults apply (from application.properties).
+  optional OpenSearchIndexSettings opensearch_settings = 16;
+
+  // OpenSearch bulk indexing queue configuration for this test run.
+  // If set, calls UpdateBulkConfig on opensearch-manager before the crawl starts.
+  // Controls queue count, capacity, and flush interval for the draining queue system.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 17;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport_type = KAFKA. Applied to all graph nodes created by the test.
+  // If 0 or unset, uses the engine default (pipestream.kafka.default-partitions, default 4).
+  int32 kafka_partitions = 18;
+}
+
+// OpenSearch index creation settings for performance tuning.
+// See: https://docs.opensearch.org/latest/vector-search/performance-tuning-indexing/
+message OpenSearchIndexSettings {
+  // Number of primary shards for chunk indices. More = parallel HNSW construction. Default: 8.
+  optional int32 number_of_shards = 1;
+
+  // Number of replicas. 0 during bulk indexing avoids duplicate HNSW graph construction.
+  optional int32 number_of_replicas = 2;
+
+  // Refresh interval. "-1" disables during bulk indexing to avoid tiny segments. Default: "-1".
+  optional string refresh_interval = 3;
+
+  // HNSW ef_construction: graph build quality. Lower = faster indexing. Default: 100.
+  optional int32 ef_construction = 4;
+
+  // HNSW m: bidirectional links per node. Default: 16.
+  optional int32 hnsw_m = 5;
 }
 
 // =====================================================================
@@ -265,6 +311,18 @@ message RunS3CrawlTestRequest {
   // When true, adds a SEMANTIC algorithm directive that uses sentence-level
   // embedding similarity for topic boundary detection, plus centroid vectors.
   bool include_semantic_chunking = 12;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  // Controls shards, replicas, refresh interval, and HNSW parameters.
+  optional OpenSearchIndexSettings opensearch_settings = 13;
+
+  // OpenSearch bulk indexing queue configuration for this test run.
+  // If set, calls UpdateBulkConfig on opensearch-manager before the crawl starts.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 14;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport_type = KAFKA.
+  int32 kafka_partitions = 15;
 }
 
 // Streamed response for each step of the S3 crawl test.
