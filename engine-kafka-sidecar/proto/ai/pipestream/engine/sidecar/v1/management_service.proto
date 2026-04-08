@@ -55,6 +55,8 @@ message LeaseInfo {
   string cluster_id = 6;
   // The consumer group this topic is assigned to.
   string consumer_group = 7;
+  // Consul KV key for this lease (slot path). Empty for single-row topics without per-slot visibility.
+  string lease_key = 8;
 }
 
 // Request to pause consumption for a topic.
@@ -109,14 +111,18 @@ message GraphConsumerConfig {
   repeated string topics = 4;
   // Current in-flight record count for this consumer.
   int32 in_flight_count = 5;
+  // When set, identifies a specific slot consumer (Consul lease path). Empty for the shared intake consumer.
+  string lease_key = 6;
 }
 
 // Request to update consumer configuration for a graph.
 message SetConsumerConfigRequest {
-  // The cluster ID (graph identifier) to configure.
+  // The cluster ID (graph identifier) to configure (intake / legacy grouping).
   string cluster_id = 1;
   // New max.poll.records value. 0 = use default.
   int32 max_poll_records = 2;
+  // If set, targets the slot consumer for this Consul lease key instead of cluster_id grouping.
+  string lease_key = 3;
 }
 
 // Response for setting consumer configuration.
