@@ -46,6 +46,11 @@ service OpenSearchManagerService {
   // Searches document uploads (repository-document-uploads index).
   // Account scoping is derived from the security context (x-account-id header), NOT from the request.
   rpc SearchDocumentUploads(SearchDocumentUploadsRequest) returns (SearchDocumentUploadsResponse);
+
+  // Retrieves the current bulk indexing queue configuration.
+  rpc GetBulkConfig(GetBulkConfigRequest) returns (GetBulkConfigResponse);
+  // Updates the bulk indexing queue configuration at runtime (queue count, capacity, flush interval).
+  rpc UpdateBulkConfig(UpdateBulkConfigRequest) returns (UpdateBulkConfigResponse);
 }
 
 // === Schema Management Messages (from schema_manager.proto) ===
@@ -409,4 +414,36 @@ message DocumentUploadResult {
   int64 uploaded_at = 8;
   // Search relevance score
   float score = 9;
+}
+
+// === Bulk Indexing Configuration ===
+
+// Runtime configuration for the bulk indexing queue system.
+message BulkIndexingConfig {
+  // Number of concurrent draining queues (range: 2-10, default: 4)
+  int32 queue_count = 1;
+  // Maximum items per queue before forced flush (default: 200)
+  int32 queue_capacity = 2;
+  // Milliseconds between periodic flush sweeps (default: 2000)
+  int32 flush_interval_ms = 3;
+}
+
+// Request to update the bulk indexing queue configuration at runtime.
+message UpdateBulkConfigRequest {
+  BulkIndexingConfig config = 1;
+}
+
+// Response from bulk config update with the active configuration.
+message UpdateBulkConfigResponse {
+  bool success = 1;
+  BulkIndexingConfig active_config = 2;
+  string message = 3;
+}
+
+// Request to retrieve the current bulk indexing configuration.
+message GetBulkConfigRequest {}
+
+// Response containing the current bulk indexing configuration.
+message GetBulkConfigResponse {
+  BulkIndexingConfig config = 1;
 }
