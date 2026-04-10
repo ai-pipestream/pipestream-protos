@@ -199,6 +199,11 @@ message SearchMetadata {
   // One entry per unique chunking group — computed once from the full source text
   // before chunking, then shared across all embedder results that use those chunks.
   repeated SourceFieldAnalytics source_field_analytics = 26;
+
+  // Quality assessment result. Populated by the quality-checker module,
+  // which runs LAST — after parser, chunker, embedder, semantic processing.
+  // See QualityIndex definition below.
+  optional QualityIndex quality_index = 27;
 }
 
 // Collection of keywords extracted from a document.
@@ -790,22 +795,107 @@ message ChunkEmbedding {
   optional string chunk_config_id = 7;
 }
 
-// Metadata for centroid (averaged) vector result sets.
+// =============================================================================
+// Granularity & Pooling — vocabulary for semantic vector result sets
+// =============================================================================
+//
+// Every SemanticProcessingResult belongs to one GranularityLevel (the "size"
+// of text each vector represents) and one PoolingMethod (how the vector was
+// produced from text — directly embedded or pooled from child vectors).
+// These axes are orthogonal: a SECTION-granularity result could in principle
+// be direct-embedded (unusual, limited by model context) or pooled from
+// paragraph/chunk vectors (common).
+//
+// Consumers that filter "give me document-level vectors" or "give me sentence
+// vectors only" should match on GranularityLevel, NOT parse config ID strings.
+
+// Size of text each vector in a SemanticProcessingResult represents.
+enum GranularityLevel {
+  GRANULARITY_LEVEL_UNSPECIFIED = 0;
+  // Primary semantic chunker output — size varies by topic boundaries.
+  // Produced by CHUNK_ALGORITHM_SEMANTIC.
+  GRANULARITY_LEVEL_SEMANTIC_CHUNK = 1;
+  // One vector per sentence. Produced by CHUNK_ALGORITHM_SENTENCE or by the
+  // sentence detection pass inside semantic chunking.
+  GRANULARITY_LEVEL_SENTENCE = 2;
+  // Paragraph-level vectors. Typically pooled from sentences.
+  GRANULARITY_LEVEL_PARAGRAPH = 3;
+  // Section-level vectors. Typically pooled from paragraphs or chunks using
+  // DocOutline.Section boundaries.
+  GRANULARITY_LEVEL_SECTION = 4;
+  // Single vector for the entire document. Typically pooled from sections
+  // or paragraphs.
+  GRANULARITY_LEVEL_DOCUMENT = 5;
+}
+
+// How vectors in a SemanticProcessingResult were produced from text.
+enum PoolingMethod {
+  POOLING_METHOD_UNSPECIFIED = 0;
+  // Directly embedded by an embedding model — no pooling.
+  POOLING_METHOD_DIRECT = 1;
+  // Arithmetic mean of child vectors.
+  POOLING_METHOD_MEAN = 2;
+  // Weighted mean of child vectors, typically weighted by chunk length
+  // (character or word count).
+  POOLING_METHOD_WEIGHTED_MEAN = 3;
+}
+
+// Metadata for centroid (pooled) vector result sets.
 // Present when a SemanticProcessingResult contains computed centroids
 // rather than direct embeddings from an embedding model.
 message CentroidMetadata {
-  // Granularity level of this centroid.
-  // Values: "sentence", "paragraph_centroid", "section_centroid", "document_centroid"
-  string granularity = 1;
+  // Granularity level of this centroid. Typically PARAGRAPH, SECTION, or
+  // DOCUMENT (SEMANTIC_CHUNK and SENTENCE are usually directly embedded).
+  GranularityLevel granularity = 1;
 
-  // How many source vectors were averaged to produce this centroid.
+  // How many source vectors were averaged/pooled to produce this centroid.
   int32 source_vector_count = 2;
 
-  // Section title (for section_centroid granularity, from DocOutline).
+  // Section title (for GRANULARITY_LEVEL_SECTION, from DocOutline.Section.title).
   optional string section_title = 3;
 
-  // Section heading depth (for section_centroid granularity).
+  // Section heading depth (for GRANULARITY_LEVEL_SECTION, from DocOutline.Section.depth).
   optional int32 section_depth = 4;
+}
+
+// Traceability metadata for a SemanticChunk — where in the document it came
+// from, which parser produced the source text, what was pooled (for centroid
+// chunks), and any temporal range (for audio/video transcript chunks).
+//
+// This is the cross-link between a chunk and the structural metadata that
+// already lives elsewhere on PipeDoc:
+//   - DocOutline.Section for section/heading context (via section_id)
+//   - ParsedMetadata for parser attribution (via parser_name)
+//   - Sibling SemanticChunk IDs for pooled-centroid lineage
+//
+// Character-level provenance (start/end offset in the source text) already
+// lives on ChunkEmbedding.original_char_start_offset / end_offset and is
+// intentionally NOT duplicated here.
+message ChunkProvenance {
+  // Reference to Section.id in PipeDoc.search_metadata.doc_outline. Consumers
+  // can resolve page_start/page_end/char offsets via the Section.
+  optional string section_id = 1;
+
+  // Pre-computed heading breadcrumb for UI display and quality heuristics.
+  // Example: "Chapter 3 > Section 3.2 > Methodology"
+  optional string heading_breadcrumb = 2;
+
+  // Parser that produced the source text this chunk was derived from.
+  // Values: "tika", "docling", "html-raw", etc.
+  optional string parser_name = 3;
+
+  // For pooled/centroid chunks: the chunk_ids of the child chunks that were
+  // averaged or grouped. Empty for directly-embedded chunks.
+  //
+  // Also populated by DOCLING chunking with group_small_chunks=true, where
+  // the group's source_chunk_ids point back to the original Docling cells
+  // that were aggregated into this grouped chunk.
+  repeated string source_chunk_ids = 4;
+
+  // Temporal range for audio/video transcript chunks (seconds from start
+  // of the media). Zero for non-temporal chunks.
+  optional float start_seconds = 5;
+  optional float end_seconds = 6;
 }
 
 // Single semantic chunk with its text and embedding.
@@ -820,6 +910,9 @@ message SemanticChunk {
   map<string, google.protobuf.Value> metadata = 4;
   // NLP-derived analytics for this chunk's text content.
   optional ChunkAnalytics chunk_analytics = 5;
+  // Provenance: where this chunk came from in the original document, what
+  // was pooled (for centroid chunks), temporal range (for audio/video).
+  optional ChunkProvenance provenance = 6;
 }
 
 // Complete result of semantic chunking and embedding process.
@@ -862,9 +955,21 @@ message SemanticProcessingResult {
 
   // Semantic config reference — present when this result was produced by semantic chunking.
   optional string semantic_config_id = 10;
-  // Granularity of this result set (semantic path only).
-  // Uses string values: SEMANTIC_CHUNK, SENTENCE, PARAGRAPH, SECTION, DOCUMENT
-  optional string semantic_granularity = 11;
+
+  // Granularity level of vectors in this result set.
+  // Consumers that filter by granularity (e.g. "give me document vectors")
+  // should match on this enum rather than parsing chunk_config_id strings.
+  optional GranularityLevel granularity = 11;
+
+  // How the vectors in this result set were produced — direct embedding vs
+  // pooled from finer-grained vectors.
+  optional PoolingMethod pooling_method = 12;
+
+  // If this result set was pooled from another, the result_id of the
+  // finer-grained source. Enables hierarchy traversal:
+  //   document-centroid → section-centroid → paragraph-centroid → sentence
+  // Empty for directly-embedded result sets.
+  optional string parent_result_id = 13;
 }
 
 // Source of a log entry — distinguishes engine routing logs from module processing logs.
@@ -1290,4 +1395,93 @@ message SentenceSpan {
   string text = 1;
   int32 start_offset = 2;
   int32 end_offset = 3;
+}
+
+// =============================================================================
+// Quality Index — Document quality assessment results
+// =============================================================================
+//
+// Produced by the quality-checker module, which runs LAST in the pipeline
+// (after parser, chunker, embedder, semantic processing). Individual quality
+// dimensions are scored by pluggable QualityChecker implementations; the
+// composite score is computed per the active QualityProfile's composite_method.
+//
+// Storage: the OpenSearch sink flattens QualityIndex into searchable fields:
+//   quality_composite, quality_profile_id, quality_<dim>, quality_<dim>_weight
+// so every dimension is individually filterable, sortable, facetable, and
+// boostable at search time.
+//
+// Profile configuration (QualityProfile, QualityDimensionConfig) lives in the
+// quality/ bufmodule (ai.pipestream.quality.v1) — those are service-config
+// types, not runtime pipeline types.
+
+// Quality assessment result for a document. One per PipeDoc.
+message QualityIndex {
+  // Overall composite score (0.0 - 1.0).
+  float composite_score = 1;
+
+  // How the composite was computed from individual dimension scores.
+  CompositeMethod composite_method = 2;
+
+  // Profile that was used for this assessment. References
+  // QualityProfile.profile_id in the quality registry.
+  string profile_id = 3;
+
+  // Profile version at assessment time. Preserved so that later edits to
+  // the profile don't invalidate historical assessments — you can always
+  // tell which version of the profile scored any given document.
+  optional string profile_version = 4;
+
+  // Individual dimension scores (one per enabled dimension in the profile).
+  repeated QualityDimension dimensions = 5;
+
+  // When this assessment was computed.
+  google.protobuf.Timestamp assessed_at = 6;
+
+  // How the composite score is computed from individual dimension scores.
+  enum CompositeMethod {
+    COMPOSITE_METHOD_UNSPECIFIED = 0;
+    // Weighted arithmetic mean of dimension scores using their weights.
+    COMPOSITE_METHOD_WEIGHTED_MEAN = 1;
+    // Harmonic mean — penalizes low scores heavily.
+    COMPOSITE_METHOD_HARMONIC_MEAN = 2;
+    // Geometric mean — balanced penalty for low scores.
+    COMPOSITE_METHOD_GEOMETRIC_MEAN = 3;
+    // Minimum score across dimensions — the composite is only as good as
+    // the worst dimension. Harshest method.
+    COMPOSITE_METHOD_MIN = 4;
+  }
+}
+
+// A single dimension's contribution to the composite quality score.
+// Preserves the weight that was applied AT ASSESSMENT TIME so reproducibility
+// survives later edits to the profile weights.
+message QualityDimension {
+  // Dimension identifier, matches QualityChecker.dimensionId().
+  // Built-in dimensions include:
+  //   "recency", "readability", "completeness", "topic_relevance",
+  //   "information_density", "authority", "extraction_quality", "duplication"
+  // Custom dimensions may be added by pluggable QualityChecker CDI beans.
+  string dimension_id = 1;
+
+  // Score for this dimension (0.0 - 1.0).
+  float score = 2;
+
+  // Weight applied in the composite calculation (0.0 - 1.0).
+  // Snapshot of the profile's weight at assessment time.
+  float weight = 3;
+
+  // Confidence in the score (0.0 - 1.0). Dimensions with low confidence
+  // may be excluded from the composite or surfaced separately in the UI.
+  optional float confidence = 4;
+
+  // Short human-readable explanation for UI/debug display. Keep under
+  // ~120 chars to avoid bloating every indexed document.
+  // Example: "Published 14 days ago, half-life 365 days → 0.97"
+  optional string explanation = 5;
+
+  // Dimension-specific structured metadata.
+  // Example for "recency": {"age_days": "14", "half_life_days": "365"}
+  // Example for "duplication": {"match_doc_id": "abc123", "similarity": "0.97"}
+  map<string, string> metadata = 6;
 }

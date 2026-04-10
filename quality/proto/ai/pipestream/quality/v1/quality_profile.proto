@@ -1,0 +1,266 @@
+syntax = "proto3";
+
+package ai.pipestream.quality.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.quality.v1";
+option java_outer_classname = "QualityProfile";
+
+// =============================================================================
+// QualityProfileService — Quality Profile Registry API
+// =============================================================================
+//
+// Parallels ChunkerConfigService and VectorSetService. Profiles are per-tenant
+// configuration defining which quality dimensions to assess, their weights,
+// and the composite method.
+//
+// Profile resolution priority (most specific wins):
+//   1. PipeDoc.ownership.datasource_id → profile with matching datasource_id
+//   2. PipeDoc.ownership.account_id → profile with matching account_id
+//   3. Default profile (account_id and datasource_id both empty)
+//   4. Built-in defaults (no profile in registry)
+//
+// This parallels how VectorSetDirectives are resolved: document-level
+// directive → config-level → service-level → built-in defaults.
+service QualityProfileService {
+  // Create a new quality profile.
+  rpc CreateQualityProfile(CreateQualityProfileRequest) returns (CreateQualityProfileResponse);
+
+  // Retrieve a quality profile by ID or name.
+  rpc GetQualityProfile(GetQualityProfileRequest) returns (GetQualityProfileResponse);
+
+  // Resolve the active profile for a document's ownership context.
+  // Implements the priority rules above.
+  rpc ResolveQualityProfile(ResolveQualityProfileRequest) returns (ResolveQualityProfileResponse);
+
+  // Update an existing quality profile. Increments the version field.
+  rpc UpdateQualityProfile(UpdateQualityProfileRequest) returns (UpdateQualityProfileResponse);
+
+  // Delete a quality profile by ID.
+  rpc DeleteQualityProfile(DeleteQualityProfileRequest) returns (DeleteQualityProfileResponse);
+
+  // List quality profiles with pagination.
+  rpc ListQualityProfiles(ListQualityProfilesRequest) returns (ListQualityProfilesResponse);
+}
+
+// =============================================================================
+// QualityProfile — per-tenant quality assessment configuration
+// =============================================================================
+
+message QualityProfile {
+  // Unique identifier for this profile (UUID).
+  string profile_id = 1;
+
+  // Human-readable name. Unique across all profiles.
+  // Example: "legal-team-v2", "research-strict", "default"
+  string name = 2;
+
+  // Resolution scope:
+  //   - both empty       → default profile (fallback for all tenants)
+  //   - account_id only  → profile applies to all datasources in the account
+  //   - both set         → profile applies to this specific datasource only
+  //   - datasource_id only → INVALID (must be paired with account_id)
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+
+  // How the composite score is computed from dimension scores.
+  ai.pipestream.data.v1.QualityIndex.CompositeMethod composite_method = 5;
+
+  // Enabled dimensions with their weights and per-dimension config.
+  // Weights SHOULD sum to 1.0 — the service validates this at create/update.
+  repeated QualityDimensionConfig dimensions = 6;
+
+  // Documents scoring below this composite threshold trigger
+  // below_threshold_action. Range 0.0 - 1.0. Unset = no threshold.
+  optional float min_quality_threshold = 7;
+
+  // What to do with documents scoring below min_quality_threshold.
+  BelowThresholdAction below_threshold_action = 8;
+
+  // Profile version, incremented on every UpdateQualityProfile call.
+  // Preserved on QualityIndex.profile_version so historical assessments
+  // can be traced to the exact profile state that scored them.
+  string version = 9;
+
+  // Optional descriptive metadata for UI and audit.
+  optional string description = 10;
+  repeated string tags = 11;
+
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+  optional string created_by = 22;
+
+  // Action taken on documents scoring below min_quality_threshold.
+  enum BelowThresholdAction {
+    BELOW_THRESHOLD_ACTION_UNSPECIFIED = 0;
+    // Index the document but mark it as low-quality (filterable in search).
+    // The quality_index field is still populated — consumers can filter
+    // by quality_composite at query time.
+    BELOW_THRESHOLD_ACTION_INDEX_FLAGGED = 1;
+    // Skip indexing entirely — don't pollute the search index. The document
+    // still flows through the rest of the pipeline; the sink just drops it.
+    BELOW_THRESHOLD_ACTION_SKIP_INDEXING = 2;
+    // Route to a human review queue. The sink writes the document to a
+    // review topic/index instead of the main search index.
+    BELOW_THRESHOLD_ACTION_ROUTE_TO_REVIEW = 3;
+  }
+}
+
+// Configuration for a single quality dimension within a profile.
+message QualityDimensionConfig {
+  // Dimension identifier, matches QualityChecker.dimensionId().
+  // Must be a dimension ID returned by
+  // QualityAssessmentService.ListAvailableDimensions — the service rejects
+  // unknown IDs at create/update time.
+  string dimension_id = 1;
+
+  // Weight in composite calculation. Range 0.0 - 1.0.
+  // Weights across all dimensions in a profile SHOULD sum to 1.0.
+  float weight = 2;
+
+  // Dimension-specific configuration. Schema is defined by the individual
+  // QualityChecker — see DimensionDescriptor.config_schema from
+  // ListAvailableDimensions. Example for "recency":
+  //   { "half_life_days": 365 }
+  // Example for "authority":
+  //   { "trusted_domains": ["loc.gov", "nih.gov"] }
+  google.protobuf.Struct config = 3;
+
+  // Whether failure of this dimension aborts the whole assessment.
+  // When true: if the checker throws or returns an error, the entire
+  // QualityIndex is marked failed and the document is routed to the
+  // error path. When false: the dimension is silently omitted from the
+  // result and the composite is computed from the remaining dimensions.
+  // Default: false.
+  bool required = 4;
+
+  // Expected inputs this dimension requires. Overrides the checker's
+  // declared required_inputs for validation purposes — if the profile
+  // lists inputs the checker doesn't actually need, the service warns
+  // but does not reject. Mostly informational; use the checker's own
+  // required_inputs for skip-on-missing logic.
+  repeated QualityInput expected_inputs = 5;
+}
+
+// What inputs a quality dimension needs to compute its score. The quality
+// assessor uses this to skip dimensions whose inputs aren't available on
+// a given document (e.g. skip topic_relevance when no document vector has
+// been computed yet).
+//
+// Lives in this file because it is a core quality type — both QualityProfile
+// and QualityAssessmentService reference it, and moving it to a separate
+// file would fragment the bufmodule for no benefit.
+enum QualityInput {
+  QUALITY_INPUT_UNSPECIFIED = 0;
+  // PipeDoc.search_metadata base fields (title, body, author, dates, etc.)
+  QUALITY_INPUT_SEARCH_METADATA = 1;
+  // DocumentAnalytics / SourceFieldAnalytics — word counts, POS, lexical
+  // density, etc.
+  QUALITY_INPUT_DOCUMENT_ANALYTICS = 2;
+  // SemanticProcessingResult with chunks and embeddings.
+  QUALITY_INPUT_SEMANTIC_RESULTS = 3;
+  // A document-level centroid vector (GRANULARITY_LEVEL_DOCUMENT).
+  QUALITY_INPUT_DOCUMENT_VECTOR = 4;
+  // Raw parser outputs from PipeDoc.parsed_metadata (Tika, Docling, etc.).
+  QUALITY_INPUT_PARSED_METADATA = 5;
+  // Access to existing indexed documents in the corpus for duplication
+  // detection, cross-document similarity, etc.
+  QUALITY_INPUT_CORPUS_INDEX = 6;
+}
+
+// =============================================================================
+// CRUD messages
+// =============================================================================
+
+message CreateQualityProfileRequest {
+  // Optional ID (UUID). Omit to let the server generate one.
+  optional string profile_id = 1;
+  // Required: human-readable name, must be unique.
+  string name = 2;
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+  ai.pipestream.data.v1.QualityIndex.CompositeMethod composite_method = 5;
+  repeated QualityDimensionConfig dimensions = 6;
+  optional float min_quality_threshold = 7;
+  QualityProfile.BelowThresholdAction below_threshold_action = 8;
+  optional string description = 9;
+  repeated string tags = 10;
+}
+
+message CreateQualityProfileResponse {
+  QualityProfile profile = 1;
+}
+
+message GetQualityProfileRequest {
+  // Profile ID (UUID) or name. Interpretation depends on by_name flag.
+  string id = 1;
+  // If true, id field is interpreted as a name lookup. Default false.
+  bool by_name = 2;
+}
+
+message GetQualityProfileResponse {
+  QualityProfile profile = 1;
+}
+
+// Resolve the active profile for an ownership context using the standard
+// priority rules (datasource → account → default).
+message ResolveQualityProfileRequest {
+  optional string account_id = 1;
+  optional string datasource_id = 2;
+}
+
+message ResolveQualityProfileResponse {
+  // The resolved profile. May be a default profile if no tenant-specific
+  // match exists.
+  QualityProfile profile = 1;
+  // Which matching strategy was used: "datasource", "account", or "default".
+  string match_type = 2;
+}
+
+message UpdateQualityProfileRequest {
+  // Required: profile ID to update.
+  string profile_id = 1;
+  // Optional: only fields explicitly set are updated.
+  optional string name = 2;
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+  optional ai.pipestream.data.v1.QualityIndex.CompositeMethod composite_method = 5;
+  repeated QualityDimensionConfig dimensions = 6;
+  optional float min_quality_threshold = 7;
+  optional QualityProfile.BelowThresholdAction below_threshold_action = 8;
+  optional string description = 9;
+  repeated string tags = 10;
+}
+
+message UpdateQualityProfileResponse {
+  // The updated profile with incremented version and new updated_at.
+  QualityProfile profile = 1;
+}
+
+message DeleteQualityProfileRequest {
+  string profile_id = 1;
+}
+
+message DeleteQualityProfileResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListQualityProfilesRequest {
+  // Page size, default 50, max 100.
+  int32 page_size = 1;
+  string page_token = 2;
+  // Optional filters.
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+}
+
+message ListQualityProfilesResponse {
+  repeated QualityProfile profiles = 1;
+  string next_page_token = 2;
+}

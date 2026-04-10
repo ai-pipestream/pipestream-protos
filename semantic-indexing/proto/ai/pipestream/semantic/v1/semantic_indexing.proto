@@ -62,11 +62,13 @@ message StreamChunksRequest {
 // Typed chunker configuration — replaces opaque Struct.
 // The semantic-manager converts its JSON config to this proto before calling the chunker.
 message ChunkerConfig {
-  // Chunking algorithm: TOKEN (default), SENTENCE, CHARACTER, SEMANTIC.
+  // Chunking algorithm. Default: CHUNK_ALGORITHM_TOKEN.
   ChunkAlgorithm algorithm = 1;
   // Number of units (tokens, sentences, or characters) per chunk.
+  // Ignored for CHUNK_ALGORITHM_DOCLING (Docling defines chunk boundaries itself).
   int32 chunk_size = 2;
   // Number of overlapping units between consecutive chunks.
+  // Ignored for CHUNK_ALGORITHM_DOCLING.
   int32 chunk_overlap = 3;
   // Whether to clean/normalize text before chunking (collapse whitespace, normalize newlines).
   bool clean_text = 4;
@@ -74,6 +76,8 @@ message ChunkerConfig {
   bool preserve_urls = 5;
   // Semantic chunking configuration (only used when algorithm = CHUNK_ALGORITHM_SEMANTIC).
   optional SemanticChunkingConfig semantic_config = 6;
+  // Docling chunking configuration (only used when algorithm = CHUNK_ALGORITHM_DOCLING).
+  optional DoclingChunkingConfig docling_config = 7;
 }
 
 // Configuration for semantic (topic-boundary) chunking.
@@ -128,6 +132,49 @@ enum SectionSource {
   SECTION_SOURCE_DOCLING = 2;
 }
 
+// Configuration for Docling-native chunking.
+// Used when ChunkerConfig.algorithm = CHUNK_ALGORITHM_DOCLING.
+//
+// The chunker module reads Docling's chunks directly from
+// PipeDoc.parsed_metadata where parser_name = "docling" and emits them as
+// SemanticChunks. No chunking cost because Docling already produced them
+// during parse.
+//
+// If Docling data is not present in parsed_metadata, the chunker returns
+// PROCESSING_OUTCOME_SKIPPED with an explicit message. There is NO fallback
+// to other algorithms — if you configured DOCLING you get DOCLING or
+// nothing. Configure the pipeline so the Docling parser runs upstream of
+// the chunker when this algorithm is used.
+message DoclingChunkingConfig {
+  // Minimum character length for a Docling chunk to be emitted as-is.
+  // Chunks below this threshold are eligible for grouping (if
+  // group_small_chunks is true) or dropped outright. Default: 0 (emit all).
+  int32 min_chunk_chars = 1;
+
+  // When true, consecutive chunks below min_chunk_chars are aggregated into
+  // a larger chunk by concatenating their text and merging provenance.
+  // Grouping stops at the first non-small chunk or when the aggregated size
+  // reaches max_grouped_chunk_chars. Each grouped chunk keeps references to
+  // its source chunk IDs in ChunkProvenance.source_chunk_ids so consumers
+  // can trace back to the original Docling cells/fragments.
+  //
+  // Targets the common Docling pattern of producing tiny per-cell chunks
+  // (table cells, callouts, figure captions) that aren't individually
+  // useful but carry meaning when aggregated with their neighbors.
+  // Default: false.
+  bool group_small_chunks = 2;
+
+  // Upper bound for a grouped chunk when group_small_chunks is true.
+  // Grouping stops at this size even if more small chunks follow.
+  // Default: 2000.
+  int32 max_grouped_chunk_chars = 3;
+
+  // Whether to carry Docling's section/heading structure into ChunkProvenance.
+  // When true, the chunker sets provenance.section_id and heading_breadcrumb
+  // from the Docling document outline. Default: true.
+  bool populate_provenance = 4;
+}
+
 enum ChunkAlgorithm {
   CHUNK_ALGORITHM_UNSPECIFIED = 0;
   CHUNK_ALGORITHM_TOKEN = 1;
@@ -136,6 +183,10 @@ enum ChunkAlgorithm {
   // Semantic chunking: sentence-level embedding similarity for topic boundary detection.
   // Handled by the semantic manager orchestrator, not the chunker module.
   CHUNK_ALGORITHM_SEMANTIC = 4;
+  // Docling-native chunking: reuses chunks already produced by the Docling
+  // parser. Requires Docling data in PipeDoc.parsed_metadata; no fallback.
+  // Zero chunking cost. Configured via DoclingChunkingConfig.
+  CHUNK_ALGORITHM_DOCLING = 5;
 }
 
 // Entry in a multi-config chunking request.

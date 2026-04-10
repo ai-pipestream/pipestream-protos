@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package ai.pipestream.quality.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "ai/pipestream/quality/v1/quality_profile.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.quality.v1";
+option java_outer_classname = "QualityAssessment";
+
+// =============================================================================
+// QualityAssessmentService — standalone quality assessment entry point
+// =============================================================================
+//
+// This service exposes the quality assessor as a first-class gRPC endpoint,
+// independent of the pipeline. The quality pipeline module (which implements
+// PipeStepProcessorService.ProcessData) delegates to the same underlying
+// QualityAssessor CDI bean as this service — one code path, two entry points.
+//
+// Use cases:
+//   - External re-scoring of already-indexed documents without re-running
+//     the whole pipeline
+//   - Testing — module-testing-sidecar can call Assess directly with a
+//     synthetic PipeDoc, no pipeline required
+//   - Ad-hoc dashboards and quality audits
+//   - Dry-run scoring to compare profiles before rolling out a change
+service QualityAssessmentService {
+  // Assess quality for a document. Reads the document's search_metadata,
+  // parsed_metadata, and ownership context; runs the resolved QualityProfile's
+  // enabled dimensions; returns a QualityIndex.
+  //
+  // If dry_run is false (default), the returned updated_document has its
+  // search_metadata.quality_index field set. If dry_run is true, the caller
+  // gets only the QualityIndex in the response and the document is not
+  // mutated.
+  rpc Assess(AssessRequest) returns (AssessResponse);
+
+  // Return the list of QualityChecker dimension IDs registered on this
+  // server, with their required inputs and JSON config schemas. Used by
+  // QualityProfileService to validate dimension IDs at create/update time,
+  // and by UIs to build profile editors.
+  rpc ListAvailableDimensions(ListAvailableDimensionsRequest) returns (ListAvailableDimensionsResponse);
+}
+
+// =============================================================================
+// Assess RPC messages
+// =============================================================================
+
+message AssessRequest {
+  // Document to assess. Must carry SearchMetadata populated by earlier
+  // pipeline stages (parser, chunker, embedder). The assessor reads:
+  //   - document.search_metadata.* (base fields, semantic_results, etc.)
+  //   - document.parsed_metadata[] (Tika, Docling, etc.)
+  //   - document.ownership (for profile resolution)
+  ai.pipestream.data.v1.PipeDoc document = 1;
+
+  // Which QualityProfile to apply. If omitted, the server resolves the
+  // profile using the standard priority:
+  //   document.ownership.datasource_id → account_id → default
+  optional string profile_id = 2;
+
+  // When true, the assessor runs but does NOT mutate the input document.
+  // Only the QualityIndex is returned in the response. Default: false.
+  bool dry_run = 3;
+
+  // Optional subset of dimension IDs to run. When set, overrides the
+  // profile's enabled dimensions — only the listed dimensions are evaluated.
+  // Empty = run all enabled dimensions from the resolved profile.
+  // Useful for incremental scoring ("just recompute topic_relevance").
+  repeated string dimension_ids_filter = 4;
+}
+
+message AssessResponse {
+  // The quality assessment result.
+  ai.pipestream.data.v1.QualityIndex index = 1;
+
+  // The updated document with quality_index populated on search_metadata.
+  // Only set when the request had dry_run=false.
+  optional ai.pipestream.data.v1.PipeDoc updated_document = 2;
+
+  // If any required dimensions failed or the profile could not be resolved,
+  // structured error info. Non-required dimension failures are recorded
+  // inside the QualityIndex as missing dimensions and do NOT populate this
+  // field — this field is reserved for hard failures that invalidate the
+  // whole assessment.
+  optional ai.pipestream.data.v1.ErrorData error = 3;
+
+  // Which profile was actually used, after resolution. Useful when the
+  // caller left profile_id unset and wants to know which tenant profile
+  // the server picked.
+  string resolved_profile_id = 4;
+
+  // Dimensions that were skipped because their required inputs were not
+  // available on the document (e.g. topic_relevance skipped because no
+  // document vector exists yet). Informational — this is NOT an error.
+  repeated string skipped_dimensions = 5;
+}
+
+// =============================================================================
+// ListAvailableDimensions RPC messages
+// =============================================================================
+
+message ListAvailableDimensionsRequest {}
+
+message ListAvailableDimensionsResponse {
+  repeated DimensionDescriptor dimensions = 1;
+
+  message DimensionDescriptor {
+    // Dimension ID, matches QualityChecker.dimensionId() and the string used
+    // in QualityDimensionConfig.dimension_id.
+    string dimension_id = 1;
+
+    // Human-readable display name for UI.
+    string display_name = 2;
+
+    // Short description of what this dimension measures.
+    string description = 3;
+
+    // Which inputs this checker requires. The assessor uses this to skip
+    // the checker when its inputs aren't available on a given document.
+    repeated QualityInput required_inputs = 4;
+
+    // JSON schema for the dimension-specific config that goes in
+    // QualityDimensionConfig.config. UI form generators (JSONForms etc.)
+    // use this to build the per-dimension editor.
+    optional string config_schema = 5;
+
+    // Whether this dimension is provided by a built-in checker or a
+    // user-supplied CDI bean. Informational only.
+    bool is_builtin = 6;
+
+    // Version of the checker implementation. Bumped when the checker's
+    // scoring algorithm changes in a way that affects existing scores.
+    optional string checker_version = 7;
+  }
+}
