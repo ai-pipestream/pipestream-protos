@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.data.v1";
+option java_outer_classname = "ModsAccessCondition";
+
+// =============================================================================
+// MODS (Metadata Object Description Schema)
+// =============================================================================
+//
+// MODS 3.7 — Library of Congress
+// http://www.loc.gov/standards/mods/
+// XSD: https://www.loc.gov/standards/mods/v3/mods-3-7.xsd
+//
+// Models only the <accessCondition> element of MODS. Other MODS top-level
+// elements (titleInfo, name, typeOfResource, originInfo, physicalDescription,
+// etc.) describe catalog records and are not classification metadata.
+//
+// MODS DOES NOT define a controlled vocabulary for accessCondition @type.
+// XSD source (mods-3-7.xsd lines 163-175):
+//
+//   <xs:element name="accessCondition" type="accessConditionDefinition"/>
+//   <xs:complexType name="accessConditionDefinition" mixed="true">
+//     <xs:complexContent mixed="true">
+//       <xs:extension base="extensionDefinition">
+//         <xs:attributeGroup ref="xlink:simpleLink"/>
+//         <xs:attributeGroup ref="languageAttributeGroup"/>
+//         <xs:attribute name="type" type="xs:string"/>
+//         <xs:attribute name="altRepGroup" type="xs:string"/>
+//         <xs:attributeGroup ref="altFormatAttributeGroup"/>
+//       </xs:extension>
+//     </xs:complexContent>
+//   </xs:complexType>
+//
+// The @type attribute is xs:string — unconstrained. The MODS User Guide
+// narrative lists four recommended values but the schema does not enforce
+// them. Also note: unlike MODS elements such as <subject> or <classification>,
+// <accessCondition> does NOT have @authority / @authorityURI attributes,
+// so there's no native vocabulary-pointer mechanism here.
+// =============================================================================
+
+message ModsClassification {
+  // MODS allows multiple <accessCondition> elements per record.
+  repeated AccessCondition access_conditions = 1;
+
+  message AccessCondition {
+    // <accessCondition> @type — plain xs:string per the MODS 3.7 XSD.
+    // The MODS User Guide recommends (but does not enforce) these values:
+    //   "restriction on access"
+    //   "use and reproduction"
+    //   "rights statement"
+    //   "license"
+    // Institutions may use any string. Other values are valid MODS.
+    optional string type = 1;
+
+    // Flattened text content of the element. MODS keeps this as mixed
+    // content with optional markup; we flatten to plain text.
+    string text = 2;
+
+    // @displayLabel — human-friendly label for UI display.
+    optional string display_label = 3;
+
+    // xlink:href — URI reference (often pointing to a rights statement URI).
+    optional string href = 4;
+  }
+}
