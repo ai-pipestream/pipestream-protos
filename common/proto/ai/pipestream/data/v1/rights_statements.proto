@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.data.v1;
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "RightsStatements";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // RightsStatements.org
@@ -29,21 +29,21 @@ message RightsStatementsClassification {
     STATEMENT_UNSPECIFIED = 0;
 
     // "In Copyright" family
-    STATEMENT_IN_COPYRIGHT = 1;                               // /InC/1.0/
-    STATEMENT_IN_COPYRIGHT_EDU = 2;                           // /InC-EDU/1.0/
-    STATEMENT_IN_COPYRIGHT_NON_COMMERCIAL = 3;                // /InC-NC/1.0/
-    STATEMENT_IN_COPYRIGHT_RIGHTS_HOLDER_UNLOCATABLE = 4;     // /InC-RUU/1.0/
-    STATEMENT_IN_COPYRIGHT_EU_ORPHAN_WORK = 5;                // /InC-OW-EU/1.0/
+    STATEMENT_IN_COPYRIGHT = 1; // /InC/1.0/
+    STATEMENT_IN_COPYRIGHT_EDU = 2; // /InC-EDU/1.0/
+    STATEMENT_IN_COPYRIGHT_NON_COMMERCIAL = 3; // /InC-NC/1.0/
+    STATEMENT_IN_COPYRIGHT_RIGHTS_HOLDER_UNLOCATABLE = 4; // /InC-RUU/1.0/
+    STATEMENT_IN_COPYRIGHT_EU_ORPHAN_WORK = 5; // /InC-OW-EU/1.0/
 
     // "No Copyright" family
-    STATEMENT_NO_COPYRIGHT_CONTRACTUAL_RESTRICTIONS = 6;      // /NoC-CR/1.0/
-    STATEMENT_NO_COPYRIGHT_NON_COMMERCIAL = 7;                // /NoC-NC/1.0/
-    STATEMENT_NO_COPYRIGHT_OTHER_KNOWN_LEGAL = 8;             // /NoC-OKLR/1.0/
-    STATEMENT_NO_COPYRIGHT_UNITED_STATES = 9;                 // /NoC-US/1.0/
+    STATEMENT_NO_COPYRIGHT_CONTRACTUAL_RESTRICTIONS = 6; // /NoC-CR/1.0/
+    STATEMENT_NO_COPYRIGHT_NON_COMMERCIAL = 7; // /NoC-NC/1.0/
+    STATEMENT_NO_COPYRIGHT_OTHER_KNOWN_LEGAL = 8; // /NoC-OKLR/1.0/
+    STATEMENT_NO_COPYRIGHT_UNITED_STATES = 9; // /NoC-US/1.0/
 
     // "Other" family
-    STATEMENT_COPYRIGHT_NOT_EVALUATED = 10;                   // /CNE/1.0/
-    STATEMENT_COPYRIGHT_UNDETERMINED = 11;                    // /UND/1.0/
-    STATEMENT_NO_KNOWN_COPYRIGHT = 12;                        // /NKC/1.0/
+    STATEMENT_COPYRIGHT_NOT_EVALUATED = 10; // /CNE/1.0/
+    STATEMENT_COPYRIGHT_UNDETERMINED = 11; // /UND/1.0/
+    STATEMENT_NO_KNOWN_COPYRIGHT = 12; // /NKC/1.0/
   }
 }

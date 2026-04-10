@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.data.v1;
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "OdrlPolicy";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // ODRL (Open Digital Rights Language)
@@ -128,17 +128,17 @@ message OdrlClassification {
   // complete and no known ODRL profile has extended them.
   enum Operator {
     OPERATOR_UNSPECIFIED = 0;
-    OPERATOR_EQ = 1;          // equal to
-    OPERATOR_NEQ = 2;         // not equal to
-    OPERATOR_LT = 3;          // less than
-    OPERATOR_GT = 4;          // greater than
-    OPERATOR_LTEQ = 5;        // less than or equal to
-    OPERATOR_GTEQ = 6;        // greater than or equal to
-    OPERATOR_IS_A = 7;        // is an instance of a class
-    OPERATOR_HAS_PART = 8;    // has as a part
-    OPERATOR_IS_PART_OF = 9;  // is a part of
-    OPERATOR_IS_ALL_OF = 10;  // matches all of
-    OPERATOR_IS_ANY_OF = 11;  // matches any of
+    OPERATOR_EQ = 1; // equal to
+    OPERATOR_NEQ = 2; // not equal to
+    OPERATOR_LT = 3; // less than
+    OPERATOR_GT = 4; // greater than
+    OPERATOR_LTEQ = 5; // less than or equal to
+    OPERATOR_GTEQ = 6; // greater than or equal to
+    OPERATOR_IS_A = 7; // is an instance of a class
+    OPERATOR_HAS_PART = 8; // has as a part
+    OPERATOR_IS_PART_OF = 9; // is a part of
+    OPERATOR_IS_ALL_OF = 10; // matches all of
+    OPERATOR_IS_ANY_OF = 11; // matches any of
     OPERATOR_IS_NONE_OF = 12; // matches none of
 
     // Escape hatch for profile-defined operators (ODRL §3.3 extension).

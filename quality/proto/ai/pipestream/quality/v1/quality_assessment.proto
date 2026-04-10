@@ -6,8 +6,8 @@ import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "ai/pipestream/quality/v1/quality_profile.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.quality.v1";
 option java_outer_classname = "QualityAssessment";
+option java_package = "ai.pipestream.quality.v1";
 
 // =============================================================================
 // QualityAssessmentService — standalone quality assessment entry point

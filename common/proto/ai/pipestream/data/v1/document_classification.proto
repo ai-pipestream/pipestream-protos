@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package ai.pipestream.data.v1;
 
-import "google/protobuf/timestamp.proto";
-
 import "ai/pipestream/data/v1/creative_commons_license.proto";
 import "ai/pipestream/data/v1/dcmi_terms.proto";
 import "ai/pipestream/data/v1/ead_rights.proto";
@@ -11,10 +9,11 @@ import "ai/pipestream/data/v1/mods_access_condition.proto";
 import "ai/pipestream/data/v1/odrl_policy.proto";
 import "ai/pipestream/data/v1/premis_rights.proto";
 import "ai/pipestream/data/v1/rights_statements.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "DocumentClassification";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // Document Classification — Thin Aggregator

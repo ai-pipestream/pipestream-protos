@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.data.v1;
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "DcmiTerms";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // Dublin Core Terms (DCMI) — Rights & Access subset

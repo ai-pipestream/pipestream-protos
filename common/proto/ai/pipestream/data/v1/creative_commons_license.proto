@@ -3,8 +3,8 @@ syntax = "proto3";
 package ai.pipestream.data.v1;
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "CreativeCommonsLicense";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // Creative Commons REL
@@ -39,13 +39,13 @@ message CreativeCommonsClassification {
   // Creative Commons license family.
   enum License {
     LICENSE_UNSPECIFIED = 0;
-    LICENSE_CC0 = 1;           // Public Domain Dedication
-    LICENSE_PDM = 2;           // Public Domain Mark
-    LICENSE_BY = 3;            // Attribution
-    LICENSE_BY_SA = 4;         // Attribution-ShareAlike
-    LICENSE_BY_NC = 5;         // Attribution-NonCommercial
-    LICENSE_BY_ND = 6;         // Attribution-NoDerivs
-    LICENSE_BY_NC_SA = 7;      // Attribution-NonCommercial-ShareAlike
-    LICENSE_BY_NC_ND = 8;      // Attribution-NonCommercial-NoDerivs
+    LICENSE_CC0 = 1; // Public Domain Dedication
+    LICENSE_PDM = 2; // Public Domain Mark
+    LICENSE_BY = 3; // Attribution
+    LICENSE_BY_SA = 4; // Attribution-ShareAlike
+    LICENSE_BY_NC = 5; // Attribution-NonCommercial
+    LICENSE_BY_ND = 6; // Attribution-NoDerivs
+    LICENSE_BY_NC_SA = 7; // Attribution-NonCommercial-ShareAlike
+    LICENSE_BY_NC_ND = 8; // Attribution-NonCommercial-NoDerivs
   }
 }

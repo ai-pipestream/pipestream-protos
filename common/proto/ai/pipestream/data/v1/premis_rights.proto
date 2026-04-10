@@ -5,8 +5,8 @@ package ai.pipestream.data.v1;
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
-option java_package = "ai.pipestream.data.v1";
 option java_outer_classname = "PremisRights";
+option java_package = "ai.pipestream.data.v1";
 
 // =============================================================================
 // PREMIS Rights Statement
