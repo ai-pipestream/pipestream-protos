@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OdrlPolicy";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// ODRL (Open Digital Rights Language)
+// =============================================================================
+//
+// ODRL Information Model 2.2 — W3C Recommendation (2018-02-15)
+// https://www.w3.org/TR/odrl-model/
+// https://www.w3.org/TR/odrl-vocab/
+//
+// Models the ODRL policy shape: permissions, prohibitions, duties, each
+// bound to an action with optional constraints.
+//
+// ODRL IS FUNDAMENTALLY OPEN BY DESIGN. Per the ODRL Information Model
+// §3.3 (Profile Mechanism — NORMATIVE):
+//
+//   "Additional Actions for Rules: Create an instance of an Action and
+//    define its includedIn parent Action. The new Action MAY be defined
+//    as includedIn to any existing Action... ex:myAction a odrl:Action ."
+//
+// The same extensibility applies to Left Operands. Actions and Left Operands
+// in ODRL are identified by IRI; profiles can add new ones at will. There is
+// no formally closed set of actions in the ODRL Recommendation. The W3C
+// ODRL Vocabulary spec distinguishes:
+//
+//   - Core Vocabulary (§3.12): exactly 2 actions — `use` and `transferOwnership`
+//   - Common Vocabulary (§4.4): a recommended list of 49 additional actions
+//     that profiles MAY adopt. Non-normative.
+//
+// We therefore model action and left_operand as IRI strings (not enums),
+// matching ODRL's own native representation. Comments list the §4.4
+// recommended actions for documentation.
+//
+// Owned by this standard: the Operator enum. ODRL Operators are mathematical
+// comparison primitives and the 12-value set is closed in practice across all
+// known ODRL profiles. Modeled as a closed enum for ergonomics with an
+// OPERATOR_CUSTOM escape hatch for strict compliance with the profile mechanism.
+// =============================================================================
+
+message OdrlClassification {
+  // ODRL profile IRI. Canonical values:
+  //   http://www.w3.org/ns/odrl/2/core
+  //   http://www.w3.org/TR/odrl-vocab
+  // Custom profiles are expressed as their own IRIs.
+  optional string profile = 1;
+
+  // Permissions: what the assignee is allowed to do.
+  repeated Rule permissions = 2;
+
+  // Prohibitions: what the assignee is forbidden from doing. This is where
+  // most enforcement-relevant policy lives.
+  repeated Rule prohibitions = 3;
+
+  // Duties: what the assignee must do alongside their permitted actions.
+  repeated Rule duties = 4;
+
+  message Rule {
+    // Action IRI. See ODRL Vocabulary §3.12 (Core) and §4.4 (Common).
+    //
+    // Core Vocabulary (§3.12) — exactly 2 actions:
+    //   http://www.w3.org/ns/odrl/2/use
+    //   http://www.w3.org/ns/odrl/2/transferOwnership
+    //
+    // Common Vocabulary (§4.4) — 49 recommended actions, including:
+    //   acceptTracking, aggregate, annotate, anonymize, archive, attribute,
+    //   attribution, commercialUse, compensate, concurrentUse, delete,
+    //   derive, derivativeWorks, digitize, display, distribute, distribution,
+    //   ensureExclusivity, execute, extract, give, grantUse, include, index,
+    //   inform, install, modify, move, nextPolicy, notice, obtainConsent,
+    //   play, present, print, read, reproduce, reproduction, reviewPolicy,
+    //   sell, shareAlike, sharing, sourceCode, stream, synchronize,
+    //   textToSpeech, transform, translate, uninstall, watermark
+    //
+    // Profile-specific actions may be defined at any IRI. Consumers should
+    // match on the full IRI, not on the short localname.
+    string action = 1;
+
+    // Constraints on when the rule applies.
+    repeated Constraint constraints = 2;
+
+    // Party issuing the rule. Free-form IRI per ODRL.
+    optional string assigner = 3;
+
+    // Party the rule applies to. Free-form IRI per ODRL.
+    optional string assignee = 4;
+  }
+
+  message Constraint {
+    // Left operand IRI. See ODRL Vocabulary §4.5 (recommended Left Operands).
+    //
+    // The spec lists 32 recommended left operands including:
+    //   absoluteAssetPosition, absoluteSpatialAssetPosition,
+    //   absoluteTemporalAssetPosition, absoluteAssetSize, count, dateTime,
+    //   delayPeriod, deliveryChannel, elapsedTime, event, fileFormat,
+    //   industry, language, media, meteredTime, payAmount, percentage,
+    //   product, purpose, recipient, relativeAssetPosition,
+    //   relativeSpatialAssetPosition, relativeTemporalAssetPosition,
+    //   relativeAssetSize, resolution, spatial, spatialCoordinates,
+    //   systemDevice, timeInterval, unitOfCount, version, virtualLocation
+    //
+    // Profile-specific left operands may be defined at any IRI.
+    string left_operand = 1;
+
+    // Comparison operator. ODRL 2.2 defines 12 operators, modeled here as
+    // a closed enum. See Operator enum below.
+    Operator operator = 2;
+
+    // Right operand — what the left operand is compared against. The value
+    // type is determined by the left operand (e.g. ISO-8601 timestamp for
+    // dateTime, IRI for purpose, number for count). ODRL keeps this
+    // type-dependent on context.
+    string right_operand = 3;
+  }
+
+  // ODRL 2.2 comparison operators.
+  //
+  // Source: https://www.w3.org/TR/odrl-model/#constraint
+  //
+  // ODRL Information Model §3.16 defines exactly 12 constraint operators.
+  // In principle profiles may add new Operator instances via §3.3 extension,
+  // but in practice these 12 mathematical comparison primitives are semantically
+  // complete and no known ODRL profile has extended them.
+  enum Operator {
+    OPERATOR_UNSPECIFIED = 0;
+    OPERATOR_EQ = 1; // equal to
+    OPERATOR_NEQ = 2; // not equal to
+    OPERATOR_LT = 3; // less than
+    OPERATOR_GT = 4; // greater than
+    OPERATOR_LTEQ = 5; // less than or equal to
+    OPERATOR_GTEQ = 6; // greater than or equal to
+    OPERATOR_IS_A = 7; // is an instance of a class
+    OPERATOR_HAS_PART = 8; // has as a part
+    OPERATOR_IS_PART_OF = 9; // is a part of
+    OPERATOR_IS_ALL_OF = 10; // matches all of
+    OPERATOR_IS_ANY_OF = 11; // matches any of
+    OPERATOR_IS_NONE_OF = 12; // matches none of
+
+    // Escape hatch for profile-defined operators (ODRL §3.3 extension).
+    // Rarely used in practice; included for strict ODRL compliance.
+    OPERATOR_CUSTOM = 100;
+  }
+}

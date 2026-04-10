@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
-import "ai/pipestream/opensearch/v1/opensearch_document.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -125,7 +125,7 @@ message VectorSet {
   // Semantic path: FK to SemanticConfig. Null for standard chunking VectorSets.
   optional string semantic_config_id = 18;
   // Granularity within a semantic config family.
-  optional SemanticGranularity granularity = 19;
+  optional ai.pipestream.data.v1.GranularityLevel granularity = 19;
 }
 
 // === Create ===
@@ -167,7 +167,7 @@ message CreateVectorSetRequest {
 
   optional string content_signature = 14;
   optional string semantic_config_id = 15;
-  optional SemanticGranularity granularity = 16;
+  optional ai.pipestream.data.v1.GranularityLevel granularity = 16;
 }
 
 message CreateVectorSetResponse {

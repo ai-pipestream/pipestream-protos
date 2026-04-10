@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DcmiTerms";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// Dublin Core Terms (DCMI) — Rights & Access subset
+// =============================================================================
+//
+// DCMI Metadata Terms
+// https://www.dublincore.org/specifications/dublin-core/dcmi-terms/
+//
+// Models the rights and access subset of DCMI Metadata Terms. The other ~50
+// terms (title, creator, subject, etc.) are catalog concerns and do not
+// belong in classification metadata — those live in the parser-side
+// `ai.pipestream.parsed.data.dublin.v1.DublinCoreMetadata`, which holds the
+// basic 15-element Dublin Core extracted by parsers like Tika.
+//
+// This file is named `dcmi_terms` rather than `dublin_core` to disambiguate
+// from the parser-side file, and because the refinement terms modeled here
+// (rightsHolder, license, accessRights, provenance) are DCMI Metadata Terms
+// extensions beyond the 15 base Dublin Core elements.
+//
+// Owned by this standard: the CoarAccessRights enum. DCMI recommends the
+// COAR Access Rights Vocabulary for dcterms:accessRights, and COAR defines
+// a closed 4-value SKOS concept scheme.
+// Source: https://coar-repositories.github.io/vocabularies-access-rights/
+// =============================================================================
+
+message DublinCoreClassification {
+  // dcterms:rights — a statement about rights held in and over the resource.
+  // Free text or URI per DCMI (no controlled vocabulary).
+  optional string rights = 1;
+
+  // dcterms:license — a legal document giving official permission to use.
+  // URI per DCMI (no controlled vocabulary).
+  optional string license = 2;
+
+  // dcterms:rightsHolder — a person or organization owning or managing rights.
+  // Free text per DCMI.
+  optional string rights_holder = 3;
+
+  // dcterms:accessRights — information about who can access the resource.
+  // DCMI recommends the COAR Access Rights Vocabulary for this field,
+  // which is modeled below as CoarAccessRights.
+  optional CoarAccessRights access_rights = 4;
+
+  // dcterms:provenance — a statement of changes in ownership and custody.
+  // Free text per DCMI.
+  optional string provenance = 5;
+
+  // COAR Access Rights Vocabulary — DCMI-recommended controlled vocabulary
+  // for dcterms:accessRights. Closed 4-value SKOS concept scheme.
+  //
+  // Source: https://coar-repositories.github.io/vocabularies-access-rights/
+  enum CoarAccessRights {
+    COAR_ACCESS_RIGHTS_UNSPECIFIED = 0;
+    // http://purl.org/coar/access_right/c_abf2
+    COAR_ACCESS_RIGHTS_OPEN_ACCESS = 1;
+    // http://purl.org/coar/access_right/c_f1cf
+    COAR_ACCESS_RIGHTS_EMBARGOED_ACCESS = 2;
+    // http://purl.org/coar/access_right/c_16ec
+    COAR_ACCESS_RIGHTS_RESTRICTED_ACCESS = 3;
+    // http://purl.org/coar/access_right/c_14cb
+    COAR_ACCESS_RIGHTS_METADATA_ONLY_ACCESS = 4;
+  }
+}

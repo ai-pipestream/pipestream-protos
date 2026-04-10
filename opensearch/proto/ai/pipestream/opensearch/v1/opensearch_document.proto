@@ -84,16 +84,9 @@ message SemanticVectorSet {
   // Semantic path: references a pre-registered semantic config.
   optional string semantic_config_id = 7;
   // Granularity of vectors in this set (semantic path only).
-  optional SemanticGranularity granularity = 8;
-}
-
-enum SemanticGranularity {
-  SEMANTIC_GRANULARITY_UNSPECIFIED = 0;
-  SEMANTIC_GRANULARITY_SEMANTIC_CHUNK = 1;
-  SEMANTIC_GRANULARITY_SENTENCE = 2;
-  SEMANTIC_GRANULARITY_PARAGRAPH = 3;
-  SEMANTIC_GRANULARITY_SECTION = 4;
-  SEMANTIC_GRANULARITY_DOCUMENT = 5;
+  // Shared vocabulary with SemanticProcessingResult.granularity and
+  // CentroidMetadata.granularity — defined in common/pipeline_core_types.proto.
+  optional ai.pipestream.data.v1.GranularityLevel granularity = 8;
 }
 
 // Strategy for how document embeddings are physically stored in OpenSearch.

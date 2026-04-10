@@ -24,6 +24,8 @@ modules:
     name: buf.build/pipestreamai/parser
   - path: pipeline-module/proto
     name: buf.build/pipestreamai/pipeline-module
+  - path: quality/proto
+    name: buf.build/pipestreamai/quality
   - path: registration/proto
     name: buf.build/pipestreamai/registration
   - path: repo/proto

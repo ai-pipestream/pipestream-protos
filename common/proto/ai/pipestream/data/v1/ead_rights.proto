@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EadRights";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// EAD (Encoded Archival Description)
+// =============================================================================
+//
+// EAD3 — Library of Congress / Society of American Archivists
+// https://www.loc.gov/ead/
+// XSD: https://github.com/SAA-SDT/EAD3/blob/master/ead3.xsd
+//
+// Models only the rights/access subset: <accessrestrict>, <userestrict>,
+// <legalstatus>. Other EAD3 elements (~150 total) describe finding-aid
+// structure and are not classification metadata.
+//
+// EAD3 DOES NOT prescribe a controlled vocabulary for any of these
+// elements' content or attributes. The three elements share identical
+// shapes in the XSD — free mixed content (m.blocks: paragraphs, lists,
+// chronologies) plus an @localtype attribute of type xs:token which is
+// explicitly institution-defined:
+//
+//   <xs:complexType name="legalstatus">
+//     <xs:sequence>
+//       <xs:element name="head" type="head" minOccurs="0"/>
+//       <xs:choice maxOccurs="unbounded">
+//         <xs:group ref="m.blocks"/>
+//         <xs:element name="legalstatus" type="legalstatus"/>
+//       </xs:choice>
+//     </xs:sequence>
+//     <xs:attributeGroup ref="am.common"/>
+//     <xs:attribute name="encodinganalog" type="xs:token"/>
+//     <xs:attribute name="localtype" type="xs:token"/>
+//   </xs:complexType>
+//
+// (accessrestrict and userestrict have the same structure.)
+//
+// EAD3 ships a <localtypedeclaration> element in <control> so each finding
+// aid can declare its own localtype conventions. There is no SAA- or
+// LoC-sanctioned master list.
+//
+// Note on mixed content: these elements can contain nested XML (<p>, <list>,
+// <chronlist>, nested <legalstatus>). We flatten to plain text for the
+// `text` field. Consumers needing the full mixed-content structure should
+// use CustomClassification with standard_id = "ead3" and the native XML
+// fragment in content.
+//
+// XSD source for the definitions:
+//   ead3.xsd lines 1136-1147 (legalstatus)
+//   ead3.xsd lines 1242-1253 (accessrestrict)
+//   ead3.xsd lines 1262-1273 (userestrict)
+// =============================================================================
+
+message EadClassification {
+  // <accessrestrict> — restrictions on who may access the materials.
+  optional AccessRestrict accessrestrict = 1;
+
+  // <userestrict> — restrictions on what may be done with the materials
+  // once access has been granted.
+  optional UseRestrict userestrict = 2;
+
+  // <legalstatus> — legal status of the materials.
+  // EAD3 does NOT define a controlled vocabulary for content here.
+  optional LegalStatus legalstatus = 3;
+
+  message AccessRestrict {
+    // EAD3 @localtype attribute — plain xs:token, institution-defined.
+    // EAD3 provides NO authority/vocabulary attribute system for this
+    // element — institutional conventions for @localtype are declared
+    // in <control>/<localtypedeclaration>, outside this element.
+    // Common values by community convention (NOT an EAD-mandated vocabulary):
+    // "privacy", "copyright", "classified", "donor", "ongoing research",
+    // "in process", "in preservation".
+    optional string localtype = 1;
+
+    // @encodinganalog (xs:token) — optional pointer to equivalent element
+    // in a related descriptive standard (MARC field, DC term).
+    optional string encodinganalog = 2;
+
+    // Flattened text content (m.blocks mixed content, plain-text rendering).
+    string text = 3;
+  }
+
+  message UseRestrict {
+    optional string localtype = 1;
+    optional string encodinganalog = 2;
+    string text = 3;
+  }
+
+  message LegalStatus {
+    // @localtype — plain xs:token, institution-defined (see AccessRestrict).
+    optional string localtype = 1;
+
+    // @encodinganalog.
+    optional string encodinganalog = 2;
+
+    // Flattened text content. Common values by community convention
+    // (NOT an EAD-mandated vocabulary): "copyrighted", "public domain",
+    // "public records", "orphan work", "copyright not evaluated",
+    // "copyright undetermined".
+    string text = 3;
+  }
+}

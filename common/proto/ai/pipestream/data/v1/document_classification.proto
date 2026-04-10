@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+import "ai/pipestream/data/v1/creative_commons_license.proto";
+import "ai/pipestream/data/v1/dcmi_terms.proto";
+import "ai/pipestream/data/v1/ead_rights.proto";
+import "ai/pipestream/data/v1/mods_access_condition.proto";
+import "ai/pipestream/data/v1/odrl_policy.proto";
+import "ai/pipestream/data/v1/premis_rights.proto";
+import "ai/pipestream/data/v1/rights_statements.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentClassification";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// Document Classification — Thin Aggregator
+// =============================================================================
+//
+// This file is deliberately thin. It defines only:
+//
+//   1. UseRestriction — the enforcement-level policy enum that every module
+//      writing persistent state MUST check.
+//   2. StandardClassification — a wrapper that unions the seven first-class
+//      standards (each defined in its own sibling proto file) plus a
+//      CustomClassification escape hatch.
+//   3. CustomClassification — escape hatch for standards not yet first-classed.
+//
+// The seven first-class standards live in sibling files so that each standard
+// is self-contained with its own XSD citations and extensibility rules.
+// Filenames are suffixed with the specific concept each file models to keep
+// bare filenames unique across the whole proto tree (some tooling resolves
+// imports by unqualified filename):
+//
+//   - dcmi_terms.proto              -> DublinCoreClassification (+ CoarAccessRights)
+//   - premis_rights.proto           -> PremisClassification (+ PremisStringPlusAuthority)
+//   - ead_rights.proto              -> EadClassification
+//   - mods_access_condition.proto   -> ModsClassification
+//   - odrl_policy.proto             -> OdrlClassification (+ Operator)
+//   - rights_statements.proto       -> RightsStatementsClassification (+ Statement)
+//   - creative_commons_license.proto -> CreativeCommonsClassification (+ License)
+//
+// Note on Dublin Core: the parser-side `ai.pipestream.parsed.data.dublin.v1`
+// package holds `DublinCoreMetadata` (basic 15-element DC extracted by parsers
+// like Tika). That's a catalog concern. The classification-side is
+// `DublinCoreClassification` in dcmi_terms.proto, which models the DCMI
+// Metadata Terms rights/access refinements (license, rightsHolder,
+// accessRights with COAR vocabulary, provenance). Different packages,
+// different purposes, different filenames to avoid confusion.
+//
+// Design principles for this file:
+//
+//   Controlled vocabulary principle:
+//     If a standard defines a bounded, stable set of allowed values, model it
+//     as an enum (in the owning standard's file). If a field is intentionally
+//     free text per the standard, it stays a string. Version identifiers stay
+//     strings because they are an open evolution point.
+//
+//   Escape hatch principle:
+//     CustomClassification exists ONLY for genuine extensibility — standards
+//     not yet first-classed. It MUST NOT be used to avoid properly modeling
+//     a controlled vocabulary. When a "custom" value sees repeated use,
+//     promote it to a first-class standard file in a future proto revision.
+//
+//   No-bleeding principle:
+//     These classification types are independent of parser-specific metadata
+//     models (Tika, Docling, etc.). If parser output needs to be translated
+//     into a StandardClassification, the translation is performed by external
+//     mapper code — NEVER by importing parser-specific protos here.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Enforcement-level use restrictions
+// -----------------------------------------------------------------------------
+
+// Machine-actionable use restrictions enforced at every persistence decision
+// point by every pipeline module that writes recoverable state.
+//
+// Modules MUST:
+//   - Check use_restrictions before writing to caches, DLQ payloads,
+//     save_on_error storage, audit trail content fields, etc.
+//   - Fail closed (FAILED_PRECONDITION) on any unknown enum value they
+//     encounter, rather than silently ignoring it. This preserves fail-safe
+//     semantics as the enum evolves across platform versions.
+//
+// Aligned with archival tradition (EAD <userestrict>, DACS 5.6 "Conditions
+// Governing Use") for interop with finding-aid metadata systems.
+enum UseRestriction {
+  USE_RESTRICTION_UNSPECIFIED = 0;
+
+  // Content may not be retained in any recoverable form beyond what the
+  // pipeline needs for in-flight processing.
+  //
+  // Enforcement (every downstream module MUST honor):
+  //   - Chunker cache writes suppressed
+  //   - Embedder cache writes suppressed
+  //   - save_on_error payload storage suppressed (ID + status only)
+  //   - DLQ payloads stripped of content fields
+  //   - Audit trails may record doc_id and status but NOT text content
+  //   - Retries must re-read from source; no recoverable payload in transit
+  //   - Cache READS remain permitted — cached vectors derived from identical
+  //     text of a non-restricted doc contain no identifying payload
+  //
+  // Regulatory basis:
+  //   US: Privacy Act of 1974 § 552a; FOIA exemption (b)(6) (personal privacy);
+  //       GLBA § 501(b) (consumer financial privacy); 12 CFR 261 access
+  //       determinations
+  //   EU: GDPR Article 17 (Right to Erasure)
+  //
+  // Archival metadata mappings:
+  //   EAD:    <userestrict type="privacy">
+  //   MODS:   <accessCondition type="restriction on access">
+  //   PREMIS: rightsBasis=Statute; rightsGranted.act=delete-on-request
+  //   ODRL:   prohibition=reproduce + duty=delete
+  USE_RESTRICTION_NO_RECOVERABLE_PERSISTENCE = 1;
+}
+
+// -----------------------------------------------------------------------------
+// 2. Standards-aligned classification wrapper
+// -----------------------------------------------------------------------------
+
+// A single classification statement in one formal standard's native format.
+// Wraps the seven first-class standards via oneof, with a CustomClassification
+// escape hatch for standards not yet promoted to first-class.
+//
+// A document may carry multiple StandardClassification entries (e.g. one
+// Dublin Core rights statement + one PREMIS Rights Statement + one Creative
+// Commons license). The outer container on OwnershipContext is repeated.
+message StandardClassification {
+  // Version of the standard this classification conforms to.
+  //
+  // Left as a string (not enum) because standards versions are an open
+  // evolution point: enum'ing them would force a proto revision every time
+  // a standard publishes a new revision, and old consumers would silently
+  // lose information when they deserialized messages using new enum values.
+  //
+  // Expected formats per standard:
+  //   dublin_core       - "1.1" (DCMI Metadata Terms)
+  //   premis            - "3.0" (PREMIS Data Dictionary)
+  //   ead               - "2002" or "3"
+  //   mods              - "3.7"
+  //   odrl              - "2.2"
+  //   rights_statements - "1.0"
+  //   creative_commons  - the CC license version, e.g. "4.0"
+  optional string standard_version = 1;
+
+  // The classification itself, in the chosen standard's shape.
+  oneof content {
+    DublinCoreClassification dublin_core = 2;
+    PremisClassification premis = 3;
+    EadClassification ead = 4;
+    ModsClassification mods = 5;
+    OdrlClassification odrl = 6;
+    RightsStatementsClassification rights_statements = 7;
+    CreativeCommonsClassification creative_commons = 8;
+
+    // Escape hatch for standards not yet first-classed. Consumers should
+    // prefer the first-class branches where available. If a particular
+    // custom standard_id is seen repeatedly in production, promote it to
+    // a first-class branch in a future proto revision.
+    CustomClassification custom = 100;
+  }
+
+  // Identifier for the component that stamped this classification.
+  // Free-form because it identifies a tool or process, not a controlled set.
+  // Examples: "connector/oai-pmh", "ingestion/ead-import", "manual-curator",
+  // "mapper/tika-to-dublin-core". MUST NOT reference parser internals directly.
+  optional string source = 200;
+
+  // When this classification was applied to the document.
+  optional google.protobuf.Timestamp applied_at = 201;
+}
+
+// -----------------------------------------------------------------------------
+// 3. Custom classification escape hatch
+// -----------------------------------------------------------------------------
+//
+// For standards not yet first-classed. Using this branch loses the
+// type-safety benefits of the modeled standards above. If a particular
+// standard_id is seen repeatedly, promote it to a first-class sub-message
+// in a future proto revision.
+
+message CustomClassification {
+  // Free-form identifier for the standard, including version.
+  // Examples: "archive-org/1.0", "marc21/rights", "internal-fooco/2"
+  string standard_id = 1;
+
+  // Serialized content in the standard's native format.
+  string content = 2;
+
+  // MIME type hint for content.
+  // Common values: "application/xml", "text/uri-list",
+  // "application/rdf+xml", "application/json", "text/plain"
+  string content_type = 3;
+
+  // Extensibility for structured extras not captured in content.
+  map<string, string> properties = 4;
+}

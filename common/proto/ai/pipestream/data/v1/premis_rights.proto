@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PremisRights";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// PREMIS Rights Statement
+// =============================================================================
+//
+// PREMIS Data Dictionary for Preservation Metadata — Library of Congress
+// https://www.loc.gov/standards/premis/
+// XSD: https://www.loc.gov/standards/premis/v3/premis-v3-0.xsd
+//
+// Models the PREMIS Rights entity (rightsStatementComplexType in the XSD),
+// which represents rights statements attached to preservation objects.
+// Other PREMIS entities (Object, Event, Agent, Environment) are out of
+// scope for this classification model.
+//
+// PREMIS DOES NOT prescribe controlled vocabularies for most fields.
+// Per the Data Dictionary (v2.2 §"Data constraint", p.22):
+//
+//   "The preservation repository should establish an authority list of
+//    values that are useful and meaningful to the repository. The PREMIS
+//    Data Dictionary does not specify what this authority list should be,
+//    and it is assumed that different repositories will use different
+//    vocabularies."
+//
+// PREMIS 3.0 XSD models these fields as `stringPlusAuthority`:
+//
+//   <xs:complexType name="stringPlusAuthority">
+//     <xs:simpleContent>
+//       <xs:extension base="xs:string">
+//         <xs:attributeGroup ref="authorityAttributeGroup"/>
+//       </xs:extension>
+//     </xs:simpleContent>
+//   </xs:complexType>
+//
+//   <xs:attributeGroup name="authorityAttributeGroup">
+//     <xs:attribute name="authority" type="xs:string"/>
+//     <xs:attribute name="authorityURI" type="xs:anyURI"/>
+//     <xs:attribute name="valueURI" type="xs:anyURI"/>
+//   </xs:attributeGroup>
+//
+// We faithfully mirror this pattern via the PremisStringPlusAuthority
+// message below. The string value carries the term; the optional authority
+// fields record which controlled vocabulary the value was drawn from.
+// This matches what PREMIS actually says: "bring your own vocabulary,
+// tell us which one you used."
+// =============================================================================
+
+// Exact mirror of the PREMIS 3.0 stringPlusAuthority XSD type. Prefixed
+// with "Premis" because the pattern is owned by PREMIS — other standards
+// in this package handle extensibility differently (EAD3 uses plain xs:token
+// @localtype, MODS uses plain xs:string @type, ODRL uses IRI strings with
+// profile-based extension). This type is used ONLY by PremisClassification.
+//
+// Used by PremisClassification for: rightsBasis, rightsGranted.act,
+// restriction — all three are stringPlusAuthority in the PREMIS XSD.
+//
+// XSD source (premis-v3-0.xsd lines 1206-1220):
+//   <xs:complexType name="stringPlusAuthority">
+//     <xs:simpleContent>
+//       <xs:extension base="xs:string">
+//         <xs:attributeGroup ref="authorityAttributeGroup"/>
+//       </xs:extension>
+//     </xs:simpleContent>
+//   </xs:complexType>
+//
+//   <xs:attributeGroup name="authorityAttributeGroup">
+//     <xs:attribute name="authority" type="xs:string"/>
+//     <xs:attribute name="authorityURI" type="xs:anyURI"/>
+//     <xs:attribute name="valueURI" type="xs:anyURI"/>
+//   </xs:attributeGroup>
+message PremisStringPlusAuthority {
+  // The value itself. Free-form per PREMIS.
+  string value = 1;
+
+  // Name of the controlled vocabulary this value was drawn from.
+  // Examples: "actionsGranted", "rightsBasis", "copyrightStatus",
+  // "archivematica-rights-actions", "local-repo-v1".
+  optional string authority = 2;
+
+  // URI of the controlled vocabulary.
+  // Example: "http://id.loc.gov/vocabulary/preservation/actionsGranted"
+  optional string authority_uri = 3;
+
+  // URI of the specific term within the vocabulary.
+  // Example: "http://id.loc.gov/vocabulary/preservation/actionsGranted/mig"
+  optional string value_uri = 4;
+}
+
+// PREMIS Rights Statement — mirrors rightsStatementComplexType in the XSD.
+message PremisClassification {
+  // rightsStatementIdentifier — repository-scoped unique ID.
+  // Free-form because institutional ID schemes vary.
+  string rights_statement_identifier = 1;
+
+  // rightsBasis — why these rights exist.
+  //
+  // PREMIS 3.0 XSD type: stringPlusAuthority (NOT a closed enum).
+  // Common values from the PREMIS Data Dictionary examples:
+  //   "copyright", "license", "statute", "institutional policy", "other"
+  // Repositories may define additional values (e.g. "donor" in
+  // Archivematica) and record the vocabulary via the authority attributes.
+  PremisStringPlusAuthority basis = 2;
+
+  // rightsGranted — one or more permissions granted, each with an act,
+  // optional restrictions, and optional terms.
+  // XSD: minOccurs="0" maxOccurs="unbounded"
+  repeated RightsGranted rights_granted = 3;
+
+  // Reference (URI or external ID) to supporting documentation for the
+  // rights statement (e.g. a signed license document).
+  optional string rights_documentation_ref = 4;
+
+  // A single rightsGranted sub-statement — mirrors rightsGrantedComplexType
+  // in the XSD.
+  message RightsGranted {
+    // act — the action being granted or restricted.
+    //
+    // PREMIS 3.0 XSD type: stringPlusAuthority (NOT a closed enum).
+    // The PREMIS Data Dictionary does NOT prescribe a controlled vocabulary
+    // for this field. LoC maintained a deprecated 6-value scheme called
+    // "actionsGranted" (delete, disseminate, migrate, modify, replicate, use)
+    // at id.loc.gov/vocabulary/preservation/actionsGranted (deprecated
+    // 2018-09-24). Repositories are expected to bring their own vocabulary
+    // and record it via the authority attributes.
+    //
+    // Examples:
+    //   value="migrate" authority="actionsGranted"
+    //     authorityURI="http://id.loc.gov/vocabulary/preservation/actionsGranted"
+    //     valueURI="http://id.loc.gov/vocabulary/preservation/actionsGranted/mig"
+    //
+    //   value="ingest" authority="archivematica"
+    //
+    //   value="crawl" authority="pipestream-preservation-v1"
+    PremisStringPlusAuthority act = 1;
+
+    // restriction — constraints on the act. Repeatable.
+    // PREMIS 3.0 XSD type: stringPlusAuthority (free text or from a
+    // local controlled vocabulary, recorded via authority attributes).
+    repeated PremisStringPlusAuthority restriction = 2;
+
+    // termOfGrant — start and optional end date for the grant period.
+    // XSD: startAndEndDateComplexType (startDate required, endDate optional).
+    optional google.protobuf.Timestamp term_of_grant_start = 3;
+    optional google.protobuf.Timestamp term_of_grant_end = 4;
+
+    // termOfRestriction — start and optional end date for the restriction.
+    // XSD: startAndEndDateComplexType.
+    optional google.protobuf.Timestamp term_of_restriction_start = 5;
+    optional google.protobuf.Timestamp term_of_restriction_end = 6;
+
+    // rightsGrantedNote — repeatable free-text note.
+    // XSD: xs:string, minOccurs="0" maxOccurs="unbounded"
+    repeated string note = 7;
+  }
+}

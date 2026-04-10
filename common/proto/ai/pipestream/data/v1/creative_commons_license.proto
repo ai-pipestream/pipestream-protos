@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package ai.pipestream.data.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CreativeCommonsLicense";
+option java_package = "ai.pipestream.data.v1";
+
+// =============================================================================
+// Creative Commons REL
+// =============================================================================
+//
+// Creative Commons Rights Expression Language.
+// https://creativecommons.org/ns
+//
+// Models the license identifier plus version and optional jurisdiction (port).
+// Version is a string (not enum) because license versions are an open evolution
+// point. Jurisdiction is a string (ISO 3166-1 alpha-2 code) because country
+// codes are an open, evolving set.
+//
+// Owned by this standard: the License enum (closed family of 8 licenses).
+// =============================================================================
+
+message CreativeCommonsClassification {
+  // Which CC license applies. Enum because the license family is a bounded,
+  // stable set.
+  License license = 1;
+
+  // License version as a string. Expected values: "1.0", "2.0", "2.5", "3.0",
+  // "4.0". Kept as string to avoid breaking old consumers when a new CC
+  // version ships.
+  optional string version = 2;
+
+  // Optional jurisdiction port as an ISO 3166-1 alpha-2 country code.
+  // Empty = unported / international version. Kept as string because the
+  // ISO 3166-1 set evolves over time (new country codes, deprecated codes).
+  optional string jurisdiction = 3;
+
+  // Creative Commons license family.
+  enum License {
+    LICENSE_UNSPECIFIED = 0;
+    LICENSE_CC0 = 1; // Public Domain Dedication
+    LICENSE_PDM = 2; // Public Domain Mark
+    LICENSE_BY = 3; // Attribution
+    LICENSE_BY_SA = 4; // Attribution-ShareAlike
+    LICENSE_BY_NC = 5; // Attribution-NonCommercial
+    LICENSE_BY_ND = 6; // Attribution-NoDerivs
+    LICENSE_BY_NC_SA = 7; // Attribution-NonCommercial-ShareAlike
+    LICENSE_BY_NC_ND = 8; // Attribution-NonCommercial-NoDerivs
+  }
+}
