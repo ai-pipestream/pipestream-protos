@@ -156,6 +156,14 @@ message GraphNode {
   // Once the topic exists, this value is NOT used to alter it — changing partitions
   // on an existing topic requires a separate admin operation.
   int32 kafka_partitions = 20;
+
+  // Number of Consul consumer slot keys (lease slots) for this node's processing topic.
+  //
+  // Each slot is a separate KV key under pipestream/node-topics/{cluster}.{graph}.{node}/slotNN.
+  // The sidecar acquires at most one Kafka consumer group member per held slot.
+  // Clamped to kafka_partitions at registration time (extra slots would sit idle in Kafka).
+  // If 0 or unset, defaults to kafka_partitions (maximum useful parallelism for that topic).
+  int32 consumer_slots = 21;
 }
 
 // Dead Letter Queue configuration for handling failed messages.
