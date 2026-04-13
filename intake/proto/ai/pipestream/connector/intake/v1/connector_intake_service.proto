@@ -744,9 +744,9 @@ message CrawlSessionSummary {
 // --- CleanupTestDataSources ---
 
 message CleanupTestDataSourcesRequest {
-  // Prefix to match against account_id (e.g., "jdbc-e2e-" or "transport-e2e-").
-  // All datasources whose account_id starts with this prefix will be hard-deleted.
-  string account_id_prefix = 1;
+  // Account ID to match (e.g., "jdbc-e2e-123").
+  // All datasources for this account_id will be hard-deleted.
+  string account_id = 1;
 }
 
 message CleanupTestDataSourcesResponse {
