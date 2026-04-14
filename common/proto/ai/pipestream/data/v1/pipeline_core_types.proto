@@ -1339,6 +1339,27 @@ message ChunkAnalytics {
   int32 unique_lemma_count = 22;
   // Lexical density for this chunk.
   float lexical_density = 23;
+
+  // SHA-256 hex digest of the sanitised chunk text (lowercase, no separators,
+  // 64 chars). Identical sanitised text always produces the identical hash —
+  // enables reprocessing dedup, content-addressed embedder cache keys, and
+  // byte-verification of alternative chunker backends (e.g. an OpenVINO
+  // tokenizer) against this implementation. Computed by the chunker on the
+  // same text that lands in ChunkEmbedding.text_content.
+  string content_hash = 24;
+
+  // Chunk-local adverb ratio (0.0 to 1.0). Same semantics as
+  // NlpDocumentAnalysis.adverb_density but scoped to this chunk's token
+  // slice. Completes the POS-density set on ChunkAnalytics
+  // (noun/verb/adjective/adverb).
+  float adverb_density = 25;
+
+  // UTF-8 byte size of the chunk text. Distinct from character_count which
+  // counts Java chars (BMP code units). For ASCII text these are equal; for
+  // multi-byte UTF-8 (CJK, emoji, accented Latin), text_byte_size will be
+  // larger. Useful for storage planning at sinks (S3 part sizing, index
+  // budget, Kafka payload accounting).
+  int32 text_byte_size = 26;
 }
 
 // Analytics for a single (source_field, chunker_config) pair.
