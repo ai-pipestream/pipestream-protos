@@ -30,6 +30,59 @@ Each phase runs in its own worktree under `/work/worktrees/` per ROLLOUT.md §5.
 
 ---
 
+## Revision note (2026-04-13) — P1a location and scope split
+
+The first-cut §File Structure below referenced `pipestream-protos/testdata/semantic-pipeline/` as the home for both the Java invariants helper and the stage fixtures. **That path is wrong and superseded by this note.** Background for the correction:
+
+- `pipestream-protos` is a buf-only repo. No `build.gradle`, no Java sources. Consumers pull protos via the `ai.pipestream.proto-toolchain` Gradle plugin (source at `/work/dev-tools/quarkus-buf-grpc-generator`, see its `GUIDE.md`) which generates `PipeDoc.java` at consumer build time.
+- `pipestream-wiremock-server` is a runtime container invoked via testcontainers. Nothing depends on it as a Maven artifact — consumers only see it via gRPC calls against the container.
+
+With those constraints, the four `.textpb` fixtures and the invariants need different homes, not one unified home. The correct split:
+
+**SemanticPipelineInvariants.java (shared library code) → `pipestream-platform/pipestream-test-support/runtime/src/main/java/ai/pipestream/testsupport/semantic/`**
+
+That subproject already exists in the platform repo, is already published as a runtime jar, already pulls generated proto classes via the existing build wiring, and is the documented home for cross-module test utilities. Consumers add it as `testImplementation` — this is the pattern everywhere else in the platform for shared test helpers. The invariants file is pure Java + AssertJ + the generated `PipeDoc` class; no CDI, no Quarkus runtime needed at test time.
+
+**The four `.textpb` fixtures → `pipestream-wiremock-server/src/main/resources/testdata/semantic-pipeline/`**
+
+Only the wiremock server loads these files — it uses them to return as canned `ProcessDataResponse` bodies when its mock classes are invoked. Module unit tests build their `PipeDoc` fixtures programmatically with `toBuilder()` chains instead (they need structural correctness, not byte-identical golden files; byte-identity is the wiremock showcase test's job). Every mock class in wiremock uses a small private loader (inline or a shared `TextProtoLoader` helper internal to that repo) — no shared loader across repos, because there's only one repo that reads the files.
+
+**Why this is better than my earlier proposals:**
+
+- No new repo created.
+- No new subproject created in `pipestream-platform` — we use `pipestream-test-support` as intended.
+- `.textpb` files live with the only code that reads them.
+- The invariants are the only genuinely-shared Java code; they live in the one existing place that's designed to host shared test helpers.
+- Drift risk minimised: one canonical `SemanticPipelineInvariants.java`, consumed by all 4 test suites as a dependency not as a copy.
+
+**Consumers of the invariants:**
+- `module-chunker` / `module-embedder` / `module-semantic-graph` — add `testImplementation 'ai.pipestream:pipestream-test-support-runtime'` (or whatever the exact artifact coordinate is; `pipestream-test-support` already exists there).
+- `pipestream-wiremock-server` — same; wiremock's "no pipestream-bom" rule still holds, it just pins the version directly.
+
+**Worktree paths for the rewritten Phase 1 tasks below:**
+- P1a worktree on `pipestream-platform`: `/work/worktrees/pipestream-platform-semantic-invariants` on branch `feat/semantic-pipeline-invariants`.
+- P1c worktree on `pipestream-wiremock-server`: `/work/worktrees/pipestream-wiremock-server-step-mocks` on branch `feat/semantic-pipeline-step-mocks` (unchanged from the original plan).
+
+**Where the task text below still says `pipestream-protos/testdata/semantic-pipeline/`, substitute:**
+- `SemanticPipelineInvariants.java` → `pipestream-platform/pipestream-test-support/runtime/src/main/java/ai/pipestream/testsupport/semantic/SemanticPipelineInvariants.java`
+- `*.textpb` fixtures → `pipestream-wiremock-server/src/main/resources/testdata/semantic-pipeline/*.textpb`
+- `SemanticPipelineFixtures.java` loader — **does not exist** anymore. Wiremock-server has an inline loader inside its mock classes (or a small private helper within wiremock-server itself). Modules build `PipeDoc`s programmatically with `toBuilder()` instead of loading golden files.
+- `deterministicEmbed` function — lives in whatever one-shot fixture generator wiremock-server uses to build its stage2/stage3 `.textpb` files. Not exported.
+
+DESIGN.md §5 and §14 references to `pipestream-protos/testdata/semantic-pipeline/` stay as historical pointers for now; a follow-up PR amends DESIGN.md after P1 merges so there is one source of truth.
+
+### Required reading for SA1 and later subagents
+
+Before any P1 subagent writes code, it must have looked at:
+
+- `/work/dev-tools/quarkus-buf-grpc-generator/GUIDE.md` and `README.md` — how the proto-toolchain plugin is applied in `build.gradle` to generate `PipeDoc.java` at build time. The subagent must understand this pattern before touching any build file.
+- `/work/core-services/pipestream-platform/pipestream-test-support/runtime/build.gradle` — how `pipestream-test-support` is currently wired: dependencies, proto plugin application, publishing config. Match this pattern; do not reinvent it.
+- `/work/core-services/pipestream-platform/pipestream-test-support/runtime/src/main/java/` — existing Java sources in that subproject, so the new file follows the existing package conventions.
+- `/work/reference-code/` — source trees for Quarkus, protobuf4j, DJL, OpenNLP, etc. **Read these as source** when you need to understand a library's API. **Do NOT decompile jars.** If the answer to a question is "how does Quarkus do X," look at `/work/reference-code/quarkus/`.
+- `/work/core-services/` and `/work/modules/` — our own repos. If you need to know how `module-chunker` or `pipestream-wiremock-server` consume `pipestream-protos`, read their `build.gradle`. Do not guess.
+
+---
+
 ## File Structure
 
 Files created or modified across all phases. Phase number in square brackets.
