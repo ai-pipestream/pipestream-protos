@@ -479,6 +479,45 @@ The rollout is complete when:
 - Parallel worktree port isolation for `pipestream-dev.sh`. Added only if an agent hits the pain.
 - Any change to the engine slot config / concurrency tuning. Engine changes are out of scope; cross-doc concurrency comes from whatever slot config the graph already uses.
 
+## 14. Future Work Note: Directive Planning Service
+
+This spec deliberately treats `vector_set_directives` as already set on the doc when it enters the chunker step (per §21.1 / §12.1 — `DirectivePopulator` is a no-op stub today). This section captures the longer-term picture for how directives get onto a doc, so future design work has a starting point. **Nothing in this section is in scope for the current rollout**; it is a design consideration noted during the 2026-04-13 spec review pass.
+
+### 14.1 The "directive planning" concept
+
+A directive planning service composes `VectorSetDirectives` from the configs available in the running cluster. It is **NOT** the renamed `module-semantic-graph` — re-bundling planning into semantic-graph would re-create the god-module problem documented in §22.4. The planning service lives separately, possibly as:
+
+- A new module (e.g. `module-semantic-planner` or `pipestream-vector-set-admin`).
+- A subsystem of `pipestream-engine` (since the engine already owns graph-config concerns).
+- A subsystem of an admin-tool tier (e.g. inside `connector-admin` or a new `pipestream-admin-ui` BFF).
+
+The choice of host is itself a future design decision and depends on whether directive planning is per-graph (engine-level) or per-account/cluster (admin-level).
+
+### 14.2 What the planner does
+
+1. Queries `module-chunker` for available chunker configs via a `ListChunkerConfigs` gRPC method (the chunker advertises which algorithms it supports and the parameter ranges for each).
+2. Queries `module-embedder` for available embedding models via the existing `ListEmbeddingModels` gRPC method.
+3. Queries `module-semantic-graph` for the centroid granularities and boundary-detection model IDs it supports.
+4. Exposes a JSONForm-driven UI where a user (or another machine process) picks a combination of chunker configs × embedder configs × graph options.
+5. Persists the chosen combination as a `VectorSetEntity` row (per task #79's planned schema).
+6. At runtime, `DirectivePopulator` (the real implementation, task #78) reads the `VectorSetEntity` rows referenced by the graph-node config and attaches them as `VectorSetDirectives` to each entering doc.
+
+### 14.3 Missing-config CTA
+
+When a user picks a combination that references a chunker config / embedder model / graph option that doesn't exist yet, the UI shows a call-to-action pointing to the admin tool that creates it. The planner does not create configs itself — it only composes existing ones into directive sets. Config creation lives in the admin tool.
+
+### 14.4 Today: machine-driven only
+
+Until the planner exists, `vector_set_directives` is set programmatically by whichever upstream code builds the `PipeDoc`:
+
+- `JdbcCrawlE2ETestService` and friends inside `module-testing-sidecar` build their own directive blocks for E2E tests. R4 must include this if it does not already.
+- The wiremock fixture `stage0_raw.textpb` from P1a includes a directive block.
+- Connector intake services (`connector-intake-service`, `s3-connector`, `jdbc-connector`) currently do NOT set directives — that's fine because they don't run through the semantic sub-pipeline today. When they do, they'll need to either set directives themselves or rely on the engine-level `DirectivePopulator` (task #78) to do it.
+
+### 14.5 Why this matters for the current refactor
+
+None of the three execution steps need to know about the planning service. The contract — `vector_set_directives` arrives on the doc before the chunker step — is identical whether the directives came from a UI, a database row, a hand-built test fixture, or a YAML file. This separation of "plan" from "execute" is exactly what makes the three-step split safe and what made the old single-module `semantic-manager` unsafe: planning, execution, and assembly all lived together.
+
 ---
 
 **End of rollout spec.**
