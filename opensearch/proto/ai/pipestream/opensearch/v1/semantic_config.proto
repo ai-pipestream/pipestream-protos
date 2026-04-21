@@ -57,6 +57,25 @@ service SemanticConfigService {
   // Delete a semantic chunking configuration by ID.
   // This operation will fail if the config is referenced by any active pipeline.
   rpc DeleteSemanticConfig(DeleteSemanticConfigRequest) returns (DeleteSemanticConfigResponse);
+
+  // Assign a semantic chunking configuration to a specific OpenSearch base index.
+  //
+  // This is the single admin-driven path that creates the OpenSearch child
+  // indices backing the semantic config's child VectorSets. For each child
+  // VectorSet under the SemanticConfig:
+  //   1. A VectorSetIndexBinding row is upserted (vectorSet ↔ base index).
+  //   2. The corresponding OpenSearch child index is created with the KNN
+  //      vector field mapping, for both naming conventions used by the two
+  //      supported indexing strategies (CHUNK_COMBINED and SEPARATE_INDICES).
+  //
+  // After this returns, the per-doc hot path does ZERO OpenSearch cluster
+  // state calls — every index and field is already in place. No lazy
+  // ensureIndex / putMapping on the indexing path.
+  //
+  // Idempotent: calling twice with the same (semantic_config_id, base_index)
+  // is a no-op beyond a DB look-up. Calling with a NEW base index adds new
+  // bindings; existing bindings are never mutated.
+  rpc AssignSemanticConfigToIndex(AssignSemanticConfigToIndexRequest) returns (AssignSemanticConfigToIndexResponse);
 }
 
 // SemanticConfig represents a stored semantic chunking strategy configuration.
@@ -235,5 +254,29 @@ message DeleteSemanticConfigResponse {
   // Status message or error details.
   // Example: "Configuration deleted successfully"
   // Example error: "Cannot delete: configuration is referenced by 2 active pipelines"
+  string message = 2;
+}
+
+// Request to assign a SemanticConfig to a base OpenSearch index.
+message AssignSemanticConfigToIndexRequest {
+  // ID of the SemanticConfig to assign (required).
+  string semantic_config_id = 1;
+
+  // Base OpenSearch index name (required). Child indices are derived from
+  // this by the two indexing strategies:
+  //   CHUNK_COMBINED:    {base_index_name}--chunk--{chunkConfigId}
+  //   SEPARATE_INDICES:  {base_index_name}--vs--{chunkConfigId}--{embeddingId}
+  // Both are provisioned eagerly so whichever strategy the pipeline uses
+  // finds the child index + KNN mapping already in place.
+  string base_index_name = 2;
+}
+
+// Response from assigning a SemanticConfig to a base index.
+message AssignSemanticConfigToIndexResponse {
+  // Number of VectorSet ↔ index bindings that were provisioned
+  // (existing bindings are counted; zero-delta idempotent re-runs are OK).
+  int32 bindings_provisioned = 1;
+
+  // Status message for logging / UI feedback.
   string message = 2;
 }
