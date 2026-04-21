@@ -45,6 +45,14 @@ service EngineSidecarService {
   // per retention policy. No retry logic here — that belongs in
   // the retry controller.
   rpc PipeStreamToDLQ(PipeStreamToDLQRequest) returns (PipeStreamToDLQResponse);
+
+  // Hand off a permanently-failed PipeStream for quarantine.
+  // Used for errors that retry cannot fix — CEL expression
+  // errors, invalid directives, schema violations, etc. Sidecar
+  // publishes a DlqMessage to the per-node quarantine topic
+  // (distinct from DLQ) so operators can triage config bugs
+  // separately from transient failures.
+  rpc PipeStreamToQuarantine(PipeStreamToQuarantineRequest) returns (PipeStreamToQuarantineResponse);
 }
 
 // Request to route a PipeStream to the next node in the graph.
@@ -120,6 +128,41 @@ message PipeStreamToDLQResponse {
 
   // Topic the message was published to (empty on rejection).
   string dlq_topic = 2;
+
+  // Human-readable rejection reason. Empty on success.
+  string message = 3;
+}
+
+// Request to send a permanently-failed PipeStream to quarantine.
+// Distinct from DLQ: quarantine is for config-level failures (CEL
+// expression errors, unknown directives, schema mismatches) that
+// retries cannot fix. Separating from DLQ lets operators triage
+// transient vs config issues independently.
+message PipeStreamToQuarantineRequest {
+  // The failing PipeStream.
+  ai.pipestream.data.v1.PipeStream stream = 1;
+
+  // Node id where the config error was detected.
+  string failed_node_id = 2;
+
+  // Human-readable failure summary (e.g. "CEL expression
+  // 'document.metadata.foo' failed: NoSuchField").
+  string failure_message = 3;
+
+  // Error category for downstream triage — e.g. "CEL_EVAL_ERROR",
+  // "DIRECTIVE_MISSING", "SCHEMA_VIOLATION".
+  string error_category = 4;
+
+  // Epoch ms when the engine determined the failure.
+  int64 failed_at_epoch_ms = 5;
+}
+
+message PipeStreamToQuarantineResponse {
+  // True if the sidecar accepted ownership of the quarantine message.
+  bool accepted = 1;
+
+  // Topic the message was published to (empty on rejection).
+  string quarantine_topic = 2;
 
   // Human-readable rejection reason. Empty on success.
   string message = 3;
