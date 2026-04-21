@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.sidecar.v1;
+
+import "ai/pipestream/config/v1/pipeline_config_models.proto";
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EngineSidecarServiceProto";
+option java_package = "ai.pipestream.engine.sidecar.v1";
+
+// Data-plane service exposed by the engine-kafka-sidecar for the
+// engine's hot path. Two RPCs — route and DLQ — that absorb every
+// blocking I/O concern the engine used to own:
+//
+// - SavePipeDoc to repository before Kafka publish
+// - DocumentReference → hydrated PipeDoc on engine-ingress
+// - Level-2 blob hydration for parsers
+// - Kafka produce for MESSAGING edges
+// - gRPC self-call for GRPC edges (next engine node)
+// - DLQ topic publish + S3 archive on failure
+//
+// With this in place the engine's processNode does only: receive
+// hydrated stream → call module → apply mappings → hand off. Zero
+// repository I/O, zero Kafka producer code, zero RepoClient import.
+service EngineSidecarService {
+  // Hand off a processed PipeStream for one outgoing edge. The
+  // sidecar decides based on transport_type:
+  //
+  // - TRANSPORT_TYPE_MESSAGING → savePipeDoc to repo, swap body
+  //   for DocumentReference, publish to Kafka topic (derived from
+  //   cluster/graph/node or taken from kafka_topic override).
+  //
+  // - TRANSPORT_TYPE_GRPC → gRPC call to engine.processNode for
+  //   the target node. Handles cross-cluster routing via
+  //   is_cross_cluster + to_cluster_id.
+  //
+  // Semantically fire-and-forget from the engine's perspective —
+  // the response acknowledges the sidecar accepted ownership, not
+  // that downstream completed.
+  rpc PipeStreamToRoute(PipeStreamToRouteRequest) returns (PipeStreamToRouteResponse);
+
+  // Hand off a failed PipeStream for DLQ handling. Sidecar
+  // publishes a DlqMessage to the DLQ topic and archives to S3
+  // per retention policy. No retry logic here — that belongs in
+  // the retry controller.
+  rpc PipeStreamToDLQ(PipeStreamToDLQRequest) returns (PipeStreamToDLQResponse);
+}
+
+// Request to route a PipeStream to the next node in the graph.
+message PipeStreamToRouteRequest {
+  // The PipeStream to route. Must have a hydrated document — the
+  // sidecar does not re-call the module.
+  ai.pipestream.data.v1.PipeStream stream = 1;
+
+  // Source node id (for logging and topic derivation).
+  string from_node_id = 2;
+
+  // Destination node id. For MESSAGING this determines the topic;
+  // for GRPC the sidecar sets stream.current_node_id to this and
+  // calls engine.processNode.
+  string to_node_id = 3;
+
+  // Edge id from the graph, carried through for tracing.
+  string edge_id = 4;
+
+  // Transport the edge is configured for.
+  ai.pipestream.config.v1.TransportType transport_type = 5;
+
+  // Optional explicit Kafka topic (overrides derived topic).
+  // MESSAGING only; ignored for GRPC.
+  string kafka_topic = 6;
+
+  // Whether the target node lives in a different cluster — forces
+  // cross-cluster dispatch semantics. GRPC only; for MESSAGING
+  // cross-cluster is already implicit in the topic.
+  bool is_cross_cluster = 7;
+
+  // Target cluster id for cross-cluster dispatch. Populated only
+  // when is_cross_cluster = true.
+  string to_cluster_id = 8;
+}
+
+message PipeStreamToRouteResponse {
+  // True if the sidecar accepted ownership of the stream.
+  bool accepted = 1;
+
+  // Human-readable rejection reason. Empty on success.
+  string message = 2;
+}
+
+// Request to send a failed PipeStream to the DLQ.
+message PipeStreamToDLQRequest {
+  // The failing PipeStream. Carried verbatim to the DLQ — the
+  // DlqMessage consumer uses it to replay or diagnose.
+  ai.pipestream.data.v1.PipeStream stream = 1;
+
+  // Node id where the failure occurred.
+  string failed_node_id = 2;
+
+  // Short human-readable error summary. Populated on the
+  // DlqMessage.error_message field.
+  string failure_message = 3;
+
+  // gRPC status category ("UNAVAILABLE", "INVALID_ARGUMENT", ...)
+  // for downstream retry-policy routing.
+  string grpc_status = 4;
+
+  // Engine-side retry attempts already exhausted before handoff.
+  int32 attempt_count = 5;
+
+  // Epoch ms when the engine determined the failure — distinct from
+  // the sidecar's publish time.
+  int64 failed_at_epoch_ms = 6;
+}
+
+message PipeStreamToDLQResponse {
+  // True if the sidecar accepted ownership of the DLQ message.
+  bool accepted = 1;
+
+  // Topic the message was published to (empty on rejection).
+  string dlq_topic = 2;
+
+  // Human-readable rejection reason. Empty on success.
+  string message = 3;
+}
