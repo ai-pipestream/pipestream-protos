@@ -18,6 +18,14 @@ service OpenSearchManagerService {
 
   // Index Lifecycle Operations
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse);
+  // Provisions a new OpenSearch index along with all semantic side indices and
+  // KNN mappings in a single atomic admin call. Canonical entry point for
+  // "I want a fresh index ready to receive documents that will be embedded by
+  // these semantic configs." After this returns, the per-document hot path
+  // does ZERO schema/cluster-state work — every parent and child index already
+  // exists with correct KNN mappings, every vector_set_index_binding row is in
+  // place, and the IndexBindingCache is pre-populated. Idempotent.
+  rpc ProvisionIndex(ProvisionIndexRequest) returns (ProvisionIndexResponse);
   // Deletes an OpenSearch index.
   rpc DeleteIndex(DeleteIndexRequest) returns (DeleteIndexResponse);
   // Checks if an OpenSearch index exists.
@@ -77,6 +85,60 @@ message CreateIndexResponse {
   bool success = 1;
   // Status message or error details
   string message = 2;
+}
+
+// Request to provision a parent OpenSearch index AND every semantic side index
+// it will need, in one atomic admin call.
+//
+// Behaviour for each entry in semantic_config_ids:
+//   - All child VectorSets under the SemanticConfig are bound to index_name
+//     (vector_set_index_binding rows upserted)
+//   - The corresponding --chunk--<chunkId> and --vs--<chunkId>--<embId>
+//     side indices are created with their KNN vector field mappings
+//   - IndexBindingCache for index_name is invalidated so the next
+//     IndexDocument call loads the fresh bindings (zero subsequent DB lookups
+//     for the lifetime of the cache entry)
+//
+// Idempotent. Existing parent index, side indices, and binding rows are
+// detected and reused — re-running this call costs only the metadata reads
+// needed to confirm presence. New experiment bindings can be added later via
+// AssignSemanticConfigToIndex; field-level edits/removals are out of scope
+// for this RPC (see TODOs in the service implementation).
+message ProvisionIndexRequest {
+  // Name of the parent index to create (must be lowercase, no spaces).
+  string index_name = 1;
+  // Stable configIds (e.g. "default-semantic") OR UUIDs of SemanticConfigs to
+  // bind to this index at creation time. If empty, only the parent index is
+  // created (admin can bind later via AssignSemanticConfigToIndex).
+  repeated string semantic_config_ids = 2;
+  // Optional document type hint for parent-index schema generation
+  // (mirrors CreateIndexRequest.document_type).
+  optional string document_type = 3;
+  // Optional custom OpenSearch index settings for the PARENT index (shards,
+  // replicas, etc.). Side indices use platform defaults.
+  optional google.protobuf.Struct settings = 4;
+  // Nested field name on the PARENT index for kNN vector mapping
+  // (e.g. "embeddings"). Defaults to "embeddings" if unset. Side indices
+  // use strategy-specific naming derived from the vector set, not this.
+  optional string vector_field_name = 5;
+}
+
+// Response from a ProvisionIndex call.
+message ProvisionIndexResponse {
+  // True iff the parent index exists AND every requested semantic binding was
+  // provisioned (or already present). Partial success is reported as a
+  // failure with details in `message`.
+  bool success = 1;
+  // Status message or error details.
+  string message = 2;
+  // All OpenSearch indices touched by this call (parent + every side index),
+  // even if some already existed before the call. Useful for verification,
+  // admin UIs, and test assertions.
+  repeated string indices_created = 3;
+  // Total number of vector_set_index_binding rows that exist for this index
+  // after the call (newly created OR already-present, summed across all
+  // requested semantic configs).
+  int32 bindings_provisioned = 4;
 }
 
 // Request to delete an OpenSearch index and all its documents.
