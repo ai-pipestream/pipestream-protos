@@ -18,6 +18,21 @@ service EngineV1Service {
   // Stream processing
   rpc ProcessStream(stream ProcessStreamRequest) returns (stream ProcessStreamResponse);
 
+  // Engine-to-engine forward stream (tier-3 transport).
+  //
+  // Replaces per-edge unary processNode calls for internal engine->engine
+  // hops. One request == one document handed off to the next node;
+  // fire-and-forget — the sender does not wait for downstream completion.
+  // Lanes are opened and scaled by the sender; a lane is a single instance
+  // of this client-streaming call.
+  //
+  // Per-message acks are intentionally absent — HTTP/2 flow control provides
+  // backpressure (the sender's {@code onNext} blocks when the receiver can't
+  // drain), and {@code onError} surfaces stream death for both sides. A
+  // single summary response is emitted only when the sender half-closes
+  // (graceful lane drain) carrying forwarded-count and any deferred error.
+  rpc ForwardStream(stream ForwardStreamRequest) returns (ForwardStreamResponse);
+
   // Cross-cluster routing
   rpc RouteToCluster(RouteToClusterRequest) returns (RouteToClusterResponse);
 
@@ -106,6 +121,31 @@ message ProcessStreamResponse {
   ai.pipestream.data.v1.PipeStream updated_stream = 3;
   // Processing metrics for this operation
   ProcessingMetrics metrics = 4;
+}
+
+// Tier-3 forward-stream request. One request = one document being handed
+// from the current engine node to the next.
+message ForwardStreamRequest {
+  // The pipeline stream being forwarded.
+  ai.pipestream.data.v1.PipeStream stream = 1;
+  // Edge being traversed (for routing + audit).
+  string edge_id = 2;
+  // Destination node that should process this document.
+  string to_node_id = 3;
+}
+
+// Tier-3 forward-stream summary response. Emitted once, when the sender
+// half-closes the stream (graceful lane drain). Per-message acks are not
+// part of the protocol — HTTP/2 flow control handles backpressure and
+// onError handles stream death.
+message ForwardStreamResponse {
+  // Total number of requests the receiver successfully enqueued before
+  // the lane closed.
+  int64 forwarded_count = 1;
+  // Non-fatal enqueue errors accumulated during the lane's lifetime
+  // (e.g., malformed PipeStream on one message that was skipped). Empty
+  // on a clean drain.
+  string message = 2;
 }
 
 // Request to route a document to a different cluster
