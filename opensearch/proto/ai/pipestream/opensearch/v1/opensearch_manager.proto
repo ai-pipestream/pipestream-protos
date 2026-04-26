@@ -239,6 +239,10 @@ message StreamIndexDocumentsRequest {
   optional string datasource_id = 7;
   // Strategy for embedding storage. Default (UNSPECIFIED) preserves current nested behavior.
   IndexingStrategy indexing_strategy = 8;
+  // For CHUNK_COMBINED / SEPARATE_INDICES: base document with chunk index references.
+  optional OpenSearchDocumentMap document_map = 9;
+  // For CHUNK_COMBINED / SEPARATE_INDICES: flat chunk documents with embeddings.
+  repeated OpenSearchChunkDocument chunk_documents = 10;
 }
 
 // Response acknowledging the result of a single StreamIndexDocumentsRequest.
