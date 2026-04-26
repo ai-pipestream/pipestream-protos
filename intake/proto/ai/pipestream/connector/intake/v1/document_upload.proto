@@ -203,6 +203,30 @@ message StreamContext {
   string api_key = 2;
   // Optional session ID for grouping related operations.
   string session_id = 3;
+
+  // ----- Telemetry / parallelization plumbing (additive in v1) -----
+
+  // Crawl identifier shared by every stream that's part of the same
+  // logical crawl run. Lets dashboards aggregate per-crawl throughput
+  // across hash-partitioned parallel streams. Free-form string; the
+  // JDBC connector emits the trigger UUID it received from CrawlResource.
+  string crawl_id = 4;
+
+  // Zero-based index of this stream within a parallel-fan-out crawl.
+  // Combined with total_sub_crawls below, lets the intake server tag
+  // per-stream metrics so a stuck shard is identifiable on a dashboard.
+  int32 sub_crawl_index = 5;
+
+  // Total number of streams the client is opening for this crawl. Used
+  // alongside sub_crawl_index for telemetry; not enforced by the server.
+  // Set to 1 for non-partitioned crawls.
+  int32 total_sub_crawls = 6;
+
+  // Free-form client identifier for the connector type opening the
+  // stream — e.g. "jdbc-connector", "s3-connector". Used in the intake
+  // server's per-client concurrency cap (see intake.streams.max_per_client
+  // config) and tagged on stream-lifecycle metrics.
+  string client_id = 7;
 }
 
 // Individual document item within a stream.
@@ -221,6 +245,15 @@ message UploadPipeDocStreamResponse {
   string message = 2;
   // Echoes back the reference for async correlation by the client.
   DocReference ref = 3;
+
+  // True when the failure is transient and the client should resend the
+  // same document on the same stream after a short backoff. Set by the
+  // server on RESOURCE_EXHAUSTED (engine queue full) and on dispatch-side
+  // timeouts. False (default) for permanent failures — validation errors,
+  // missing graph bindings, malformed PipeDoc — where retrying the same
+  // payload would just fail the same way. Ignored when {@code success}
+  // is true.
+  bool retryable = 4;
 }
 
 // ============================================
