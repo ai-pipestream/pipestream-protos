@@ -51,6 +51,16 @@ service EngineV1Service {
   // configuration.
   rpc IntakeHandoff(IntakeHandoffRequest) returns (IntakeHandoffResponse);
 
+  // Streaming intake-to-engine handoff for durable sidecar admission.
+  //
+  // Replaces one-unary-RPC-per-Kafka-record handoff on the sidecar document
+  // path. Each request carries one document handoff plus a sender-generated
+  // correlation id. The engine replies with one ack per request after the
+  // document has been admitted or rejected. Sidecars should commit Kafka
+  // offsets only after receiving an ACCEPTED ack for that record.
+  rpc IntakeHandoffStream(stream IntakeHandoffStreamRequest)
+      returns (stream IntakeHandoffStreamResponse);
+
   // Get DatasourceInstance configuration for a datasource.
   //
   // Intended for debugging, tooling, and admin UIs - NOT for intake runtime use.
@@ -362,6 +372,45 @@ message IntakeHandoffResponse {
   //
   // Provides feedback to intake connectors for backpressure decisions.
   int64 queue_depth = 5;
+}
+
+// One streamed intake handoff. The payload intentionally reuses the unary
+// IntakeHandoffRequest so unary and streaming paths preserve identical engine
+// admission semantics.
+message IntakeHandoffStreamRequest {
+  // Sender-generated stable id for this Kafka record / document handoff.
+  // The sidecar uses this to match acks and retry only unacked records when
+  // a stream resets.
+  string handoff_id = 1;
+  // Monotonic sequence within a stream lane for ordering and diagnostics.
+  int64 sequence = 2;
+  // Existing unary handoff payload.
+  IntakeHandoffRequest request = 3;
+}
+
+// Per-document ack for IntakeHandoffStreamRequest.
+message IntakeHandoffStreamResponse {
+  string handoff_id = 1;
+  int64 sequence = 2;
+
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    // Engine accepted and enqueued the handoff. Sender may commit the source
+    // Kafka offset once all prior contiguous offsets are also accepted.
+    STATUS_ACCEPTED = 1;
+    // Temporary admission failure, such as queue pressure or transient engine
+    // state. Sender should retry.
+    STATUS_RETRYABLE_REJECTED = 2;
+    // Permanent admission failure, such as invalid stream shape or missing
+    // graph/node. Sender should route to DLQ/quarantine rather than retrying.
+    STATUS_PERMANENT_REJECTED = 3;
+  }
+
+  Status status = 3;
+  // Existing unary response payload, including assigned stream and entry node.
+  IntakeHandoffResponse response = 4;
+  // Server timestamp for the admission decision.
+  google.protobuf.Timestamp acked_at = 5;
 }
 
 // Request to get DatasourceInstance configuration.
