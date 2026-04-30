@@ -4,6 +4,7 @@ package ai.pipestream.engine.sidecar.v1;
 
 import "ai/pipestream/config/v1/pipeline_config_models.proto";
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "EngineSidecarServiceProto";
@@ -39,6 +40,22 @@ service EngineSidecarService {
   // the response acknowledges the sidecar accepted ownership, not
   // that downstream completed.
   rpc PipeStreamToRoute(PipeStreamToRouteRequest) returns (PipeStreamToRouteResponse);
+
+  // Streaming engine-to-sidecar route handoff for durable per-doc dispatch.
+  //
+  // Replaces one-unary-RPC-per-doc on the engine's MESSAGING dispatch path.
+  // Each request carries one route handoff plus a sender-generated
+  // correlation id; the sidecar replies with one ack per request after the
+  // route has been accepted (saved to repo + published to Kafka, or gRPC
+  // self-call enqueued) or rejected. The engine may commit the source
+  // Kafka offset only after receiving an ACCEPTED ack for that record.
+  //
+  // The streaming form keeps a single HTTP/2 connection open across the
+  // whole crawl, eliminating per-call buffer-allocation pressure that
+  // surfaces as "INTERNAL: Half-closed without a request" under load on
+  // the unary path.
+  rpc PipeStreamToRouteStream(stream PipeStreamToRouteStreamRequest)
+      returns (stream PipeStreamToRouteStreamResponse);
 
   // Hand off a failed PipeStream for DLQ handling. Sidecar
   // publishes a DlqMessage to the DLQ topic and archives to S3
@@ -95,6 +112,53 @@ message PipeStreamToRouteResponse {
 
   // Human-readable rejection reason. Empty on success.
   string message = 2;
+}
+
+// One streamed route handoff. The payload reuses the unary
+// PipeStreamToRouteRequest so unary and streaming paths preserve identical
+// sidecar routing semantics.
+message PipeStreamToRouteStreamRequest {
+  // Sender-generated stable id for this dispatch. The engine uses this to
+  // match acks and retry only unacked records when a stream resets.
+  // Convention: {stream.stream_id}:{edge.edge_id} so the same doc retried on
+  // a different edge gets a distinct handoff_id.
+  string handoff_id = 1;
+
+  // Monotonic sequence within a stream lane for ordering and diagnostics.
+  int64 sequence = 2;
+
+  // Existing unary handoff payload.
+  PipeStreamToRouteRequest request = 3;
+}
+
+// Per-document ack for PipeStreamToRouteStreamRequest.
+message PipeStreamToRouteStreamResponse {
+  string handoff_id = 1;
+  int64 sequence = 2;
+
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    // Sidecar accepted ownership: MESSAGING route → repo saved + Kafka
+    // published; GRPC route → engine.processNode acked. Sender may commit
+    // the source Kafka offset once all prior contiguous offsets are also
+    // accepted.
+    STATUS_ACCEPTED = 1;
+    // Temporary route failure (Kafka producer backoff, transient repo
+    // unavailability, downstream engine queue full). Sender should retry.
+    STATUS_RETRYABLE_REJECTED = 2;
+    // Permanent route failure (missing inline document on MESSAGING edge,
+    // unsupported cross-cluster GRPC). Sender should route to DLQ rather
+    // than retrying.
+    STATUS_PERMANENT_REJECTED = 3;
+  }
+
+  Status status = 3;
+
+  // Existing unary response payload, including accepted flag and message.
+  PipeStreamToRouteResponse response = 4;
+
+  // Server timestamp for the route decision.
+  google.protobuf.Timestamp acked_at = 5;
 }
 
 // Request to send a failed PipeStream to the DLQ.
