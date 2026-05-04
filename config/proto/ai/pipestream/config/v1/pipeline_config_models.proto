@@ -337,10 +337,25 @@ enum NodeType {
 enum TransportType {
   // Unspecified transport type.
   TRANSPORT_TYPE_UNSPECIFIED = 0;
-  // Messaging-based transport using topics and subscriptions.
+  // Kafka-based transport. Persistent: large payloads offload to s3
+  // (the kafka topic carries a reference); s3 is the durable store and
+  // kafka the consumer-group queue. Use for crash-safe boundaries and
+  // replayable history.
   TRANSPORT_TYPE_MESSAGING = 1;
-  // gRPC-based transport for synchronous communication.
+  // gRPC-based transport for synchronous module-to-module hops. No
+  // intermediate buffer; HTTP/2 flow control provides backpressure.
+  // Use for fast in-memory steps where a queue would just add latency.
   TRANSPORT_TYPE_GRPC = 2;
+  // Redis-stream queue for async pacing in front of slow consumers
+  // (embedder, OpenSearch sink under bulk-indexer load, etc.). Each
+  // edge gets its own redis stream + consumer group; queue depth is
+  // the natural backpressure signal — producers XADD at full speed,
+  // the consumer-side sidecar drains at the module's true throughput.
+  // Not durable across crashes the way kafka+s3 is: unacked entries
+  // recover via XPENDING/XCLAIM, but there is no s3 backing store.
+  // Use for transient queues where regenerating from upstream is
+  // cheaper than persisting every payload.
+  TRANSPORT_TYPE_REDIS = 3;
 }
 
 // Visibility scope for nodes across clusters.

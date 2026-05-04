@@ -65,6 +65,12 @@ enum E2ETransportType {
   // Kafka messaging (engine saves to S3, publishes reference to Kafka,
   // sidecar hydrates and calls processNode). This is the production path.
   E2E_TRANSPORT_TYPE_KAFKA = 2;
+  // Redis-stream queue between nodes. Sidecar XADDs to a per-edge stream;
+  // a consumer-group consumer drains it and calls the target module via
+  // sync gRPC. No s3 backing — unacked entries recover via XPENDING.
+  // Use for async pacing in front of slow consumers; queue depth IS the
+  // backpressure signal.
+  E2E_TRANSPORT_TYPE_REDIS = 3;
 }
 
 // Request to run a full end-to-end pipeline test.
