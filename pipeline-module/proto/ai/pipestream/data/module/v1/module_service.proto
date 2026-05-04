@@ -135,6 +135,14 @@ message ServiceMetadata {
   // Key-value parameters for the entire run's context (e.g., tenant_id, user_id, correlation_id).
   // Equivalent to PipeStream.context_params.
   map<string, string> context_params = 7;
+
+  // Crawl identifier from the connector run that produced the originating
+  // PipeStream. Sourced from PipeStream.metadata.crawl_id; populated by the
+  // engine on every ProcessDataRequest. Modules that emit indexed
+  // documents (sinks) MUST copy this onto their indexed payload so per-run
+  // counts can be observed downstream — total docs.count is unreliable
+  // when document _ids are deterministic and replays rewrite-in-place.
+  optional string crawl_id = 8;
 }
 
 // ProcessConfiguration is now defined in pipeline_core_types.proto
