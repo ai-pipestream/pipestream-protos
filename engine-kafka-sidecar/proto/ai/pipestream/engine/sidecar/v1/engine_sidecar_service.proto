@@ -54,8 +54,7 @@ service EngineSidecarService {
   // whole crawl, eliminating per-call buffer-allocation pressure that
   // surfaces as "INTERNAL: Half-closed without a request" under load on
   // the unary path.
-  rpc PipeStreamToRouteStream(stream PipeStreamToRouteStreamRequest)
-      returns (stream PipeStreamToRouteStreamResponse);
+  rpc PipeStreamToRouteStream(stream PipeStreamToRouteStreamRequest) returns (stream PipeStreamToRouteStreamResponse);
 
   // Hand off a failed PipeStream for DLQ handling. Sidecar
   // publishes a DlqMessage to the DLQ topic and archives to S3

@@ -58,8 +58,7 @@ service EngineV1Service {
   // correlation id. The engine replies with one ack per request after the
   // document has been admitted or rejected. Sidecars should commit Kafka
   // offsets only after receiving an ACCEPTED ack for that record.
-  rpc IntakeHandoffStream(stream IntakeHandoffStreamRequest)
-      returns (stream IntakeHandoffStreamResponse);
+  rpc IntakeHandoffStream(stream IntakeHandoffStreamRequest) returns (stream IntakeHandoffStreamResponse);
 
   // Get DatasourceInstance configuration for a datasource.
   //
