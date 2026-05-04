@@ -48,6 +48,12 @@ service OpenSearchManagerService {
   rpc ListIndices(ListIndicesRequest) returns (ListIndicesResponse);
   // Returns a simplified field-level mapping for an index (for admin UI).
   rpc GetIndexMapping(GetIndexMappingRequest) returns (GetIndexMappingResponse);
+  // Returns per-index counts for the family of indices written to by a
+  // specific crawl run (base + chunk + vs side indices), filtered by
+  // crawl_id. Use this for run-scoped progress polling instead of total
+  // GetIndexStats counts, which include leftovers from prior runs that
+  // were rewritten in place by deterministic-id replays.
+  rpc GetCrawlIndexStats(GetCrawlIndexStatsRequest) returns (GetCrawlIndexStatsResponse);
 
   // Domain-Specific Search Operations
   rpc SearchFilesystemMeta(SearchFilesystemMetaRequest) returns (SearchFilesystemMetaResponse);
@@ -337,6 +343,46 @@ message ListIndicesRequest {
 message ListIndicesResponse {
   // List of index information objects
   repeated OpenSearchIndexInfo indices = 1;
+}
+
+// Request for per-index counts scoped to a single crawl run.
+message GetCrawlIndexStatsRequest {
+  // Crawl identifier to filter by. The handler runs a count query with
+  // term: { crawl_id: <crawl_id> } against every member of the index
+  // family. Required.
+  string crawl_id = 1;
+  // Base index name (e.g. "test-jdbc-e2e-full-grpc-sem1-ext0"). The
+  // handler resolves the family as: base, base--chunk--*, base--vs--*.
+  // Required.
+  string base_index_name = 2;
+}
+
+// Per-index count of documents matching a crawl_id filter.
+message CrawlIndexCount {
+  // Index name (base or one of base--chunk--* / base--vs--*).
+  string index_name = 1;
+  // Number of documents in this index whose crawl_id matches the request.
+  int64 document_count = 2;
+  // Whether the count for this specific index succeeded. False when the
+  // index does not exist yet (early in a crawl) or the count query failed.
+  bool success = 3;
+  // Error message when success is false.
+  string message = 4;
+}
+
+// Response with per-index crawl-scoped counts.
+message GetCrawlIndexStatsResponse {
+  // Whether the family-resolution + count fan-out succeeded as a whole.
+  // Individual per-index failures are surfaced inside CrawlIndexCount.success
+  // — this field is only false when the request itself was malformed or
+  // the family could not be enumerated.
+  bool success = 1;
+  // One entry per index discovered in the family (base + side indices).
+  // The entry whose index_name == request.base_index_name is the headline
+  // doc count for "documents touched by this crawl".
+  repeated CrawlIndexCount index_counts = 2;
+  // Status message or error details when success is false.
+  string message = 3;
 }
 
 // Semantic vector field bound to an index (from VectorSet / DB), store-agnostic.
