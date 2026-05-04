@@ -118,6 +118,13 @@ message ProcessStreamRequest {
   ai.pipestream.data.v1.PipeStream stream = 1;
   // Optional routing condition for dynamic next-node selection
   string routing_condition = 2;
+  // Per-send wire-level correlation token. Distinct from
+  // PipeStream.stream_id (which is the source ingest UUID, preserved
+  // across fan-out so siblings share it). The receiver MUST echo this
+  // back on the matching ProcessStreamResponse so the sender can match
+  // acks 1-to-1 even when many siblings of the same stream_id are
+  // in flight concurrently.
+  string request_id = 3;
 }
 
 // Response from processing in a stream
@@ -130,6 +137,9 @@ message ProcessStreamResponse {
   ai.pipestream.data.v1.PipeStream updated_stream = 3;
   // Processing metrics for this operation
   ProcessingMetrics metrics = 4;
+  // Echo of ProcessStreamRequest.request_id so the sender can correlate
+  // this ack to the originating send.
+  string request_id = 5;
 }
 
 // Tier-3 forward-stream request. One request = one document being handed
