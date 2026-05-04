@@ -132,6 +132,13 @@ message StartCrawlRequest {
   int32 fan_out_count = 3;
   // Client-provided request identifier (for idempotency).
   string request_id = 4;
+  // When true, the connector deletes any stored watermark for this crawl
+  // before issuing the parent query — the crawl runs against the full
+  // source table on this invocation regardless of prior incremental
+  // progress. The watermark is then re-advanced normally as rows are
+  // emitted, so the next incremental run resumes from this run's tail.
+  // Default false (incremental semantics preserved).
+  bool full_crawl = 5;
 }
 
 message StartCrawlResponse {
