@@ -157,6 +157,11 @@ message OpenSearchDocumentMap {
   google.protobuf.Struct acl = 15;
   // References to chunk indices that hold this document's vectors
   repeated ChunkIndexReference chunk_indices = 16;
+  // Crawl identifier from the producing connector run. Mirrors
+  // OpenSearchDocument.crawl_id; populated by the sink when constructing
+  // the flat base-doc payload for CHUNK_COMBINED / SEPARATE_INDICES so
+  // GetCrawlIndexStats can filter the base index by term: { crawl_id }.
+  optional string crawl_id = 17;
 }
 
 // Reference to a chunk index that holds vectors for a specific chunking strategy.
