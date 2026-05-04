@@ -13,47 +13,104 @@ option java_package = "ai.pipestream.opensearch.v1";
 // VectorSetService — VectorSet Registry API
 // =============================================================================
 //
-// VectorSet is the canonical authority for the full semantic tuple:
-// (chunker config + embedding model + index + field + result set).
-// It defines what vector configuration is valid for a given index/field
-// and supersedes IndexEmbeddingBinding as the source of truth.
+// A VectorSet is a *recipe* — the semantic tuple
+// (chunker config + embedding model + field + result set + source CEL)
+// that defines what vector configuration is valid in OpenSearch. The
+// recipe stands alone; it does NOT carry an index_name on the row.
+//
+// The recipe is wired to one or more OpenSearch indices via
+// VectorSetIndexBinding. A single VectorSet can be bound to many indices
+// (reuse the same chunker+embedder recipe across collections), and a
+// single index can have many VectorSets bound (multi-vector indices).
+// The (vector_set_id, index_name) pair is unique on the binding row.
 //
 // IndexEmbeddingBinding remains as a backward-compatible read path during
 // the transition period. When both exist for the same (index, field, result_set),
 // VectorSet takes priority in resolution.
+//
+// Lifecycle:
+//
+//   1. Create the recipe                      → CreateVectorSet
+//   2. Bind it to an index                    → BindVectorSetToIndex
+//                                               (or CreateIndexWithVectorSets
+//                                               for new-index + binds in one call)
+//   3. Documents arriving at the index find their fields already provisioned
+//      (per task #79's EagerVectorSetProvisioner; lazy at first-doc fallback
+//      remains in the indexing strategies as a safety net).
+//   4. To rebind to another index, repeat step 2 — no need to recreate the recipe.
 //
 // Data flow (Mermaid):
 //
 //   ```mermaid
 //   graph LR
 //     subgraph "VectorSetService"
-//       CRUD[Create/Get/Update/Delete/List/Resolve]
-//       DB[(PostgreSQL vector_set)]
+//       CRUD[Create/Get/Update/Delete/List]
+//       BINDS[Bind/Unbind/ListBindings]
+//       DB[(vector_set + vector_set_index_binding)]
 //       CRUD --> DB
+//       BINDS --> DB
 //     end
 //     Admin[Admin UI] --> CRUD
+//     Admin --> BINDS
 //     Pipeline[Pipeline Config] --> CRUD
 //     Resolver[EmbeddingBindingResolver] -.->|resolve dimensions| CRUD
 //     Sink[opensearch-sink] -.->|ensure schema| Resolver
 //   ```
 service VectorSetService {
-  // Create a new VectorSet.
-  // Validates that chunker_config_id and embedding_model_config_id exist.
-  // Denormalizes vector_dimensions from EmbeddingModelConfig.
+  // -- Recipe lifecycle --
+
+  // Create a new VectorSet recipe. Pure registry write — does NOT touch
+  // OpenSearch. Validates that chunker_config_id (when standard) and
+  // embedding_model_config_id exist. Denormalizes vector_dimensions from
+  // EmbeddingModelConfig.
   rpc CreateVectorSet(CreateVectorSetRequest) returns (CreateVectorSetResponse);
 
   // Retrieve a VectorSet by ID or name.
   rpc GetVectorSet(GetVectorSetRequest) returns (GetVectorSetResponse);
 
   // Update an existing VectorSet.
-  // index_name and field_name are NOT updatable (delete and recreate).
+  // field_name is NOT updatable (delete and recreate).
   rpc UpdateVectorSet(UpdateVectorSetRequest) returns (UpdateVectorSetResponse);
 
-  // Delete a VectorSet by ID.
+  // Delete a VectorSet by ID. Fails if the recipe is still bound to any
+  // index (caller must Unbind first).
   rpc DeleteVectorSet(DeleteVectorSetRequest) returns (DeleteVectorSetResponse);
 
   // List VectorSets with optional filters and pagination.
   rpc ListVectorSets(ListVectorSetsRequest) returns (ListVectorSetsResponse);
+
+  // -- Binding lifecycle --
+
+  // Bind an existing VectorSet recipe to an OpenSearch index. This is the
+  // step that does the side-effecting work (per task #79):
+  //   - puts the knn_vector field mapping on the index (eager, idempotent)
+  //   - inserts a vector_set_index_binding row
+  //   - validates dimension compatibility — if a field with the same name
+  //     already exists on the index with a different dim, returns
+  //     FAILED_PRECONDITION (no fallback, no auto-rename).
+  // Idempotent: re-binding the same (vector_set_id, index_name) is a no-op
+  // and returns the existing binding.
+  rpc BindVectorSetToIndex(BindVectorSetToIndexRequest) returns (BindVectorSetToIndexResponse);
+
+  // Remove a VectorSet → index binding. Removes the binding row but does
+  // NOT drop the knn_vector field from OpenSearch (data preservation).
+  rpc UnbindVectorSetFromIndex(UnbindVectorSetFromIndexRequest) returns (UnbindVectorSetFromIndexResponse);
+
+  // Lookup: which indices is this VectorSet bound to?
+  rpc ListIndicesForVectorSet(ListIndicesForVectorSetRequest) returns (ListIndicesForVectorSetResponse);
+
+  // Lookup: which VectorSets are bound to this index?
+  rpc ListVectorSetsForIndex(ListVectorSetsForIndexRequest) returns (ListVectorSetsForIndexResponse);
+
+  // Convenience: create a new OpenSearch index AND bind one or more
+  // existing VectorSets to it in a single call. Equivalent to
+  // ProvisionIndex(name) followed by BindVectorSetToIndex(id, name) per
+  // entry in vector_set_ids — but atomic at the API level (failure of any
+  // bind aborts the whole operation; the caller knows whether the index
+  // ended up with the requested bindings or none of them).
+  rpc CreateIndexWithVectorSets(CreateIndexWithVectorSetsRequest) returns (CreateIndexWithVectorSetsResponse);
+
+  // -- Resolution (read-only, hot path) --
 
   // Resolve: given (index_name, field_name, result_set_name), return the active VectorSet.
   // Falls back to result_set_name="default" if no exact match found.
@@ -71,9 +128,13 @@ enum VectorSetProvenance {
   VECTOR_SET_PROVENANCE_MATERIALIZED = 3;
 }
 
-// VectorSet represents the canonical semantic tuple linking chunker config,
-// embedding model, and target index/field. It is the authoritative record
-// for what vector configuration is valid for a given index location.
+// VectorSet represents a recipe — the semantic tuple linking chunker config,
+// embedding model, field name, and result set discriminator. The recipe
+// stands alone; binding to one or more OpenSearch indices is tracked
+// separately in vector_set_index_binding (use BindVectorSetToIndex /
+// UnbindVectorSetFromIndex). The legacy `index_name` field is retained
+// for read-back of pre-split rows but is empty for recipes created via
+// the new flow.
 message VectorSet {
   // Unique identifier (UUID).
   string id = 1;
@@ -87,7 +148,11 @@ message VectorSet {
   // FK to EmbeddingModelConfig. Defines embedding model and dimensions.
   string embedding_model_config_id = 4;
 
-  // Target OpenSearch index name.
+  // DEPRECATED: legacy single-binding convenience populated by the old
+  // CreateVectorSet shape that conflated recipe + binding. New code
+  // should treat this as informational only and use ListIndicesForVectorSet
+  // for the authoritative set of bindings. Empty string means "no legacy
+  // single-index binding recorded — query the bindings table."
   string index_name = 5;
 
   // Nested field name within the index (e.g. "embeddings").
@@ -143,8 +208,14 @@ message CreateVectorSetRequest {
   // FK to EmbeddingModelConfig (required, must exist).
   string embedding_model_config_id = 4;
 
-  // Target OpenSearch index name (required).
-  string index_name = 5;
+  // OPTIONAL convenience: bind the new VectorSet to this index in the
+  // same call. When omitted (preferred for new code), the create writes
+  // only the recipe row and the caller wires the binding separately via
+  // BindVectorSetToIndex. When set, the server runs the equivalent of
+  // BindVectorSetToIndex(new_id, index_name) before returning. Retained
+  // as `optional` purely for back-compat with callers built before the
+  // recipe/binding split landed.
+  optional string index_name = 5;
 
   // Nested field name (required).
   string field_name = 6;
@@ -304,4 +375,140 @@ message ResolveVectorSetFromDirectiveResponse {
   VectorSet vector_set = 1;
   bool resolved = 2;
   string resolution_notes = 3;
+}
+
+// =============================================================================
+// Binding messages (recipe ↔ index association — many-to-many)
+// =============================================================================
+
+// Status lifecycle of a binding row in vector_set_index_binding.
+enum VectorSetBindingStatus {
+  VECTOR_SET_BINDING_STATUS_UNSPECIFIED = 0;
+  // Binding row exists and the OpenSearch field is provisioned.
+  VECTOR_SET_BINDING_STATUS_ACTIVE = 1;
+  // Binding row inserted but eager field provisioning has not completed
+  // (e.g. when the underlying OpenSearch cluster is briefly unavailable
+  // and the operation is being retried).
+  VECTOR_SET_BINDING_STATUS_PENDING = 2;
+  // Binding row exists but provisioning failed and was not retried into
+  // success. Message field carries the most recent failure detail.
+  VECTOR_SET_BINDING_STATUS_ERROR = 3;
+}
+
+// Snapshot of a binding row. Returned by Bind/Unbind/List operations.
+message VectorSetIndexBinding {
+  // UUID of the binding row.
+  string id = 1;
+
+  // FK to vector_set.id.
+  string vector_set_id = 2;
+
+  // OpenSearch index this VectorSet's field is provisioned on.
+  string index_name = 3;
+
+  // Optional ownership tags carried for tenancy filtering / audit.
+  optional string account_id = 4;
+  optional string datasource_id = 5;
+
+  VectorSetBindingStatus status = 6;
+  string status_message = 7;
+
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// === BindVectorSetToIndex ===
+
+message BindVectorSetToIndexRequest {
+  // ID of the VectorSet recipe to bind (must exist).
+  string vector_set_id = 1;
+
+  // OpenSearch index name to bind to. The index will be created if it
+  // doesn't exist (with KNN settings derived from the embedding model);
+  // if it does exist, the knn_vector field is added via putMapping.
+  string index_name = 2;
+
+  // Optional ownership tags carried into the binding row for downstream
+  // filtering / audit.
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+}
+
+message BindVectorSetToIndexResponse {
+  VectorSetIndexBinding binding = 1;
+  // True when this call created the binding; false when an existing
+  // binding for (vector_set_id, index_name) was returned (idempotent).
+  bool created = 2;
+}
+
+// === UnbindVectorSetFromIndex ===
+
+message UnbindVectorSetFromIndexRequest {
+  // ID of the VectorSet recipe.
+  string vector_set_id = 1;
+  // Index to unbind from.
+  string index_name = 2;
+}
+
+message UnbindVectorSetFromIndexResponse {
+  // True if a binding was removed; false if no such binding existed
+  // (idempotent — caller does not need to check existence first).
+  bool unbound = 1;
+}
+
+// === ListIndicesForVectorSet ===
+
+message ListIndicesForVectorSetRequest {
+  string vector_set_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListIndicesForVectorSetResponse {
+  repeated VectorSetIndexBinding bindings = 1;
+  string next_page_token = 2;
+}
+
+// === ListVectorSetsForIndex ===
+
+message ListVectorSetsForIndexRequest {
+  string index_name = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListVectorSetsForIndexResponse {
+  // Paired snapshot: each entry carries the binding row plus the fully
+  // hydrated VectorSet recipe so the UI / caller doesn't need a second
+  // round-trip to display recipe details for the indices.
+  message Entry {
+    VectorSetIndexBinding binding = 1;
+    VectorSet vector_set = 2;
+  }
+  repeated Entry entries = 1;
+  string next_page_token = 2;
+}
+
+// === CreateIndexWithVectorSets ===
+
+message CreateIndexWithVectorSetsRequest {
+  // Index name to create.
+  string index_name = 1;
+
+  // VectorSet recipe IDs to bind to the new index. Each must already
+  // exist (use CreateVectorSet first). All-or-nothing — if any bind
+  // fails (e.g. dimension mismatch with another VectorSet on the same
+  // field), the whole call fails and no bindings are persisted.
+  repeated string vector_set_ids = 2;
+
+  // Optional ownership tags applied to all created bindings.
+  optional string account_id = 3;
+  optional string datasource_id = 4;
+}
+
+message CreateIndexWithVectorSetsResponse {
+  string index_name = 1;
+  // The bindings created in this call, in the same order as the request's
+  // vector_set_ids list.
+  repeated VectorSetIndexBinding bindings = 2;
 }
