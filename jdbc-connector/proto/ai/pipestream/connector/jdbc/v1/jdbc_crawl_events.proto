@@ -35,6 +35,26 @@ enum JdbcCrawlEventType {
   JDBC_CRAWL_EVENT_TYPE_UNSPECIFIED = 0;
   JDBC_CRAWL_EVENT_TYPE_COMPLETION = 1;
   JDBC_CRAWL_EVENT_TYPE_DELETE = 2;
+
+  // Emitted exactly ONCE per trigger, after the parent query is prepared
+  // and the connector knows how many rows it will dispatch (e.g. via a
+  // pre-flight COUNT). The expected count is carried on
+  // StreamCrawlStatusResponse.expected_row_count. Consumers use this as
+  // the deterministic "expected" set size for this run.
+  JDBC_CRAWL_EVENT_TYPE_EXPECTED_COUNT_KNOWN = 3;
+
+  // Emitted for EVERY row the connector dispatches downstream. The
+  // dispatched doc_id is carried on StreamCrawlStatusResponse.emitted_doc_id.
+  // Consumers (testing harness) accumulate these into a Set keyed on
+  // doc_id and diff against the receive-side tap to identify exactly
+  // which rows are missing.
+  JDBC_CRAWL_EVENT_TYPE_DOC_DISPATCHED = 4;
+
+  // Emitted exactly ONCE per trigger, after the LAST row is dispatched.
+  // Distinct from JDBC_CRAWL_PHASE_COMPLETED (which is derived from
+  // sub-crawl bookkeeping and can fire prematurely): this event is the
+  // connector-authoritative "I have sent everything I'm going to send."
+  JDBC_CRAWL_EVENT_TYPE_DISPATCH_COMPLETE = 5;
 }
 
 // Published to jdbc-crawl-triggers topic.
@@ -182,6 +202,16 @@ message StreamCrawlStatusResponse {
   int32 deleted_doc_count = 14;
 
   google.protobuf.Timestamp timestamp = 15;
+
+  // Populated only on JDBC_CRAWL_EVENT_TYPE_EXPECTED_COUNT_KNOWN events.
+  // Total number of rows the connector intends to dispatch for this trigger.
+  int64 expected_row_count = 16;
+
+  // Populated only on JDBC_CRAWL_EVENT_TYPE_DOC_DISPATCHED events. The
+  // doc_id of the row just dispatched downstream — same doc_id that lands
+  // on the receiving step's PipeStream so the harness can diff dispatched
+  // vs received sets.
+  string emitted_doc_id = 17;
 }
 
 // --- GetCrawlStatus ---
