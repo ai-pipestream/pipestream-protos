@@ -42,6 +42,24 @@ service ModuleTestingSidecarService {
   //
   // Streams step-by-step progress and reports per-node document counts.
   rpc RunTransportTest(RunTransportTestRequest) returns (stream RunTransportTestResponse);
+
+  // Unified pipeline-crawl test that supersedes RunE2EPipelineTest /
+  // RunJdbcCrawlTest / RunS3CrawlTest / RunTransportTest. The caller picks:
+  //   1. A {@code Source} (single doc, JDBC, or S3) plus its source-specific config.
+  //   2. A set of {@code PipelineStep}s to include in the graph (Parser, Chunker,
+  //      Embedder, Semantic-graph, OpenSearch-sink). Auto-cascades upstream
+  //      dependencies (Semantic implies Chunker+Embedder, etc).
+  //   3. A {@code Transport} (gRPC / Kafka / Redis) for inter-step edges.
+  //   4. A subset of {@code observe_steps} for which the testing-sidecar runs
+  //      a rich collector (per-step latency histogram, doc-id ring buffer,
+  //      error trail). Always-on counts are free; rich mode is opt-in.
+  //
+  // The sidecar is wired as a hidden fan-out tap on every step in the graph
+  // so the FE can render per-step progress without a separate observation
+  // pipeline. When OpenSearch-sink is NOT in the step list, the sidecar
+  // becomes the terminal — same shape as the legacy "no OS" pipeline shapes
+  // but without exposing that detail in the UI.
+  rpc RunPipelineCrawl(RunPipelineCrawlRequest) returns (stream RunPipelineCrawlResponse);
 }
 
 // =====================================================================
@@ -572,4 +590,215 @@ message RunTransportTestResponse {
 
   // When this status was emitted.
   google.protobuf.Timestamp timestamp = 10;
+}
+
+// =====================================================================
+// Unified Pipeline Crawl (RunPipelineCrawl)
+// =====================================================================
+
+// Where the documents come from. Drives which connector + intake path the
+// graph uses. Single-doc and S3 require Parser; JDBC reads structured rows
+// and skips Parser entirely.
+enum PipelineSource {
+  PIPELINE_SOURCE_UNSPECIFIED = 0;
+  // One or more documents uploaded directly to connector-intake (single-shot).
+  PIPELINE_SOURCE_SINGLE_DOC = 1;
+  // JDBC connector reading rows from a database via a registered crawl
+  // definition. Parser is not applicable.
+  PIPELINE_SOURCE_JDBC = 2;
+  // S3 connector crawling objects from a bucket.
+  PIPELINE_SOURCE_S3 = 3;
+}
+
+// Steps that may be included in the pipeline graph. Order is fixed
+// (Parser → Chunker → Embedder → Semantic-graph → OpenSearch-sink); the
+// caller picks which steps to include and the graph builder cascades
+// dependencies (Semantic-graph implies Chunker+Embedder, Embedder implies
+// Chunker, etc). Parser is automatically excluded when source is JDBC.
+//
+// Sidecar observation taps are NOT in this enum because they're plumbing,
+// not a step the user opts into directly. Each step the caller marks under
+// {@code observe_steps} gets a sidecar fan-out tap added by the graph
+// builder as a sibling edge.
+enum PipelineStep {
+  PIPELINE_STEP_UNSPECIFIED = 0;
+  // Tika/Docling document parsing. Only valid when source is SINGLE_DOC or S3.
+  PIPELINE_STEP_PARSER = 1;
+  // Text chunking (token / sentence / semantic algorithms).
+  PIPELINE_STEP_CHUNKER = 2;
+  // Embedding generation. Implies Chunker upstream.
+  PIPELINE_STEP_EMBEDDER = 3;
+  // Semantic-graph centroid + boundary computation. Implies Embedder.
+  PIPELINE_STEP_SEMANTIC_GRAPH = 4;
+  // OpenSearch sink. When omitted, the testing-sidecar tap is the graph terminal.
+  PIPELINE_STEP_OPENSEARCH_SINK = 5;
+}
+
+// Source-specific configuration. Mirrors the per-source fields from the
+// legacy RPCs (RunE2EPipelineTest / RunJdbcCrawlTest / RunS3CrawlTest)
+// but factored so the unified RPC can carry whichever variant is relevant.
+
+message SingleDocSourceConfig {
+  // Sample document names from the sidecar's built-in sample-data directory.
+  // e.g., ["constitution.txt", "irs_f1040.pdf"]. Ignored if {@code uploads}
+  // is non-empty.
+  repeated string sample_names = 1;
+  // Or upload custom documents (takes precedence over sample_names).
+  repeated UploadInput uploads = 2;
+  // How the document enters the pipeline.
+  E2EIntakeMode intake_mode = 3;
+}
+
+message JdbcSourceConfig {
+  // Use an external database instead of the local courtlistener_test DB.
+  bool use_external_db = 1;
+  // JDBC connection URL for external DB.
+  optional string jdbc_url = 2;
+  // Username for external DB connection.
+  optional string jdbc_username = 3;
+  // Password for external DB connection.
+  optional string jdbc_password = 4;
+  // Maximum parent documents to crawl (0 = unlimited).
+  optional int32 max_documents = 5;
+}
+
+message S3SourceConfig {
+  // S3 connection configuration (endpoint, region, credentials).
+  ai.pipestream.connector.s3.v1.S3ConnectionConfig connection_config = 1;
+  // S3 bucket name to crawl.
+  string bucket = 2;
+  // Optional prefix filter within the bucket.
+  string prefix = 3;
+  // Upload sample documents to the bucket before crawling.
+  bool hydrate_sample_data = 4;
+}
+
+// Request to run a unified pipeline crawl.
+message RunPipelineCrawlRequest {
+  // Where docs come from. Drives the connector + which steps are valid.
+  PipelineSource source = 1;
+
+  // Source-specific configuration. The variant set must match {@code source}.
+  oneof source_config {
+    SingleDocSourceConfig single_doc = 2;
+    JdbcSourceConfig jdbc = 3;
+    S3SourceConfig s3 = 4;
+  }
+
+  // Steps to include in the pipeline graph. The graph builder cascades
+  // upstream dependencies and silently skips Parser when source is JDBC.
+  // If empty or only Parser is selected, the testing-sidecar is the terminal.
+  repeated PipelineStep steps = 5;
+
+  // Subset of {@code steps} for which the sidecar fan-out tap runs in
+  // rich-collection mode (per-step latency histogram, doc-id ring buffer,
+  // error trail). Steps NOT in this list still get a tap, but only counts.
+  repeated PipelineStep observe_steps = 6;
+
+  // Transport for inter-step edges (main flow). Sidecar tap edges always
+  // use gRPC regardless, so observation doesn't get queued in Kafka/Redis
+  // with production traffic.
+  E2ETransportType transport = 7;
+
+  // ── Common config ───────────────────────────────────────────────────
+
+  // Optional: use an existing account instead of creating one.
+  optional string account_id = 20;
+
+  // Whether to clean up all created resources after the test.
+  bool skip_cleanup = 21;
+
+  // Maximum seconds to wait for the document to appear in OpenSearch
+  // (or in the sidecar terminal counter when OS is not in the graph).
+  optional int32 polling_timeout_seconds = 22;
+
+  // Optional: semantic-graph configuration override.
+  optional google.protobuf.Struct semantic_config = 23;
+
+  // OpenSearch index creation settings for vector chunk indices.
+  // Ignored when OPENSEARCH_SINK is not in {@code steps}.
+  optional OpenSearchIndexSettings opensearch_settings = 24;
+
+  // OpenSearch bulk indexing queue configuration. Ignored without OS sink.
+  optional ai.pipestream.opensearch.v1.BulkIndexingConfig bulk_indexing = 25;
+
+  // Number of Kafka partitions for graph node processing topics.
+  // Only relevant when transport = KAFKA.
+  int32 kafka_partitions = 26;
+
+  // Whether to include a semantic chunking directive alongside standard
+  // chunking. Only meaningful when CHUNKER is in {@code steps}.
+  bool include_semantic_chunking = 27;
+}
+
+// Per-step observation snapshot, emitted alongside step progress events
+// for steps the caller has marked under {@code observe_steps}. Carries the
+// rich telemetry the sidecar's TestProcessor collects for the step's
+// fan-out tap.
+message ObservationSnapshot {
+  // Pipeline step this snapshot covers (matches the corresponding step in
+  // the request's {@code observe_steps}).
+  PipelineStep step = 1;
+
+  // Total docs received at this tap, including duplicates.
+  int64 total_count = 2;
+  // Distinct doc_ids received.
+  int64 unique_count = 3;
+  // Number of doc_ids that arrived more than once (each counted once).
+  int64 duplicate_count = 4;
+
+  // Throughput over the most recent sliding window (docs/sec).
+  double rate_docs_per_sec_recent = 5;
+  // Throughput averaged over the entire observation period.
+  double rate_docs_per_sec_overall = 6;
+
+  // Per-step service-time latency in milliseconds, derived from
+  // {@code dispatched_at_epoch_ms} on incoming requests. Zeroed if no
+  // upstream dispatch timestamp was available.
+  int64 latency_p50_ms = 7;
+  int64 latency_p95_ms = 8;
+  int64 latency_p99_ms = 9;
+  int64 latency_max_ms = 10;
+
+  // Most recent doc_ids observed at this step, oldest-first. Capped at a
+  // small fixed size by the collector.
+  repeated string recent_doc_ids = 11;
+
+  // Count of docs that arrived with a failure outcome at this step.
+  int64 error_count = 12;
+  // Most recent error message observed; empty if none.
+  string last_error_message = 13;
+}
+
+// Streamed response for each step + observation tick of a pipeline crawl.
+// Mirrors the per-step progress shape used by the legacy E2E RPCs (so the
+// FE can reuse most of its rendering) and adds an {@code observation}
+// field that's populated for steps the caller observes.
+message RunPipelineCrawlResponse {
+  // Step identifier.
+  string step_id = 1;
+  // Human-readable step name.
+  string step_name = 2;
+  // Step number (1-based).
+  int32 step_number = 3;
+  // Total steps in this run.
+  int32 total_steps = 4;
+  // Step outcome.
+  E2EStepOutcome outcome = 5;
+  // Human-readable message.
+  string message = 6;
+  // Duration of this step in milliseconds.
+  int64 duration_ms = 7;
+  // Step-specific details (free-form key/value pairs).
+  google.protobuf.Struct details = 8;
+  // Log entries from this step.
+  repeated ai.pipestream.data.v1.LogEntry log_entries = 9;
+  // When this status was emitted.
+  google.protobuf.Timestamp timestamp = 10;
+
+  // Observation snapshots for steps the caller is observing. Emitted
+  // alongside long-running progress events (e.g., the OpenSearch poll
+  // loop) so the FE can render live per-step counters / latency.
+  // Empty for steps not in the request's {@code observe_steps}.
+  repeated ObservationSnapshot observations = 11;
 }
