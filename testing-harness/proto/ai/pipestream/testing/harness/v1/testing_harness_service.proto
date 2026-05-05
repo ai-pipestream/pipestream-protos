@@ -42,23 +42,34 @@ service ModuleTestingSidecarService {
   //
   // Streams step-by-step progress and reports per-node document counts.
   rpc RunTransportTest(RunTransportTestRequest) returns (stream RunTransportTestResponse);
+}
 
-  // Unified pipeline-crawl test that supersedes RunE2EPipelineTest /
-  // RunJdbcCrawlTest / RunS3CrawlTest / RunTransportTest. The caller picks:
-  //   1. A {@code Source} (single doc, JDBC, or S3) plus its source-specific config.
-  //   2. A set of {@code PipelineStep}s to include in the graph (Parser, Chunker,
-  //      Embedder, Semantic-graph, OpenSearch-sink). Auto-cascades upstream
-  //      dependencies (Semantic implies Chunker+Embedder, etc).
-  //   3. A {@code Transport} (gRPC / Kafka / Redis) for inter-step edges.
-  //   4. A subset of {@code observe_steps} for which the testing-sidecar runs
-  //      a rich collector (per-step latency histogram, doc-id ring buffer,
-  //      error trail). Always-on counts are free; rich mode is opt-in.
-  //
-  // The sidecar is wired as a hidden fan-out tap on every step in the graph
-  // so the FE can render per-step progress without a separate observation
-  // pipeline. When OpenSearch-sink is NOT in the step list, the sidecar
-  // becomes the terminal — same shape as the legacy "no OS" pipeline shapes
-  // but without exposing that detail in the UI.
+// Unified pipeline-crawl service that supersedes the per-source legacy RPCs
+// on {@link ModuleTestingSidecarService} (RunE2EPipelineTest /
+// RunJdbcCrawlTest / RunS3CrawlTest / RunTransportTest). Lives on its own
+// service so the implementation can use plain async gRPC stubs +
+// virtual-thread blocking I/O without Mutiny — the legacy service stays
+// Mutiny-bound for backwards compatibility and is untouched.
+//
+// The caller picks:
+//   1. A {@code PipelineSource} (single doc, JDBC, or S3) plus its
+//      source-specific config.
+//   2. A set of {@code PipelineStep}s to include in the graph (Parser,
+//      Chunker, Embedder, Semantic-graph, OpenSearch-sink). Auto-cascades
+//      upstream dependencies (Semantic implies Chunker+Embedder, etc).
+//   3. A {@code E2ETransportType} (gRPC / Kafka / Redis) for inter-step
+//      edges.
+//   4. A subset of {@code observe_steps} for which the testing-sidecar
+//      runs a rich collector (per-step latency histogram, doc-id ring
+//      buffer, error trail). Always-on counts are free; rich mode is
+//      opt-in.
+//
+// The sidecar is wired as a fan-out tap on every step in the graph so the
+// FE can render per-step progress without a separate observation pipeline.
+// When OpenSearch-sink is NOT in the step list, the LAST main-flow step's
+// tap is the graph terminal — same effect as the legacy "no OS" pipeline
+// shapes but without exposing that detail in the UI.
+service PipelineCrawlerService {
   rpc RunPipelineCrawl(RunPipelineCrawlRequest) returns (stream RunPipelineCrawlResponse);
 }
 
