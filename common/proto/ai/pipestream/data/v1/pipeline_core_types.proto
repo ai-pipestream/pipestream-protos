@@ -560,6 +560,17 @@ message StreamMetadata {
   // Set by intake from the connector's crawl request (e.g., JDBC trigger_id, S3 request_id).
   // Enables filtering pipeline events by crawl run for telemetry and debugging.
   optional string crawl_id = 17;
+
+  // Wall-clock epoch (ms) at which the engine dispatched this stream from the
+  // previous step. Set by Router.routeToNextNodes immediately before handing
+  // the stream to a Dispatcher; absent on the first hop (intake → entry node)
+  // because nothing has dispatched the stream yet.
+  //
+  // Receivers compute their per-step service time as
+  //   {@code now() - dispatched_at_epoch_ms}
+  // — the testing-sidecar's TestProcessor uses this for the per-step latency
+  // histograms surfaced via the RunPipelineCrawl observation snapshots.
+  optional int64 dispatched_at_epoch_ms = 18;
 }
 
 // Reference to a document stored in the repository (S3 offload).
