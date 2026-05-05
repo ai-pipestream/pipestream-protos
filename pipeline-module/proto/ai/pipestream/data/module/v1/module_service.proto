@@ -143,6 +143,16 @@ message ServiceMetadata {
   // counts can be observed downstream — total docs.count is unreliable
   // when document _ids are deterministic and replays rewrite-in-place.
   optional string crawl_id = 8;
+
+  // Wall-clock epoch (ms) at which the engine dispatched this request from
+  // the previous step. Sourced from PipeStream.metadata.dispatched_at_epoch_ms;
+  // populated by the engine on every ProcessDataRequest. Receivers compute
+  // their per-step service time as
+  //   {@code now() - dispatched_at_epoch_ms}
+  // — used by the testing-sidecar's TestProcessor to populate the
+  // latency_p50/p95/p99 fields of ObservationSnapshot. Absent on the first
+  // hop (intake → entry node) because nothing has dispatched the stream yet.
+  optional int64 dispatched_at_epoch_ms = 9;
 }
 
 // ProcessConfiguration is now defined in pipeline_core_types.proto
