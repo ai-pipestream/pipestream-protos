@@ -706,10 +706,19 @@ message RunPipelineCrawlRequest {
   // error trail). Steps NOT in this list still get a tap, but only counts.
   repeated PipelineStep observe_steps = 6;
 
-  // Transport for inter-step edges (main flow). Sidecar tap edges always
-  // use gRPC regardless, so observation doesn't get queued in Kafka/Redis
-  // with production traffic.
-  E2ETransportType transport = 7;
+  // Transport for each main-flow edge, in graph order. The graph is built
+  // in canonical step order (parser → chunker → embedder → semantic-graph
+  // → opensearch-sink) skipping disabled / cascaded-out steps; this list
+  // assigns one transport per resulting edge, in the same order.
+  //
+  // Size MUST equal the number of main-flow edges produced by {@code steps}
+  // — the server fails the request loudly if it doesn't, rather than fall
+  // back to a default. (No size-1 broadcast convenience: keeps the wire
+  // contract honest about which edges got which transport.)
+  //
+  // Sidecar tap edges always use gRPC regardless, so observation doesn't
+  // get queued in Kafka/Redis with production traffic.
+  repeated E2ETransportType edge_transports = 7;
 
   // ── Common config ───────────────────────────────────────────────────
 
