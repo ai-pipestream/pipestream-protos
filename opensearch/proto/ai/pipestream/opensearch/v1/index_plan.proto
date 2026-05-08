@@ -1,0 +1,311 @@
+syntax = "proto3";
+
+package ai.pipestream.opensearch.v1;
+
+import "ai/pipestream/opensearch/v1/opensearch_document.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.opensearch.v1";
+
+// =============================================================================
+// IndexPlanService — IndexPlan Registry API
+// =============================================================================
+//
+// An IndexPlan is the *governance object* for one physical OpenSearch index.
+// It bundles:
+//
+//   - the physical index name (or prefix, for SEPARATE_INDICES strategy)
+//   - the indexing strategy (CHUNK_COMBINED / SEPARATE_INDICES / NESTED)
+//   - the set of VectorSet recipes to materialize as KNN fields on the index
+//   - the HNSW knobs (engine, method, space type, m, ef_construction, ef_search)
+//   - the index settings (shards, replicas, refresh_interval, knn flag)
+//
+// Plans are *referenced* by opensearch-sink node configs via plan_ids. A sink
+// can reference one or more plans; sink-config save validates each plan exists
+// and is in READY status. The sink itself is dumb at runtime: it writes
+// whatever vectors arrived in the PipeStream into the indices governed by its
+// plans, using the per-plan strategy to resolve field names.
+//
+// Save-time materialization:
+//
+//   1. CreateIndexPlan validates every vector_set_id exists.
+//   2. The plan row is persisted with status = PENDING.
+//   3. For each VS, the per-strategy IndexingStrategyHandler is invoked
+//      (existing infrastructure — same as BindVectorSetToIndex). The OS
+//      index is created if needed, the KNN field is added.
+//   4. On all success → status = READY.
+//   5. On any failure → status = FAILED with last_error populated. The plan
+//      row is preserved; UpdateIndexPlan is idempotent and can recover
+//      FAILED plans (handlers are already idempotent).
+//
+// What lives elsewhere (do NOT add here):
+//
+//   - Semantic settings (centroids, boundary). These live on VectorSet
+//     itself (semantic_config_id + granularity). A plan whose vector_set_ids
+//     include a centroid VS implicitly requires the upstream pipeline to
+//     produce that centroid; that requirement is checked by
+//     PlanProducibilityValidator at graph save time, not at plan save time.
+//   - Pipeline graph wiring. Plans are reusable across graphs; production
+//     of the VSes a plan requires is the graph's concern, not the plan's.
+//
+// Data flow (Mermaid):
+//
+//   ```mermaid
+//   graph LR
+//     subgraph "IndexPlanService"
+//       CRUD[Create/Get/Update/Delete/List]
+//       VAL[ValidatePlanProducibility]
+//       DB[(index_plan + index_plan_vector_set)]
+//       CRUD --> DB
+//       CRUD -.->|materialize| OS[(OpenSearch)]
+//     end
+//     Admin[Admin UI] --> CRUD
+//     Sink[opensearch-sink config] -.->|plan_ids| CRUD
+//     Engine[engine ValidateGraph] -.->|graph| VAL
+//   ```
+
+service IndexPlanService {
+  // -- Plan lifecycle --
+
+  // Create a new IndexPlan and synchronously materialize the OpenSearch
+  // index(es) it governs. Validates every vector_set_id exists. Persists
+  // the plan row in PENDING, runs per-strategy provisioning for each VS,
+  // then flips status to READY on success or FAILED with last_error on
+  // any provisioning failure. Returns the plan row in either case so the
+  // caller can inspect status.
+  rpc CreateIndexPlan(CreateIndexPlanRequest) returns (CreateIndexPlanResponse);
+
+  // Retrieve a plan by id.
+  rpc GetIndexPlan(GetIndexPlanRequest) returns (GetIndexPlanResponse);
+
+  // Update an existing plan. Strategy / index_name / vector_set_ids changes
+  // trigger re-materialization. Idempotent: re-running an Update with the
+  // same payload is a no-op against OpenSearch (handlers are idempotent).
+  // Use Update to recover a FAILED plan — flips it back to PENDING and
+  // retries provisioning.
+  rpc UpdateIndexPlan(UpdateIndexPlanRequest) returns (UpdateIndexPlanResponse);
+
+  // Delete a plan. delete_indices=true also drops the OS index(es); false
+  // leaves them in place (data preservation). Refuses if any sink config
+  // still references this plan_id (caller must remove sink references
+  // first).
+  rpc DeleteIndexPlan(DeleteIndexPlanRequest) returns (DeleteIndexPlanResponse);
+
+  // List plans with pagination.
+  rpc ListIndexPlans(ListIndexPlansRequest) returns (ListIndexPlansResponse);
+
+  // -- Validation (called by engine ValidateGraph) --
+
+  // Walks a PipelineGraph: for every opensearch-sink node, expands plan_ids
+  // to vector_set_ids and verifies each VS is produced by an upstream
+  // chunker × embedder directive (or, for centroid/boundary VSes, that a
+  // semantic-graph step is present and the underlying sentence VS is
+  // produced). Returns ValidationError per missing-VS-from-pipeline. Pure
+  // structural check; does NOT touch OpenSearch.
+  rpc ValidatePlanProducibility(ValidatePlanProducibilityRequest) returns (ValidatePlanProducibilityResponse);
+}
+
+// HNSW + engine knobs. Every field is `optional` — unset means "use the
+// manager's server-side default." Defaults:
+//   engine          = "lucene"
+//   method_name     = "hnsw"
+//   space_type      = "cosinesimil"
+//   m               = 16
+//   ef_construction = 100
+//   ef_search       = 100
+message HnswParameters {
+  optional string engine = 1;
+  optional string method_name = 2;
+  optional string space_type = 3;
+  optional int32 m = 4;
+  optional int32 ef_construction = 5;
+  optional int32 ef_search = 6;
+}
+
+// OpenSearch index-level settings applied at materialization. Every field
+// is `optional`; unset means "use the manager's server-side default."
+// Defaults:
+//   number_of_shards   = 1
+//   number_of_replicas = 1
+//   refresh_interval   = "1s"
+//   knn                = true
+message IndexSettings {
+  optional int32 number_of_shards = 1;
+  optional int32 number_of_replicas = 2;
+  optional string refresh_interval = 3;
+  optional bool knn = 4;
+}
+
+// Lifecycle status of a plan row.
+enum IndexPlanStatus {
+  INDEX_PLAN_STATUS_UNSPECIFIED = 0;
+  // Persisted; OS provisioning in flight or pending retry.
+  INDEX_PLAN_STATUS_PENDING = 1;
+  // OS indices materialized and KNN fields are present.
+  INDEX_PLAN_STATUS_READY = 2;
+  // Last provisioning attempt failed; last_error carries the reason.
+  // Recover by calling UpdateIndexPlan (idempotent retry).
+  INDEX_PLAN_STATUS_FAILED = 3;
+}
+
+// IndexPlan governs one physical OpenSearch index (or, for the
+// SEPARATE_INDICES strategy, the prefix under which one physical index per
+// VS lives).
+message IndexPlan {
+  // Server-assigned UUID.
+  string id = 1;
+
+  // Human-readable name (unique).
+  string name = 2;
+
+  // Physical index name (CHUNK_COMBINED / NESTED) or prefix
+  // (SEPARATE_INDICES, where the actual indices are
+  // {index_name}--vs--{chunker}--{embedder}).
+  string index_name = 3;
+
+  IndexingStrategy indexing_strategy = 4;
+
+  // VectorSet recipe ids to materialize as KNN fields on this index. Order
+  // is preserved (sort_order in the join table); does not affect query
+  // semantics but stabilizes UI rendering.
+  repeated string vector_set_ids = 5;
+
+  // HNSW knobs. Unset fields fall back to manager defaults.
+  HnswParameters hnsw = 6;
+
+  // Index-level settings. Unset fields fall back to manager defaults.
+  IndexSettings index_settings = 7;
+
+  // Optional human-facing description.
+  string description = 8;
+
+  IndexPlanStatus status = 9;
+
+  // Populated when status = FAILED.
+  string last_error = 10;
+
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// === Create ===
+
+message CreateIndexPlanRequest {
+  // Optional id (UUID). Server generates if empty.
+  optional string id = 1;
+
+  // Required, must be unique.
+  string name = 2;
+
+  // Physical index name or prefix (see IndexPlan.index_name).
+  string index_name = 3;
+
+  IndexingStrategy indexing_strategy = 4;
+
+  // VectorSet recipe ids. Each must already exist; missing ids fail the
+  // request with INVALID_ARGUMENT before any OS work runs.
+  repeated string vector_set_ids = 5;
+
+  // Optional HNSW overrides. Unset fields use manager defaults.
+  optional HnswParameters hnsw = 6;
+
+  // Optional index settings overrides. Unset fields use manager defaults.
+  optional IndexSettings index_settings = 7;
+
+  optional string description = 8;
+}
+
+message CreateIndexPlanResponse {
+  IndexPlan plan = 1;
+}
+
+// === Get ===
+
+message GetIndexPlanRequest {
+  string id = 1;
+}
+
+message GetIndexPlanResponse {
+  IndexPlan plan = 1;
+}
+
+// === Update ===
+
+message UpdateIndexPlanRequest {
+  // Required.
+  string id = 1;
+
+  // All other fields are optional partial updates. Unset fields are not
+  // changed. Setting vector_set_ids replaces the full membership (use
+  // Get → modify → Update for additive changes).
+  optional string name = 2;
+  optional string index_name = 3;
+  optional IndexingStrategy indexing_strategy = 4;
+  // Empty repeated and unset are indistinguishable in proto3; therefore a
+  // separate flag is required to express "set membership to empty." This
+  // is intentional — most updates are partial and never want to clear the
+  // VS list.
+  bool replace_vector_set_ids = 5;
+  repeated string vector_set_ids = 6;
+  optional HnswParameters hnsw = 7;
+  optional IndexSettings index_settings = 8;
+  optional string description = 9;
+}
+
+message UpdateIndexPlanResponse {
+  IndexPlan plan = 1;
+}
+
+// === Delete ===
+
+message DeleteIndexPlanRequest {
+  string id = 1;
+  // When true, the OpenSearch index(es) governed by this plan are dropped
+  // along with the plan row. When false, the plan row is removed but the
+  // OS indices are left intact (data preservation).
+  bool delete_indices = 2;
+}
+
+message DeleteIndexPlanResponse {
+  bool deleted = 1;
+}
+
+// === List ===
+
+message ListIndexPlansRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListIndexPlansResponse {
+  repeated IndexPlan plans = 1;
+  int32 total = 2;
+}
+
+// === ValidatePlanProducibility ===
+
+message ValidatePlanProducibilityRequest {
+  // The full graph being saved. The validator finds every opensearch-sink
+  // node, expands plan_ids → vector_set_ids, and walks upstream to verify
+  // production. Sent over the wire (rather than letting the validator
+  // fetch by graph_id) so the engine can run the check on draft graphs
+  // that have not yet been persisted.
+  // Carried as Any here to avoid pulling the config proto package as a
+  // direct dep of opensearch protos; engine-side code unpacks to
+  // ai.pipestream.config.v1.PipelineGraph before calling.
+  bytes graph_proto = 1;
+
+  // Optional cluster id when validation rules differ per cluster. Reserved
+  // for future use; current validators are cluster-agnostic.
+  string cluster_id = 2;
+}
+
+message ValidatePlanProducibilityResponse {
+  bool is_valid = 1;
+  // One entry per VS-not-produced or other producibility error. Field
+  // paths point at the offending sink node config so the UI can highlight
+  // it (e.g. "graph.nodes[5].config.opensearch_sink.plan_ids[0]:vector_set_id=foo").
+  repeated string errors = 2;
+  repeated string warnings = 3;
+}
