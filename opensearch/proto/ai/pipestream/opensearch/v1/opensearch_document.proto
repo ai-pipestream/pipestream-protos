@@ -99,7 +99,11 @@ message SemanticVectorSet {
 
 // Strategy for how document embeddings are physically stored in OpenSearch.
 enum IndexingStrategy {
-  // Default/unspecified: all embeddings as nested objects in the parent document.
+  // No explicit choice from the caller — opensearch-manager picks the
+  // server-side default. Treat this distinctly from NESTED: callers that
+  // pass UNSPECIFIED are saying "I don't care, give me the system default,"
+  // not "I want NESTED specifically." The current server-side default is
+  // CHUNK_COMBINED.
   INDEXING_STRATEGY_UNSPECIFIED = 0;
   // One flat index per chunk config. Multiple embedding model columns per row.
   // Enables cross-model scoring on the same chunk without joins.
@@ -107,6 +111,12 @@ enum IndexingStrategy {
   // One flat index per (chunk config × embedding model). Single vector column per row.
   // Maximum isolation. Simplest mapping and queries.
   INDEXING_STRATEGY_SEPARATE_INDICES = 2;
+  // All embeddings as nested objects in the parent document. Single OpenSearch
+  // index, vector sets become nested fields (vs_*) on the parent doc. Was the
+  // implicit meaning of UNSPECIFIED before this value existed; explicit now so
+  // "I want nested" and "I want the system default" are not the same wire
+  // value.
+  INDEXING_STRATEGY_NESTED = 3;
 }
 
 // The canonical representation of a single vector embedding and its associated metadata.
