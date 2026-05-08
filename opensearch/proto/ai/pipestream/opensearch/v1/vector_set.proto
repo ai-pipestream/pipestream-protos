@@ -3,6 +3,7 @@ syntax = "proto3";
 package ai.pipestream.opensearch.v1;
 
 import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "ai/pipestream/opensearch/v1/opensearch_document.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -424,14 +425,24 @@ message BindVectorSetToIndexRequest {
   string vector_set_id = 1;
 
   // OpenSearch index name to bind to. The index will be created if it
-  // doesn't exist (with KNN settings derived from the embedding model);
-  // if it does exist, the knn_vector field is added via putMapping.
+  // doesn't exist (with KNN settings derived from the embedding model
+  // and the chosen indexing_strategy), and the per-strategy KNN field
+  // is added via the strategy-specific shape (CHUNK_COMBINED:
+  // {base}--chunk--{chunker} with em_<embedder> field; SEPARATE_INDICES:
+  // {base}--vs--{chunker}--{embedder} with "vector" field; NESTED:
+  // {base} with vs_<name> nested KNN field).
   string index_name = 2;
 
   // Optional ownership tags carried into the binding row for downstream
   // filtering / audit.
   optional string account_id = 3;
   optional string datasource_id = 4;
+
+  // Indexing strategy for this binding's physical layout. Determines
+  // which IndexingStrategyHandler.provisionKnnField is dispatched at
+  // bind time. UNSPECIFIED falls back to the manager's server-side
+  // default (currently CHUNK_COMBINED).
+  ai.pipestream.opensearch.v1.IndexingStrategy indexing_strategy = 5;
 }
 
 message BindVectorSetToIndexResponse {

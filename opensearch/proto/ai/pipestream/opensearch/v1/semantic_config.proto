@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
+import "ai/pipestream/opensearch/v1/opensearch_document.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -262,13 +263,20 @@ message AssignSemanticConfigToIndexRequest {
   // ID of the SemanticConfig to assign (required).
   string semantic_config_id = 1;
 
-  // Base OpenSearch index name (required). Child indices are derived from
-  // this by the two indexing strategies:
+  // Base OpenSearch index name (required). Child index naming is governed
+  // by the chosen indexing_strategy:
   //   CHUNK_COMBINED:    {base_index_name}--chunk--{chunkConfigId}
   //   SEPARATE_INDICES:  {base_index_name}--vs--{chunkConfigId}--{embeddingId}
-  // Both are provisioned eagerly so whichever strategy the pipeline uses
-  // finds the child index + KNN mapping already in place.
+  //   NESTED:            {base_index_name} with nested vs_<name> fields
+  // Only the chosen strategy's shape is provisioned at bind time — the
+  // hot path is lookup-only and fails loud on miss (no fallbacks).
   string base_index_name = 2;
+
+  // Indexing strategy for this binding's physical layout. UNSPECIFIED
+  // falls back to the manager's server-side default (currently
+  // CHUNK_COMBINED). Each child VectorSet derived from the SemanticConfig
+  // (centroids + boundary) is bound under this same strategy.
+  ai.pipestream.opensearch.v1.IndexingStrategy indexing_strategy = 3;
 }
 
 // Response from assigning a SemanticConfig to a base index.
