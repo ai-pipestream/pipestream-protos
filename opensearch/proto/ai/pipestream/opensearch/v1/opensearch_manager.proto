@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "ai/pipestream/opensearch/v1/opensearch_document.proto";
 import "ai/pipestream/schemamanager/v1/schema_manager.proto";
 import "google/protobuf/any.proto";
@@ -577,10 +578,29 @@ message GetBulkConfigResponse {
 // Request to walk a graph and provision every index its opensearch-sink
 // node will write to.
 message EnsureGraphIndicesProvisionedRequest {
-  // Graph identifier to walk (required). The manager fetches the graph
-  // from the engine via GetGraph(graph_id) and reads the chunker /
-  // embedder / semantic-graph / opensearch-sink node configs from it.
+  // Graph identifier to walk (required). The manager fetches the active
+  // graph from the engine via PipelineGraphService.GetActiveGraph and
+  // reads the semantic-graph + opensearch-sink node configs from it
+  // (centroid toggles, boundary embedder, sink index_name, sink
+  // indexing_strategy).
   string graph_id = 1;
+
+  // Cluster identifier (required). The active-graph lookup is per-cluster;
+  // the same graph_id can have different active versions in different
+  // clusters.
+  string cluster_id = 2;
+
+  // VectorSetDirectives in play for this pipeline. Directives are the
+  // source of truth for user-facing (chunker × embedder) pairs — the
+  // chunker and embedder are directive-driven, so their step configs
+  // alone don't tell us which pairs are produced. Caller (admin /
+  // testing-sidecar / future per-graph directive registry) supplies
+  // these. The walker derives:
+  //   - user-facing: chunker_configs[].config_id × embedder_configs[].config_id
+  //   - sentences_internal × every embedder (chunker §21.9 always-emit)
+  // semantic-graph contributions (centroids + boundary) come from the
+  // graph's semantic-graph node config, not from these directives.
+  ai.pipestream.data.v1.VectorSetDirectives directives = 3;
 }
 
 // Response from EnsureGraphIndicesProvisioned. Lists every index that
