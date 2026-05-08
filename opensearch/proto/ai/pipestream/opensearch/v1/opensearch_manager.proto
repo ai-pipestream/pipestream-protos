@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package ai.pipestream.opensearch.v1;
 
-import "ai/pipestream/data/v1/pipeline_core_types.proto";
 import "ai/pipestream/opensearch/v1/opensearch_document.proto";
 import "ai/pipestream/schemamanager/v1/schema_manager.proto";
 import "google/protobuf/any.proto";
@@ -27,18 +26,6 @@ service OpenSearchManagerService {
   // exists with correct KNN mappings, every vector_set_index_binding row is in
   // place, and the IndexBindingCache is pre-populated. Idempotent.
   rpc ProvisionIndex(ProvisionIndexRequest) returns (ProvisionIndexResponse);
-  // Walks a graph definition and provisions every index + KNN field that the
-  // graph's opensearch-sink node will write to. Reads the graph from the
-  // engine, derives the full set of (chunkConfigId, embeddingModelId) pairs
-  // from chunker / embedder / semantic-graph node configs (Stage-2 user-facing
-  // chunkers + chunker §21.9 sentences_internal + semantic-graph centroids +
-  // boundary), then dispatches to the strategy handler chosen on the sink's
-  // config. Synchronous: returns only when every derived index is materialized
-  // in OpenSearch and every binding row is committed. Idempotent — re-running
-  // for an already-provisioned graph is a cache-hit no-op. Same body is also
-  // invoked by the manager's Kafka subscriber on graph-updates ACTIVATED
-  // events as a self-healing safety net.
-  rpc EnsureGraphIndicesProvisioned(EnsureGraphIndicesProvisionedRequest) returns (EnsureGraphIndicesProvisionedResponse);
   // Deletes an OpenSearch index.
   rpc DeleteIndex(DeleteIndexRequest) returns (DeleteIndexResponse);
   // Checks if an OpenSearch index exists.
@@ -571,49 +558,4 @@ message GetBulkConfigRequest {}
 // Response containing the current bulk indexing configuration.
 message GetBulkConfigResponse {
   BulkIndexingConfig config = 1;
-}
-
-// === EnsureGraphIndicesProvisioned ===
-
-// Request to walk a graph and provision every index its opensearch-sink
-// node will write to.
-message EnsureGraphIndicesProvisionedRequest {
-  // Graph identifier to walk (required). The manager fetches the active
-  // graph from the engine via PipelineGraphService.GetActiveGraph and
-  // reads the semantic-graph + opensearch-sink node configs from it
-  // (centroid toggles, boundary embedder, sink index_name, sink
-  // indexing_strategy).
-  string graph_id = 1;
-
-  // Cluster identifier (required). The active-graph lookup is per-cluster;
-  // the same graph_id can have different active versions in different
-  // clusters.
-  string cluster_id = 2;
-
-  // VectorSetDirectives in play for this pipeline. Directives are the
-  // source of truth for user-facing (chunker × embedder) pairs — the
-  // chunker and embedder are directive-driven, so their step configs
-  // alone don't tell us which pairs are produced. Caller (admin /
-  // testing-sidecar / future per-graph directive registry) supplies
-  // these. The walker derives:
-  //   - user-facing: chunker_configs[].config_id × embedder_configs[].config_id
-  //   - sentences_internal × every embedder (chunker §21.9 always-emit)
-  // semantic-graph contributions (centroids + boundary) come from the
-  // graph's semantic-graph node config, not from these directives.
-  ai.pipestream.data.v1.VectorSetDirectives directives = 3;
-}
-
-// Response from EnsureGraphIndicesProvisioned. Lists every index that
-// was materialized (or confirmed already-present) so callers can verify
-// the expected set against their derivation.
-message EnsureGraphIndicesProvisionedResponse {
-  // Index names touched (created or already-present and re-verified).
-  // Includes the base index and every per-strategy side index.
-  repeated string indices_provisioned = 1;
-  // Number of (chunkConfigId, embeddingModelId) pairs the walker derived
-  // from the graph and provisioned a KNN field for.
-  int32 pairs_provisioned = 2;
-  // Status message (counts, timing, anything that helps a tail-the-log
-  // operator understand what just ran).
-  string message = 3;
 }
