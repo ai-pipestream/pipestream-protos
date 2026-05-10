@@ -622,7 +622,7 @@ enum PipelineSource {
 }
 
 // Steps that may be included in the pipeline graph. Order is fixed
-// (Parser → Chunker → Embedder → Semantic-graph → OpenSearch-sink); the
+// (Echo → Parser → Chunker → Embedder → Semantic-graph → OpenSearch-sink); the
 // caller picks which steps to include and the graph builder cascades
 // dependencies (Semantic-graph implies Chunker+Embedder, Embedder implies
 // Chunker, etc). Parser is automatically excluded when source is JDBC.
@@ -633,6 +633,8 @@ enum PipelineSource {
 // builder as a sibling edge.
 enum PipelineStep {
   PIPELINE_STEP_UNSPECIFIED = 0;
+  // Pass-through processor used by the test harness to exercise ingress edges.
+  PIPELINE_STEP_ECHO = 6;
   // Tika/Docling document parsing. Only valid when source is SINGLE_DOC or S3.
   PIPELINE_STEP_PARSER = 1;
   // Text chunking (token / sentence / semantic algorithms).
@@ -641,7 +643,7 @@ enum PipelineStep {
   PIPELINE_STEP_EMBEDDER = 3;
   // Semantic-graph centroid + boundary computation. Implies Embedder.
   PIPELINE_STEP_SEMANTIC_GRAPH = 4;
-  // OpenSearch sink. When omitted, the testing-sidecar tap is the graph terminal.
+  // OpenSearch sink. A terminal testing-sidecar is always appended after the last step.
   PIPELINE_STEP_OPENSEARCH_SINK = 5;
 }
 
