@@ -1,0 +1,206 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.v1";
+
+// Receipt event emitted by opensearch-manager after a (doc, plan, index)
+// bulk write resolves. Consumed by repository-intake; rows land in the
+// document_index_state ledger keyed (doc_id, plan_id, index_name).
+//
+// At-least-once delivery is dedup'd via the ULID attempt_id — the
+// repository UPSERT ignores writes whose attempt_id is not strictly
+// greater than the stored last_attempt_id. The attempt_id is minted by
+// opensearch-manager at outcome-materialization (the moment it
+// classifies the OpenSearch bulk response into an outcome), not at
+// kafka-emit time, so its lexicographic order reflects delivery order
+// even under emitter backpressure.
+//
+// HANDOFF success at the sink means "request queued for indexing";
+// end-to-end OpenSearch durability is reported here, asynchronously,
+// once the manager's bulk write resolves.
+message DocumentIndexedEvent {
+  // The pipeline document this receipt is for.
+  string doc_id = 1;
+  // Owning account (multi-tenancy partitioning).
+  string account_id = 2;
+  // Originating datasource (connector lineage).
+  string datasource_id = 3;
+  // The plan that selected this index. A plan that fans out to N
+  // VectorSets / chunk indices produces N receipts (one per physical
+  // index) all sharing this plan_id.
+  string plan_id = 4;
+  // Physical OpenSearch index name (parent or chunk-specific).
+  string index_name = 5;
+  // Crawl correlation id; empty when the doc wasn't part of a crawl.
+  string crawl_id = 6;
+  // Aggregate outcome across all physical writes for this (doc, plan).
+  IndexingOutcome outcome = 7;
+  // Human-readable failure detail; empty unless outcome indicates
+  // failure or partial success.
+  string failure_reason = 8;
+  // ULID minted at outcome-materialization time. Lexicographically
+  // ordered by emission moment so the repository's
+  // "ignore-if-attempt_id-<=-last_attempt_id" rule stays monotonic
+  // under at-least-once receipt redelivery AND XAUTOCLAIM-driven
+  // retry of the redis indexing stream.
+  string attempt_id = 9;
+  // Mirrors the redis PEL deliveryCount at the moment of outcome
+  // materialization. Useful for tracking flapping docs without
+  // crawling the redis stream itself.
+  int32 delivery_count = 10;
+  // Wall-clock at receipt emit; can lag attempt_id under emitter
+  // backpressure. Use attempt_id for ordering, this for display.
+  google.protobuf.Timestamp emitted_at = 11;
+  // Per-physical-index detail. ALWAYS populated for chunked strategies
+  // (CHUNK_COMBINED, SEPARATE_INDICES) where one logical "index this
+  // doc" maps to many physical writes. Empty for NESTED strategy where
+  // a single (doc, plan) maps to a single physical index — in that
+  // case the top-level outcome alone is authoritative.
+  repeated IndexOutcome sub_outcomes = 12;
+  // Point-in-time provenance: which configs actually produced this
+  // row's content, captured at the moment of indexing rather than
+  // looked up later from mutable plan/config rows.
+  IndexingProvenance provenance = 13;
+  // Semver of the producing opensearch-manager deployment (e.g.
+  // "0.5.3"). Distinct from the parser_service_version inside
+  // ParserProvenance — this is the producer of the receipt itself,
+  // useful for correlating receipt-shape changes against deploys.
+  string producer_version = 14;
+}
+
+// Aggregate outcome enum shared by DocumentIndexedEvent and per-index
+// IndexOutcome. Top-level (not nested under DocumentIndexedEvent) so
+// IndexOutcome can reference it without crossing message boundaries.
+enum IndexingOutcome {
+  // Default; never written by a real receipt. Treat as "no information."
+  INDEXING_OUTCOME_UNSPECIFIED = 0;
+  // Every physical-index write for this (doc, plan) returned OK.
+  INDEXING_OUTCOME_SUCCESS = 1;
+  // Manager gave up — max-delivery exceeded, or a non-retryable error
+  // (e.g. mapping conflict, malformed payload) on every physical
+  // index. Ledger row stays terminal.
+  INDEXING_OUTCOME_FAILED_TERMINAL = 2;
+  // Transient failure (5xx, 429, network). Manager will retry. Receipt
+  // is informational; the ledger should keep the doc in "in-flight"
+  // state, not flip it to failed.
+  INDEXING_OUTCOME_FAILED_RETRYING = 3;
+  // Strategy intentionally produced no writes for this (doc, plan)
+  // (e.g. doc had no body for semantic processing). NOT a failure —
+  // it's a terminal "nothing-to-index" state.
+  INDEXING_OUTCOME_SKIPPED = 4;
+  // At least one physical-index write succeeded, at least one failed
+  // terminally. sub_outcomes carries the detail. Distinct from SUCCESS
+  // (would lie about completeness) and FAILED_TERMINAL (would over-
+  // pessimize when most chunks landed).
+  INDEXING_OUTCOME_PARTIAL_SUCCESS = 5;
+}
+
+// Per-physical-index outcome detail for chunked indexing strategies
+// where one logical (doc, plan) request fans out to many writes.
+message IndexOutcome {
+  // Physical OpenSearch index name (parent or chunk-specific).
+  string index_name = 1;
+  // Per-physical-index outcome.
+  IndexingOutcome outcome = 2;
+  // Human-readable failure detail; empty unless outcome indicates
+  // failure or partial success.
+  string failure_reason = 3;
+  // For chunked strategies, how many bulk actions targeted this index.
+  // Lets the repository show "doc D landed 47 chunks in index X" without
+  // requiring per-chunk receipts.
+  int32 action_count = 4;
+  // Of those, how many succeeded. action_count == success_count implies
+  // SUCCESS; 0 < success_count < action_count implies PARTIAL_SUCCESS
+  // at the top level.
+  int32 success_count = 5;
+}
+
+// Point-in-time configuration provenance for a single indexing attempt.
+// Denormalized into the receipt so the ledger preserves what was
+// actually used at index time, even if the plan or its referenced
+// configs (chunker, embedder, semantic, vector_set) are mutated later.
+message IndexingProvenance {
+  // Parser stage — runs once per doc, shared across every VectorSet
+  // the plan targets. Captured here because the parser service doesn't
+  // currently persist this elsewhere; the ledger becomes the canonical
+  // "what parsed this doc" record.
+  ParserProvenance parser = 1;
+  // Per-VectorSet provenance. One entry per VS the plan targeted.
+  // chunker_config_id captures NLP-analytics configuration transitively
+  // — NLP runs inside the chunker, not as a standalone stage — so
+  // there is no separate nlp_analytics_id at this level.
+  repeated VectorSetProvenance vector_sets = 2;
+}
+
+// Parser-stage provenance. Sourced from PipeDoc.parsed_metadata at
+// receipt-emit time; opensearch-sink projects the lightweight fields
+// (parser_name, parser_version, parsed_at) without copying the heavy
+// `Any data` payload that ParsedMetadata also carries.
+message ParserProvenance {
+  // Semver of the running pipestream-parser deployment (e.g. "0.5.3").
+  // Lets us correlate content-quality regressions against service
+  // deploys. Distinct from the parser library version on each
+  // ParserStep, which tracks Tika/Docling/etc. independently.
+  string parser_service_version = 1;
+  // Wall-clock of the (terminal) parser invocation.
+  google.protobuf.Timestamp parsed_at = 2;
+  // Ordered chain of parsers that touched the doc. Single entry for
+  // the common case; multi-entry for fallback flows (e.g. Tika primary
+  // then Docling fallback on image-only PDFs). The parser whose output
+  // actually fed the chunker is the last SUCCESS entry.
+  //
+  // NOTE: today PipeDoc.parsed_metadata only records SUCCESS entries
+  // (failed parsers leave no trace). Future work in the parser service
+  // will append FAILED/SKIPPED entries so this chain reflects the
+  // complete attempt history.
+  repeated ParserStep chain = 3;
+}
+
+// One parser invocation within a parse chain.
+message ParserStep {
+  // Machine identifier, e.g. "tika-default", "docling".
+  string parser_id = 1;
+  // Human-readable name, e.g. "Apache Tika 2.9.1".
+  string parser_name = 2;
+  // What this invocation produced.
+  ParserStepOutcome outcome = 3;
+  // Wall-clock duration of this invocation.
+  int64 duration_ms = 4;
+  // Empty unless outcome != SUCCESS.
+  string failure_reason = 5;
+}
+
+// Per-invocation outcome for one entry in the parser chain.
+enum ParserStepOutcome {
+  // Default; never written by a real receipt.
+  PARSER_STEP_OUTCOME_UNSPECIFIED = 0;
+  // Parser produced the body that fed downstream.
+  PARSER_STEP_OUTCOME_SUCCESS = 1;
+  // Parser tried, errored; downstream tried the next parser.
+  PARSER_STEP_OUTCOME_FAILED = 2;
+  // Parser wasn't applicable (e.g. mime mismatch) and was skipped.
+  PARSER_STEP_OUTCOME_SKIPPED = 3;
+}
+
+// Per-VectorSet configuration in effect at index time. A plan can
+// include multiple VectorSets, each with its own (chunker, embedder,
+// optional semantic) configuration; one (doc, plan) attempt produces
+// writes for every VS the plan targets, with potentially different
+// configs per VS.
+message VectorSetProvenance {
+  // The VS this entry describes.
+  string vector_set_id = 1;
+  // Chunker config that segmented the doc body for this VS. Captures
+  // NLP-analytics configuration transitively (chunkers own their NLP
+  // pipeline).
+  string chunker_config_id = 2;
+  // Embedding model config that produced the vectors for this VS.
+  string embedding_config_id = 3;
+  // Semantic-graph config, if semantic-graph ran for this VS. Empty
+  // when semantic-graph was not part of the pipeline for this VS.
+  string semantic_config_id = 4;
+}

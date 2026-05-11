@@ -1,0 +1,194 @@
+syntax = "proto3";
+
+package ai.pipestream.repository.v1;
+
+import "ai/pipestream/repository/v1/indexing_receipts.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "ai.pipestream.repository.v1";
+
+// Authoritative read surface for the per-document indexing ledger.
+//
+// The ledger is fed by repository-intake consuming the
+// pipestream.indexing.receipts kafka topic; writes happen there, never
+// over this gRPC service. This service exposes ONLY read paths:
+// per-doc / per-crawl queries, presence checks, provenance lookups,
+// admin observability, and a streaming export for the admin UI.
+//
+// Callers asking "is doc X indexed?" should hit this service rather
+// than OpenSearch directly — the ledger is the strongly-consistent
+// source of truth; OpenSearch reflects it eventually.
+service IndexingLedgerService {
+  // Full state for one doc across every (plan, index) it landed in.
+  // Returns one LedgerRow per row in document_index_state for the
+  // given doc_id, or an empty list if the doc has never been
+  // attempted.
+  rpc GetDocumentIndexState(GetDocumentIndexStateRequest) returns (GetDocumentIndexStateResponse);
+
+  // Bulk presence check — "of these N doc_ids, which are in plan X?".
+  // Connector intake / engine call this to decide whether to re-emit
+  // a doc when reprocessing. Missing doc_ids in the response map
+  // indicate the doc has never been attempted under this plan.
+  rpc CheckDocumentsIndexed(CheckDocumentsIndexedRequest) returns (CheckDocumentsIndexedResponse);
+
+  // Per-crawl aggregate progress. Replaces the existing
+  // GetCrawlIndexStats path that hits OpenSearch directly; this
+  // version is strongly consistent and doesn't depend on OpenSearch
+  // being reachable.
+  rpc GetCrawlIndexProgress(GetCrawlIndexProgressRequest) returns (GetCrawlIndexProgressResponse);
+
+  // Admin observability: docs that have been in IN_FLIGHT (i.e. last
+  // outcome FAILED_RETRYING or never reached terminal) for at least
+  // N milliseconds. Powers the "stuck docs" dashboard.
+  rpc ListStuckDocuments(ListStuckDocumentsRequest) returns (ListStuckDocumentsResponse);
+
+  // Provenance lookup for one specific (doc, plan, index): "what
+  // parser + chunker + embedder + semantic + VectorSet configs were
+  // actually used to produce this row?". Powers the
+  // "why does this doc have these embeddings?" debug flow.
+  rpc GetIndexingProvenance(GetIndexingProvenanceRequest) returns (GetIndexingProvenanceResponse);
+
+  // Server-streaming export of ledger rows with optional filters.
+  // Admin UI and audit jobs use this to walk large slices without
+  // holding a giant response in memory.
+  rpc StreamLedgerRows(StreamLedgerRowsRequest) returns (stream StreamLedgerRowsResponse);
+}
+
+// One row from the document_index_state ledger. Mirrors the SQL
+// schema but flattens the optional fields through proto's
+// default-value semantics rather than wrapper types — empty string
+// means "no value" for the optional fields.
+message LedgerRow {
+  // Identity (composite PK of the ledger).
+  string doc_id = 1;
+  string account_id = 2;
+  string plan_id = 3;
+  string index_name = 4;
+  // Crawl correlation; empty when the doc wasn't part of a crawl.
+  string crawl_id = 5;
+  // Latest known outcome for this (doc, plan, index).
+  IndexingOutcome outcome = 6;
+  // ULID of the latest attempt that mutated this row.
+  string last_attempt_id = 7;
+  // PEL delivery count at the moment of the last successful UPSERT.
+  int32 last_delivery_count = 8;
+  // Failure detail, if any.
+  string failure_reason = 9;
+  // Wall-clock of the latest write. Useful for "stuck-for-N-ms"
+  // filtering; for ordering, prefer last_attempt_id (monotonic).
+  google.protobuf.Timestamp indexed_at = 10;
+  // Point-in-time provenance from the latest attempt. The lightweight
+  // parser fields (service version, parsed_at) and the per-VectorSet
+  // config IDs are denormalized onto this row; the parser chain
+  // (variable length) lives in a child table and is fetched via
+  // GetIndexingProvenance.
+  IndexingProvenance provenance = 11;
+}
+
+// Request the full per-(plan, index) state for one doc.
+message GetDocumentIndexStateRequest {
+  string doc_id = 1;
+}
+
+// Response carrying every ledger row for the requested doc_id.
+message GetDocumentIndexStateResponse {
+  // One entry per (plan, index) the doc was attempted under. Empty
+  // if the doc has never been attempted.
+  repeated LedgerRow rows = 1;
+}
+
+// Bulk presence check for a single plan.
+message CheckDocumentsIndexedRequest {
+  // Doc ids to check. Caller is responsible for keeping this list
+  // reasonably sized (a few thousand per call); use StreamLedgerRows
+  // for larger walks.
+  repeated string doc_ids = 1;
+  // The plan we're checking against.
+  string plan_id = 2;
+}
+
+// Result keyed by doc_id. Missing keys = "never attempted under this
+// plan." Present keys carry the latest outcome.
+message CheckDocumentsIndexedResponse {
+  // doc_id → latest aggregate outcome for that (doc, plan_id) tuple.
+  map<string, IndexingOutcome> outcomes = 1;
+}
+
+// Per-crawl progress request.
+message GetCrawlIndexProgressRequest {
+  string crawl_id = 1;
+}
+
+// Per-crawl progress aggregate counts. Sum of every count equals the
+// total ledger rows tagged with the given crawl_id.
+message GetCrawlIndexProgressResponse {
+  string crawl_id = 1;
+  // Total ledger rows tagged with this crawl_id.
+  int32 total_rows = 2;
+  // Counts partitioned by outcome.
+  int32 success_count = 3;
+  int32 partial_success_count = 4;
+  int32 failed_terminal_count = 5;
+  int32 failed_retrying_count = 6;
+  int32 skipped_count = 7;
+  // Rows whose outcome is still UNSPECIFIED (never received a terminal
+  // receipt). Distinct from failed_retrying — these are docs that
+  // entered IN_FLIGHT and we've never heard back.
+  int32 in_flight_count = 8;
+}
+
+// Stuck-docs query (admin observability).
+message ListStuckDocumentsRequest {
+  // Minimum age (since indexed_at) for inclusion.
+  int64 stuck_for_at_least_ms = 1;
+  // Page size cap; server may return fewer.
+  int32 limit = 2;
+  // Optional outcome filter; UNSPECIFIED means "any non-terminal."
+  IndexingOutcome outcome_filter = 3;
+}
+
+// Stuck-docs result. Caller paginates via repeated calls with growing
+// stuck_for_at_least_ms or by using StreamLedgerRows for bulk export.
+message ListStuckDocumentsResponse {
+  repeated LedgerRow rows = 1;
+}
+
+// Provenance lookup for one specific row.
+message GetIndexingProvenanceRequest {
+  string doc_id = 1;
+  string plan_id = 2;
+  string index_name = 3;
+}
+
+// Provenance result. Empty IndexingProvenance means the row doesn't
+// exist; the caller should check with GetDocumentIndexState first if
+// uncertain.
+message GetIndexingProvenanceResponse {
+  IndexingProvenance provenance = 1;
+}
+
+// One frame of the StreamLedgerRows server-stream. Wrapped (rather than
+// streaming bare LedgerRow) so we can grow the frame shape later
+// (e.g. add a continuation cursor or batch-end marker) without a
+// breaking proto change.
+message StreamLedgerRowsResponse {
+  LedgerRow row = 1;
+}
+
+// Streaming export filters. Empty filters mean "no filtering on that
+// dimension"; combining filters is AND.
+message StreamLedgerRowsRequest {
+  // Restrict to one account; empty means all.
+  string account_id = 1;
+  // Restrict to one plan; empty means all.
+  string plan_id = 2;
+  // Restrict to one crawl; empty means all.
+  string crawl_id = 3;
+  // Restrict to one outcome; UNSPECIFIED means all.
+  IndexingOutcome outcome_filter = 4;
+  // Page size for the underlying SQL fetch; the server still streams
+  // every matching row, this just controls memory residency. Default
+  // when zero is server-side (currently 1000).
+  int32 page_size = 5;
+}
