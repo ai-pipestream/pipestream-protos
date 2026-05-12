@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package ai.pipestream.engine.v1;
+
+import "ai/pipestream/data/v1/pipeline_core_types.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ModuleWorkServiceProto";
+option java_package = "ai.pipestream.engine.v1";
+
+// Demand-driven work distribution via short-lived bidi streams.
+//
+// Each work unit lives in its own bidi stream:
+//   1. Module dials engine, opens stream.
+//   2. Module sends Hello{cluster, graph_id, node_id, module_id, instance_id}.
+//   3. Engine sends WorkUnit (or NoWorkAvailable if buffer empty after ~5s).
+//   4. Module processes; sends periodic Heartbeat (~15s) while working.
+//   5. Module sends WorkAck{work_unit_id, status, updated_stream}.
+//   6. Engine writes the updated PipeStream to Redis (always), produces a
+//      pointer message to the next node's Kafka topic, and commits the
+//      upstream Kafka offset. Repo-service mirrors to S3 asynchronously
+//      for durable archive; modules never see S3 directly.
+//   7. Engine sends AckConfirmed; stream closes.
+//
+// Concurrency is the module's choice: N concurrent open streams = N
+// concurrent work units. Each stream lives on its own virtual thread.
+// Stream lifetime is seconds to minutes per work unit. This is NOT a
+// long-lived multiplexing stream — one stream = one job. The module is
+// expected to open a fresh stream for the next work unit.
+//
+// On stream error before WorkAck: the engine does NOT commit the Kafka
+// offset, so the record is naturally redelivered by Kafka. No application-
+// level retry queue is needed. The module retries simply by opening a new
+// stream.
+//
+// Engine watchdog: each open stream has a per-stream deadline. If neither
+// a Heartbeat nor a WorkAck arrives within 2 x heartbeat-interval (default
+// 30s), the engine closes the stream. This triggers Kafka redelivery via
+// the same not-committed-offset mechanism.
+//
+// The oneof on both directions is intentionally open-ended. Future
+// versions can add PartialResult messages (worker streams embeddings or
+// chunks as they're produced, so the engine never has to hold the full
+// collection in memory at once). v1 reserves the field number; the
+// implementation is deferred.
+service ModuleWorkService {
+  rpc Work(stream WorkRequest) returns (stream WorkResponse);
+}
+
+// =============================================================================
+// Worker -> Engine (WorkRequest)
+// =============================================================================
+
+message WorkRequest {
+  oneof payload {
+    Hello hello = 1;
+    Heartbeat heartbeat = 2;
+    WorkAck ack = 3;
+    // Field 4 reserved for a future PartialResult message. See service
+    // doc comment above.
+  }
+
+  reserved 4;
+  reserved "partial_result";
+}
+
+// First message a module sends on every new stream. Identifies the
+// routing namespace this worker pulls from. The engine resolves this to
+// the Kafka topic pipestream.<cluster>.<graph_id>.<node_id>.
+message Hello {
+  string cluster = 1;
+  string graph_id = 2;
+  string node_id = 3;
+  // Diagnostics only.
+  string module_id = 4;
+  string instance_id = 5;
+}
+
+// Empty marker. Sent every ~15s while the module is processing the
+// WorkUnit. The engine resets the per-stream watchdog on receipt.
+message Heartbeat {}
+
+message WorkAck {
+  // Correlation ID matching the WorkUnit the engine sent on this stream.
+  string work_unit_id = 1;
+
+  ProcessingStatus status = 2;
+
+  // The full updated PipeStream produced by the module. On receipt the
+  // engine writes this to Redis (always), produces a pointer to the next
+  // node's Kafka topic, and lets repo-service mirror to S3 asynchronously.
+  // The module never touches Redis, Kafka, or S3 directly.
+  //
+  // MUST be unset on non-SUCCESS outcomes.
+  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+
+  // Optional diagnostics for failures.
+  string error_message = 4;
+}
+
+// =============================================================================
+// Engine -> Worker (WorkResponse)
+// =============================================================================
+
+message WorkResponse {
+  oneof payload {
+    WorkUnit work_unit = 1;
+    NoWorkAvailable no_work = 2;
+    AckConfirmed ack_confirmed = 3;
+    // Field 4 reserved for a future ControlSignal message. v1 has no use
+    // for ControlSignal because each stream is short-lived and tied to a
+    // single work unit; graceful drain is achieved by the module not
+    // opening new streams.
+  }
+
+  reserved 4;
+  reserved "control";
+}
+
+message WorkUnit {
+  // Deterministic UUID derived from cluster + graph_id + node_id +
+  // kafka_topic + partition + offset, so the same Kafka record always
+  // produces the same work_unit_id across engine restarts. This drives
+  // AckWork idempotency without a separate dedup window.
+  string work_unit_id = 1;
+
+  // Fully-hydrated stream. The engine read the payload from Redis before
+  // sending this message.
+  ai.pipestream.data.v1.PipeStream stream = 2;
+}
+
+// Sent if the engine's internal buffer for this (cluster, graph, node)
+// is empty after the server-side wait at stream open (~5s). The module
+// should close the stream and reopen after the suggested delay.
+message NoWorkAvailable {
+  uint32 retry_after_ms = 1;
+}
+
+message AckConfirmed {
+  string work_unit_id = 1;
+  bool accepted = 2;
+}
+
+// =============================================================================
+// Shared enums
+// =============================================================================
+
+enum ProcessingStatus {
+  // Proto3 default. The engine MUST treat a WorkAck with this status as
+  // invalid and not commit the Kafka offset. Forces the module to use an
+  // explicit non-zero value.
+  PROCESSING_STATUS_UNSPECIFIED = 0;
+  PROCESSING_STATUS_SUCCESS = 1;
+  PROCESSING_STATUS_RETRYABLE_FAILURE = 2;
+  PROCESSING_STATUS_PERMANENT_FAILURE = 3;
+}
