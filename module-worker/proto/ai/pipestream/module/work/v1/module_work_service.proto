@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package ai.pipestream.engine.v1;
+package ai.pipestream.module.work.v1;
 
-import "ai/pipestream/data/v1/pipeline_core_types.proto";
+import "google/protobuf/any.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "ModuleWorkServiceProto";
-option java_package = "ai.pipestream.engine.v1";
+option java_package = "ai.pipestream.module.work.v1";
 
 // Demand-driven work distribution via short-lived bidi streams.
 //
@@ -15,8 +15,8 @@ option java_package = "ai.pipestream.engine.v1";
 //   2. Module sends Hello{cluster, graph_id, node_id, module_id, instance_id}.
 //   3. Engine sends WorkUnit (or NoWorkAvailable if buffer empty after ~5s).
 //   4. Module processes; sends periodic Heartbeat (~15s) while working.
-//   5. Module sends WorkAck{work_unit_id, status, updated_stream}.
-//   6. Engine writes the updated PipeStream to Redis (always), produces a
+//   5. Module sends WorkAck{work_unit_id, status, updated_payload}.
+//   6. Engine writes the unpacked payload to Redis (always), produces a
 //      pointer message to the next node's Kafka topic, and commits the
 //      upstream Kafka offset. Repo-service mirrors to S3 asynchronously
 //      for durable archive; modules never see S3 directly.
@@ -38,11 +38,20 @@ option java_package = "ai.pipestream.engine.v1";
 // 30s), the engine closes the stream. This triggers Kafka redelivery via
 // the same not-committed-offset mechanism.
 //
+// Payloads on the wire are google.protobuf.Any. This keeps the contract
+// generic over the module's actual message type — chunker, embedder,
+// semantic-graph, sink can all share this service with different concrete
+// payload classes. The ModuleWorkerLoop<T extends Message> helper in
+// pipestream-platform packs and unpacks Any on each side, so modules
+// work with their concrete types throughout. Self-describing wire also
+// lets generic tooling (DLQ inspector, dead-letter UI) decode payloads
+// without prior knowledge of the type.
+//
 // The oneof on both directions is intentionally open-ended. Future
-// versions can add PartialResult messages (worker streams embeddings or
-// chunks as they're produced, so the engine never has to hold the full
-// collection in memory at once). v1 reserves the field number; the
-// implementation is deferred.
+// versions can add PartialResult messages (worker streams chunks or
+// embeddings as they're produced, so the engine never has to hold the
+// full collection in memory at once). v1 reserves the field number;
+// the implementation is deferred.
 service ModuleWorkService {
   rpc Work(stream WorkRequest) returns (stream WorkResponse);
 }
@@ -86,13 +95,14 @@ message WorkAck {
 
   ProcessingStatus status = 2;
 
-  // The full updated PipeStream produced by the module. On receipt the
-  // engine writes this to Redis (always), produces a pointer to the next
-  // node's Kafka topic, and lets repo-service mirror to S3 asynchronously.
-  // The module never touches Redis, Kafka, or S3 directly.
+  // The updated payload produced by the module, packed as Any. On
+  // receipt the engine unpacks to its expected concrete type, writes
+  // to Redis (always), produces a pointer to the next node's Kafka
+  // topic, and lets repo-service mirror to S3 asynchronously. The
+  // module never touches Redis, Kafka, or S3 directly.
   //
   // MUST be unset on non-SUCCESS outcomes.
-  ai.pipestream.data.v1.PipeStream updated_stream = 3;
+  google.protobuf.Any updated_payload = 3;
 
   // Optional diagnostics for failures.
   string error_message = 4;
@@ -124,9 +134,11 @@ message WorkUnit {
   // AckWork idempotency without a separate dedup window.
   string work_unit_id = 1;
 
-  // Fully-hydrated stream. The engine read the payload from Redis before
-  // sending this message.
-  ai.pipestream.data.v1.PipeStream stream = 2;
+  // Fully-hydrated module payload, packed as Any. The engine reads the
+  // concrete payload from Redis and packs it here before sending.
+  // Module-side code unpacks to its concrete type via
+  // ModuleWorkerLoop<T extends Message>.
+  google.protobuf.Any payload = 2;
 }
 
 // Sent if the engine's internal buffer for this (cluster, graph, node)

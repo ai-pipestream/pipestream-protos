@@ -1,0 +1,18 @@
+version: v2
+modules:
+  - path: proto
+    name: buf.build/pipestreamai/module-worker
+# Intentionally minimal deps. ModuleWorkService carries payloads as
+# google.protobuf.Any so this module is self-contained for the wire
+# contract — modules supply their own concrete payload types via the
+# generic ModuleWorkerLoop helper in pipestream-platform. The platform
+# extension can pull in module-worker without dragging engine internals,
+# common data types, or graph config onto every module's classpath.
+deps:
+  - buf.build/grpc/grpc
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE
