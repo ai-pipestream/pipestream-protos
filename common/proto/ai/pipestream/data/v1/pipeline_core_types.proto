@@ -573,11 +573,24 @@ message StreamMetadata {
   optional int64 dispatched_at_epoch_ms = 18;
 }
 
-// Reference to a document stored in the repository (S3 offload).
+// Reference to a document body stored outside this envelope.
 //
-// Used when the full PipeDoc is stored in S3/repository and only a reference
-// is needed in the stream for efficient message passing.
-// Engine uses this to hydrate the document via repo-service.
+// Used when the full PipeDoc is offloaded so the PipeStream envelope can
+// ride Kafka cheaply. The reference carries two addressing schemes:
+//
+//   1. {doc_id, graph_address_id, account_id} — the canonical
+//      coordinates the engine's HydrationService passes to repo-service
+//      for the durable S3 archive lookup. Always present.
+//   2. redis_key — the hot-bench address where the engine wrote the
+//      PipeDoc bytes on the previous hop's Ack. Used by the demand-pull
+//      bidi flow (Doc 15) so the consumer can materialise the body in
+//      a single Redis GET without going through repo-service. Empty
+//      when the producer did not write the body to Redis (e.g. intake
+//      records carrying inline document, or a graph wired for direct
+//      S3 hydration).
+//
+// HydrationService prefers redis_key when set, falls back to the
+// repo-service triple when redis missed (TTL expired, partial write).
 message DocumentReference {
   // Document identifier.
   //
@@ -594,6 +607,19 @@ message DocumentReference {
   // Ensures that hydration requests are scoped to the correct tenant,
   // preventing cross-account data access.
   string account_id = 3;
+  // Redis hot-bench address where the PipeDoc body lives.
+  //
+  // Set by the engine's postProcess on every successful Ack (Doc 15 §9
+  // "Write the output to Redis ... single write — the same body is
+  // shared across all N destinations from step 8"). Downstream engines
+  // hydrate from this key in a single GET; on miss they fall back to
+  // repo-service via {doc_id, graph_address_id, account_id}. Empty
+  // when the body was not offloaded to Redis on this hop.
+  //
+  // Format is implementation-defined but conventionally
+  // "pipestream:doc:<work_unit_id>" where work_unit_id is the
+  // deterministic UUID5 of the producing engine's parent Kafka coords.
+  string redis_key = 4;
 }
 
 // TCP-like packet header for node-to-node document processing.
